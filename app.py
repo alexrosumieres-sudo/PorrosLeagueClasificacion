@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-from datetime import datetime
+from datetime import datetime, time
 
 # --- CONFIGURACIÓN DE LAS JORNADAS ---
 JORNADAS = {
@@ -62,6 +62,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 # --- FUNCIÓN DE LECTURA ROBUSTA ---
 def leer_datos(pestaña):
     try:
+        # ID de tu hoja (extraído de tu URL)
         sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
         return pd.read_csv(url)
@@ -128,7 +129,6 @@ else:
         
         ahora = datetime.now()
         st.write(f"### Tus predicciones para la {j_sel}")
-        st.info(f"Hora actual: {ahora.strftime('%d/%m/%Y %H:%M')}")
         
         preds_actuales = []
         for i, (loc, vis) in enumerate(JORNADAS[j_sel]):
@@ -136,20 +136,20 @@ else:
             tipo = "Normal"
             bloqueado = False
             
-            # Buscar info del partido en Resultados
             if not df_r_j.empty and match_name in df_r_j['Partido'].values:
                 info_p = df_r_j[df_r_j['Partido'] == match_name].iloc[0]
                 tipo = info_p['Tipo']
                 
-                # Lógica de bloqueo por tiempo
                 if 'Hora_Inicio' in info_p and pd.notna(info_p['Hora_Inicio']):
-                    hora_limite = datetime.strptime(str(info_p['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
-                    if ahora > hora_limite:
-                        bloqueado = True
+                    try:
+                        hora_limite = datetime.strptime(str(info_p['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                        if ahora > hora_limite:
+                            bloqueado = True
+                    except:
+                        pass
 
-            # Mostrar estado del partido
-            status_text = "🔒 Bloqueado" if bloqueado else "🔓 Abierto"
-            st.markdown(f"**{loc} vs {vis}** ({tipo}) - **{status_text}**")
+            status_color = "red" if bloqueado else "green"
+            st.markdown(f"**{loc} vs {vis}** ({tipo}) - :{status_color}[{'🔒 Bloqueado' if bloqueado else '🔓 Abierto'}]")
             
             col_l, col_v = st.columns(2)
             pl = col_l.number_input(f"Goles {loc}", min_value=0, step=1, key=f"pl_{i}_{j_sel}", disabled=bloqueado)
@@ -164,34 +164,41 @@ else:
                 df_p = df_p[~((df_p['Usuario'] == st.session_state.user) & (df_p['Jornada'] == j_sel))]
             df_p = pd.concat([df_p, pd.DataFrame(preds_actuales)], ignore_index=True)
             conn.update(worksheet="Predicciones", data=df_p)
-            st.success("¡Predicciones enviadas!")
+            st.success("¡Predicciones guardadas correctamente!")
 
     with tab2:
-        st.header("Ranking")
-        # [Mantiene tu lógica de ranking actual...]
+        st.header("Ranking de la Jornada")
         df_p = leer_datos("Predicciones")
         df_r = leer_datos("Resultados")
         
         if df_r.empty or j_sel not in df_r['Jornada'].values:
             st.info("Esperando resultados del Admin...")
         else:
-            df_p_j = df_p[df_p['Jornada'] == j_sel]
+            df_p_j = df_p[df_p['Jornada'] == j_sel] if not df_p.empty else pd.DataFrame()
             df_r_j = df_r[df_r['Jornada'] == j_sel]
-            puntos_list = []
-            for user in df_p_j['Usuario'].unique():
-                total = 0
-                u_preds = df_p_j[df_p_j['Usuario'] == user]
-                for row in u_preds.itertuples():
-                    res_r = df_r_j[df_r_j['Partido'] == row.Partido]
-                    if not res_r.empty:
-                        total += calcular_puntos(row.P_L, row.P_V, res_r.iloc[0]['R_L'], res_r.iloc[0]['R_V'], res_r.iloc[0]['Tipo'])
-                puntos_list.append({"Usuario": user, "Puntos": total})
-            st.table(pd.DataFrame(puntos_list).sort_values("Puntos", ascending=False))
+            
+            if df_p_j.empty:
+                st.write("No hay apuestas para esta jornada aún.")
+            else:
+                puntos_list = []
+                for user in df_p_j['Usuario'].unique():
+                    total = 0
+                    u_preds = df_p_j[df_p_j['Usuario'] == user]
+                    for row in u_preds.itertuples():
+                        res_r = df_r_j[df_r_j['Partido'] == row.Partido]
+                        if not res_r.empty:
+                            total += calcular_puntos(row.P_L, row.P_V, res_r.iloc[0]['R_L'], res_r.iloc[0]['R_V'], res_r.iloc[0]['Tipo'])
+                    puntos_list.append({"Usuario": user, "Puntos": total})
+                
+                ranking = pd.DataFrame(puntos_list).sort_values("Puntos", ascending=False)
+                st.table(ranking)
 
     with tab3:
         if st.session_state.rol == "admin":
             st.header("🛠️ Panel de Administración")
             j_admin = st.selectbox("Gestionar Jornada", list(JORNADAS.keys()), key="admin_j")
+            
+            horarios_invalidos = False
             config = []
             
             for i, (loc, vis) in enumerate(JORNADAS[j_admin]):
@@ -200,28 +207,27 @@ else:
                 
                 tipo = col_t.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], key=f"t_{i}")
                 fecha_p = col_f.date_input("Fecha", key=f"f_{i}")
-                hora_p = col_h.time_input("Hora", key=f"h_{i}")
+                hora_p = col_h.time_input("Hora", key=f"h_{i}", value=time(21, 0)) # Por defecto a las 21:00
+                
+                # Validación de hora (23:00 a 12:00 no permitido)
+                if hora_p.hour >= 23 or hora_p.hour < 12:
+                    st.warning(f"⚠️ Hora no permitida (23:00 - 12:00).")
+                    horarios_invalidos = True
+                
                 rl = col_rl.number_input("R. L", min_value=0, step=1, key=f"rl_{i}")
                 rv = col_rv.number_input("R. V", min_value=0, step=1, key=f"rv_{i}")
                 
-                # Combinar fecha y hora para guardar
                 dt_inicio = datetime.combine(fecha_p, hora_p).strftime("%Y-%m-%d %H:%M:%S")
-                
-                config.append({
-                    "Jornada": j_admin, 
-                    "Partido": f"{loc}-{vis}", 
-                    "Tipo": tipo, 
-                    "R_L": rl, 
-                    "R_V": rv,
-                    "Hora_Inicio": dt_inicio
-                })
+                config.append({"Jornada": j_admin, "Partido": f"{loc}-{vis}", "Tipo": tipo, "R_L": rl, "R_V": rv, "Hora_Inicio": dt_inicio})
             
-            if st.button("🚀 Publicar Jornada (Resultados y Horarios)"):
+            if st.button("🚀 Publicar Jornada", disabled=horarios_invalidos):
                 df_res_old = leer_datos("Resultados")
                 if not df_res_old.empty:
                     df_res_old = df_res_old[df_res_old['Jornada'] != j_admin]
                 df_new = pd.concat([df_res_old, pd.DataFrame(config)], ignore_index=True)
                 conn.update(worksheet="Resultados", data=df_new)
-                st.success("¡Jornada actualizada con horarios y resultados!")
+                st.success("¡Jornada actualizada con éxito!")
+            elif horarios_invalidos:
+                st.error("No se puede publicar: hay partidos con horarios no permitidos (23:00 a 12:00).")
         else:
             st.error("Área restringida.")
