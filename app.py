@@ -62,7 +62,7 @@ if 'autenticado' not in st.session_state:
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<h1 style='text-align:center;'>🏆 Porros League</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center;'>🏆 Porra League</h1>", unsafe_allow_html=True)
         modo = st.radio("Selecciona", ["Iniciar Sesión", "Registrarse"], horizontal=True)
         user_input = st.text_input("Usuario")
         pass_input = st.text_input("Contraseña", type="password")
@@ -98,7 +98,7 @@ else:
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["✍️ Mis Apuestas", "👀 Ver Otras", "📊 Ranking", "🏆 Detalles", "⚙️ Admin"])
 
     with tab1:
-        j_sel = st.selectbox("Elegir Jornada", list(JORNADAS.keys()))
+        j_sel = st.selectbox("Elegir Jornada", list(JORNADAS.keys()), key="apuestas_j_selector")
         df_r = leer_datos("Resultados")
         df_r_j = df_r[df_r['Jornada'] == j_sel] if not df_r.empty else pd.DataFrame()
         ahora = datetime.now()
@@ -115,9 +115,10 @@ else:
 
             st.markdown(f"**{loc} vs {vis}** ({tipo})")
             col_l, col_v, col_pub = st.columns([2, 2, 2])
-            pl = col_l.number_input(f"Goles {loc}", 0, key=f"pl_{i}_{j_sel}", disabled=bloqueado)
-            pv = col_v.number_input(f"Goles {vis}", 0, key=f"pv_{i}_{j_sel}", disabled=bloqueado)
-            pub = col_pub.checkbox("Hacer público", key=f"pub_{i}_{j_sel}", disabled=bloqueado)
+            # CLAVE CORREGIDA: incluye j_sel
+            pl = col_l.number_input(f"Goles {loc}", 0, key=f"pl_{j_sel}_{i}", disabled=bloqueado)
+            pv = col_v.number_input(f"Goles {vis}", 0, key=f"pv_{j_sel}_{i}", disabled=bloqueado)
+            pub = col_pub.checkbox("Público", key=f"pub_{j_sel}_{i}", disabled=bloqueado)
             preds_enviar.append({"Usuario": st.session_state.user, "Jornada": j_sel, "Partido": match_name, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
 
         if st.button("💾 Guardar Cambios"):
@@ -128,9 +129,10 @@ else:
 
     with tab2:
         st.header("🔍 Predicciones públicas")
+        j_view = st.selectbox("Ver jornada:", list(JORNADAS.keys()), key="view_j_selector")
         df_all_p = leer_datos("Predicciones")
         if not df_all_p.empty:
-            p_j = df_all_p[(df_all_p['Jornada'] == j_sel) & (df_all_p['Publica'] == "SI")]
+            p_j = df_all_p[(df_all_p['Jornada'] == j_view) & (df_all_p['Publica'] == "SI")]
             if p_j.empty: st.info("Nada público todavía.")
             for u in p_j['Usuario'].unique():
                 with st.expander(f"Apuestas de {u}"):
@@ -149,7 +151,7 @@ else:
                 for r in u_p.itertuples():
                     if (r.Jornada, r.Partido) in res_dict:
                         rd = res_dict[(r.Jornada, r.Partido)]
-                        if str(rd.get('Finalizado')) == "SI":
+                        if 'Finalizado' in rd and str(rd.get('Finalizado')) == "SI":
                             pts = calcular_puntos(r.P_L, r.P_V, rd['R_L'], rd['R_V'], rd['Tipo'])
                             pt += pts
                             if r.Jornada == j_sel: pj += pts
@@ -165,10 +167,15 @@ else:
         st.header(f"⚽ Detalle de Puntos: {j_sel}")
         df_p = leer_datos("Predicciones"); df_r = leer_datos("Resultados")
         if not df_p.empty and not df_r.empty:
-            df_r_j = df_r[(df_r['Jornada'] == j_sel) & (df_r['Finalizado'] == "SI")]
+            if 'Finalizado' in df_r.columns:
+                df_r_j = df_r[(df_r['Jornada'] == j_sel) & (df_r['Finalizado'] == "SI")]
+            else: df_r_j = pd.DataFrame()
+                
             if df_r_j.empty: st.warning("Sin partidos finalizados.")
             else:
-                matriz = pd.DataFrame(index=df_r_j['Partido'].unique(), columns=df_p['Usuario'].unique())
+                usuarios = df_p['Usuario'].unique()
+                partidos = df_r_j['Partido'].unique()
+                matriz = pd.DataFrame(index=partidos, columns=usuarios)
                 for p in matriz.index:
                     res = df_r_j[df_r_j['Partido'] == p].iloc[0]
                     for u in matriz.columns:
@@ -178,23 +185,29 @@ else:
 
     with tab5:
         if st.session_state.rol == "admin":
-            st.header("🛠️ Configuración Admin")
-            j_adm = st.selectbox("Jornada", list(JORNADAS.keys()), key="adm_j")
+            st.header("🛠️ Panel de Administración")
+            j_adm = st.selectbox("Jornada", list(JORNADAS.keys()), key="adm_j_selector")
             horas = [time(h, m) for h in range(12, 23) for m in [0, 15, 30, 45]]
             conf = []
             for i, (loc, vis) in enumerate(JORNADAS[j_adm]):
                 st.write(f"--- {loc} vs {vis} ---")
                 c_t, c_f, c_h, c_rl, c_rv, c_fi = st.columns([2, 2, 2, 1, 1, 2])
-                tipo = c_t.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], key=f"at_{i}")
-                fecha = c_f.date_input("Fecha", key=f"af_{i}")
-                hora = c_h.selectbox("Hora", horas, format_func=lambda x: x.strftime("%H:%M"), key=f"ah_{i}", index=36)
-                rl = c_rl.number_input("L", 0, key=f"arl_{i}")
-                rv = c_rv.number_input("V", 0, key=f"arv_{i}")
-                fin = c_fi.checkbox("Finalizado", key=f"afi_{i}")
+                
+                # CLAVES CORREGIDAS: todas incluyen j_adm
+                tipo = c_t.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], key=f"at_{j_adm}_{i}")
+                fecha = c_f.date_input("Fecha", key=f"af_{j_adm}_{i}")
+                hora = c_h.selectbox("Hora", horas, format_func=lambda x: x.strftime("%H:%M"), key=f"ah_{j_adm}_{i}", index=36)
+                rl = c_rl.number_input("L", 0, key=f"arl_{j_adm}_{i}")
+                rv = c_rv.number_input("V", 0, key=f"arv_{j_adm}_{i}")
+                fin = c_fi.checkbox("Finalizado", key=f"afi_{j_adm}_{i}")
+                
                 conf.append({"Jornada": j_adm, "Partido": f"{loc}-{vis}", "Tipo": tipo, "R_L": rl, "R_V": rv, "Hora_Inicio": datetime.combine(fecha, hora).strftime("%Y-%m-%d %H:%M:%S"), "Finalizado": "SI" if fin else "NO"})
-            if st.button("🚀 Actualizar"):
+            
+            if st.button("🚀 Actualizar Resultados y Horarios"):
                 df_old = leer_datos("Resultados")
-                if not df_old.empty: df_old = df_old[df_old['Jornada'] != j_adm]
-                conn.update(worksheet="Resultados", data=pd.concat([df_old, pd.DataFrame(conf)], ignore_index=True))
-                st.success("¡Datos guardados!")
-
+                if not df_old.empty: 
+                    # Filtramos para no duplicar la jornada que estamos guardando
+                    df_old = df_old[df_old['Jornada'] != j_adm]
+                df_new = pd.concat([df_old, pd.DataFrame(conf)], ignore_index=True)
+                conn.update(worksheet="Resultados", data=df_new)
+                st.success(f"¡Datos de la {j_adm} guardados correctamente!")
