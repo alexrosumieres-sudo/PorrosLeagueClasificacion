@@ -50,7 +50,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# CONEXIÓN (Utiliza las credenciales del archivo JSON proporcionado)
+# CONEXIÓN
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def leer_datos(pestaña):
@@ -66,6 +66,7 @@ if 'autenticado' not in st.session_state:
 
 # --- LÓGICA DE ACCESO ---
 if not st.session_state.autenticado:
+    # ... (Se mantiene igual que el anterior para login/registro)
     col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
         st.markdown("<h1 class='main-title'>🏆 Porra League</h1>", unsafe_allow_html=True)
@@ -119,15 +120,13 @@ else:
         
         st.write(f"### Tus predicciones para la {j_sel}")
         
-        # Opción para hacer pública la porra
-        hacer_publica = st.toggle("Publicar mis predicciones (otros podrán verlas)", value=False)
-        
         preds_enviar = []
         for i, (loc, vis) in enumerate(JORNADAS[j_sel]):
             match_name = f"{loc}-{vis}"
             bloqueado = False
             tipo = "Normal"
             
+            # Verificar si el partido ya empezó
             if not df_r_j.empty and match_name in df_r_j['Partido'].values:
                 info_p = df_r_j[df_r_j['Partido'] == match_name].iloc[0]
                 tipo = info_p['Tipo']
@@ -135,48 +134,61 @@ else:
                     hora_limite = datetime.strptime(str(info_p['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                     if ahora > hora_limite: bloqueado = True
 
+            # Layout: Partido | Goles | Checkbox Público
             st.markdown(f"**{loc} vs {vis}** ({tipo})")
-            col_l, col_v = st.columns(2)
-            pl = col_l.number_input(f"Goles {loc}", 0, key=f"pl_{i}_{j_sel}", disabled=bloqueado)
-            pv = col_v.number_input(f"Goles {vis}", 0, key=f"pv_{i}_{j_sel}", disabled=bloqueado)
+            col_l, col_v, col_pub = st.columns([2, 2, 2])
+            
+            with col_l:
+                pl = st.number_input(f"Goles {loc}", 0, key=f"pl_{i}_{j_sel}", disabled=bloqueado)
+            with col_v:
+                pv = st.number_input(f"Goles {vis}", 0, key=f"pv_{i}_{j_sel}", disabled=bloqueado)
+            with col_pub:
+                publico = st.checkbox("Hacer público", key=f"pub_{i}_{j_sel}", disabled=bloqueado)
             
             preds_enviar.append({
                 "Usuario": st.session_state.user, 
                 "Jornada": j_sel, 
                 "Partido": match_name, 
-                "P_L": pl, "P_V": pv, 
-                "Publica": "SI" if hacer_publica else "NO"
+                "P_L": pl, 
+                "P_V": pv, 
+                "Publica": "SI" if publico else "NO"
             })
+            st.divider()
 
-        if st.button("💾 Guardar y Publicar"):
+        if st.button("💾 Guardar Cambios"):
             df_p = leer_datos("Predicciones")
             if not df_p.empty:
+                # Borramos solo las predicciones del usuario para esta jornada antes de re-insertar
                 df_p = df_p[~((df_p['Usuario'] == st.session_state.user) & (df_p['Jornada'] == j_sel))]
-            df_p = pd.concat([df_p, pd.DataFrame(preds_enviar)], ignore_index=True)
+            df_p = pd.concat([df_p, pd.DataFrame(preds_actuales)], ignore_index=True)
             conn.update(worksheet="Predicciones", data=df_p)
-            st.success("¡Porra guardada!")
+            st.success("¡Tus apuestas se han guardado!")
 
     with tab2:
-        st.header("🔍 Predicciones de otros jugadores")
+        st.header("🔍 Predicciones públicas de la comunidad")
         j_view = st.selectbox("Ver jornada:", list(JORNADAS.keys()), key="view_j")
         df_all_p = leer_datos("Predicciones")
         
         if not df_all_p.empty:
-            # Filtrar solo las que el usuario aceptó publicar
-            publicas = df_all_p[(df_all_p['Jornada'] == j_view) & (df_all_p['Publica'] == "SI")]
+            # Filtrar solo las que son públicas ("SI")
+            ver_publicas = df_all_p[(df_all_p['Jornada'] == j_view) & (df_all_p['Publica'] == "SI")]
             
-            if publicas.empty:
-                st.info("Nadie ha publicado sus predicciones para esta jornada todavía.")
+            if ver_publicas.empty:
+                st.info("No hay predicciones públicas compartidas para esta jornada.")
             else:
-                for user in publicas['Usuario'].unique():
+                # Agrupamos por usuario para mostrarlo mejor
+                for user in ver_publicas['Usuario'].unique():
                     with st.expander(f"Predicciones de {user}"):
-                        user_p = publicas[publicas['Usuario'] == user]
-                        for row in user_p.itertuples():
-                            st.write(f"{row.Partido}: {row.P_L} - {row.P_V}")
+                        user_p = ver_publicas[ver_publicas['Usuario'] == user]
+                        # Creamos una tabla pequeñita para cada usuario
+                        tabla_user = user_p[['Partido', 'P_L', 'P_V']].copy()
+                        tabla_user.columns = ['Partido', 'Local', 'Visitante']
+                        st.table(tabla_user)
         else:
-            st.write("No hay datos disponibles.")
+            st.write("Aún no hay predicciones en el sistema.")
 
     with tab3:
+        # ... (Se mantiene igual que el anterior para el Ranking de la jornada)
         st.header("Ranking de la Jornada")
         df_p = leer_datos("Predicciones")
         df_r = leer_datos("Resultados")
@@ -197,6 +209,7 @@ else:
                 st.table(pd.DataFrame(puntos_list).sort_values("Puntos", ascending=False))
 
     with tab4:
+        # ... (Se mantiene igual que el anterior para el Panel de Admin con selectbox de horas)
         if st.session_state.rol == "admin":
             st.header("🛠️ Configuración Admin")
             j_admin = st.selectbox("Gestionar Jornada", list(JORNADAS.keys()), key="admin_j")
@@ -222,5 +235,3 @@ else:
                 df_new = pd.concat([df_res_old, pd.DataFrame(config)], ignore_index=True)
                 conn.update(worksheet="Resultados", data=df_new)
                 st.success("¡Datos actualizados!")
-        else:
-            st.error("Acceso denegado.")
