@@ -3,7 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime, time
 
-# --- CONFIGURACIÓN DE LAS JORNADAS ---
+# --- CONFIGURACIÓN DE TODAS LAS JORNADAS (25 a 38) ---
 JORNADAS = {
     "Jornada 25": [
         ("Athletic", "Elche"), ("R. Sociedad", "Oviedo"), ("Betis", "Rayo"),
@@ -16,6 +16,78 @@ JORNADAS = {
         ("Mallorca", "R. Sociedad"), ("Oviedo", "Atlético"), ("Elche", "Espanyol"),
         ("Valencia", "Osasuna"), ("Betis", "Sevilla"), ("Girona", "Celta"),
         ("Real Madrid", "Getafe")
+    ],
+    "Jornada 27": [
+        ("Osasuna", "Mallorca"), ("Getafe", "Betis"), ("Levante", "Girona"),
+        ("Atlético", "R. Sociedad"), ("Celta", "Real Madrid"), ("Villarreal", "Elche"),
+        ("Athletic", "Barcelona"), ("Sevilla", "Rayo"), ("Valencia", "Alavés"),
+        ("Espanyol", "Oviedo")
+    ],
+    "Jornada 28": [
+        ("Alavés", "Villarreal"), ("Girona", "Athletic"), ("Atlético", "Getafe"),
+        ("Oviedo", "Valencia"), ("Real Madrid", "Elche"), ("Mallorca", "Espanyol"),
+        ("Barcelona", "Sevilla"), ("Betis", "Celta"), ("Osasuna", "Rayo"),
+        ("Levante", "R. Sociedad")
+    ],
+    "Jornada 29": [
+        ("Athletic", "Betis"), ("Barcelona", "Rayo"), ("Celta", "Alavés"),
+        ("Elche", "Mallorca"), ("Espanyol", "Getafe"), ("Levante", "Oviedo"),
+        ("Osasuna", "Girona"), ("Real Madrid", "Atlético"), ("Sevilla", "Valencia"),
+        ("Villarreal", "R. Sociedad")
+    ],
+    "Jornada 30": [
+        ("Alavés", "Osasuna"), ("Atlético", "Barcelona"), ("Getafe", "Athletic"),
+        ("Girona", "Villarreal"), ("Mallorca", "Real Madrid"), ("Rayo", "Elche"),
+        ("Betis", "Espanyol"), ("Oviedo", "Sevilla"), ("R. Sociedad", "Levante"),
+        ("Valencia", "Celta")
+    ],
+    "Jornada 31": [
+        ("Athletic", "Villarreal"), ("Barcelona", "Espanyol"), ("Celta", "Oviedo"),
+        ("Elche", "Valencia"), ("Levante", "Getafe"), ("Mallorca", "Rayo"),
+        ("Osasuna", "Betis"), ("Real Madrid", "Girona"), ("R. Sociedad", "Alavés"),
+        ("Sevilla", "Atlético")
+    ],
+    "Jornada 32": [
+        ("Alavés", "Mallorca"), ("Atlético", "Athletic"), ("Espanyol", "Levante"),
+        ("Getafe", "Barcelona"), ("Osasuna", "Sevilla"), ("Rayo", "R. Sociedad"),
+        ("Betis", "Real Madrid"), ("Oviedo", "Elche"), ("Valencia", "Girona"),
+        ("Villarreal", "Celta")
+    ],
+    "Jornada 33": [
+        ("Athletic", "Osasuna"), ("Barcelona", "Celta"), ("Elche", "Atlético"),
+        ("Girona", "Betis"), ("Levante", "Sevilla"), ("Mallorca", "Valencia"),
+        ("Rayo", "Espanyol"), ("Real Madrid", "Alavés"), ("Oviedo", "Villarreal"),
+        ("R. Sociedad", "Getafe")
+    ],
+    "Jornada 34": [
+        ("Alavés", "Athletic"), ("Celta", "Elche"), ("Espanyol", "Real Madrid"),
+        ("Getafe", "Rayo"), ("Girona", "Mallorca"), ("Osasuna", "Barcelona"),
+        ("Betis", "Oviedo"), ("Sevilla", "R. Sociedad"), ("Valencia", "Atlético"),
+        ("Villarreal", "Levante")
+    ],
+    "Jornada 35": [
+        ("Athletic", "Valencia"), ("Atlético", "Celta"), ("Barcelona", "Real Madrid"),
+        ("Elche", "Alavés"), ("Levante", "Osasuna"), ("Mallorca", "Villarreal"),
+        ("Rayo", "Girona"), ("Oviedo", "Getafe"), ("R. Sociedad", "Betis"),
+        ("Sevilla", "Espanyol")
+    ],
+    "Jornada 36": [
+        ("Alavés", "Barcelona"), ("Celta", "Levante"), ("Espanyol", "Athletic"),
+        ("Getafe", "Mallorca"), ("Girona", "R. Sociedad"), ("Osasuna", "Atlético"),
+        ("Betis", "Elche"), ("Real Madrid", "Oviedo"), ("Valencia", "Rayo"),
+        ("Villarreal", "Sevilla")
+    ],
+    "Jornada 37": [
+        ("Athletic", "Celta"), ("Atlético", "Girona"), ("Barcelona", "Betis"),
+        ("Elche", "Getafe"), ("Levante", "Mallorca"), ("Osasuna", "Espanyol"),
+        ("Rayo", "Villarreal"), ("Oviedo", "Alavés"), ("R. Sociedad", "Valencia"),
+        ("Sevilla", "Real Madrid")
+    ],
+    "Jornada 38": [
+        ("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"),
+        ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"),
+        ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"),
+        ("Villarreal", "Atlético")
     ]
 }
 
@@ -29,7 +101,6 @@ SCORING = {
 CODIGO_INVITACION = "LIGA2026"
 
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
-    # Esta función solo se llamará si el partido está marcado como Finalizado
     p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
     if p_l == r_l and p_v == r_v: return p_exacto
     signo_p = (p_l > p_v) - (p_l < p_v)
@@ -50,11 +121,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# CONEXIÓN
+# CONEXIÓN (Utiliza el archivo JSON de credenciales configurado en Secrets)
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 def leer_datos(pestaña):
     try:
+        # ID de tu hoja basado en la URL proporcionada
         sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
         return pd.read_csv(url)
@@ -168,12 +240,14 @@ else:
         if not df_all_p.empty:
             ver_publicas = df_all_p[(df_all_p['Jornada'] == j_view) & (df_all_p['Publica'] == "SI")]
             if ver_publicas.empty:
-                st.info("No hay predicciones públicas.")
+                st.info("No hay predicciones públicas para esta jornada.")
             else:
                 for user in ver_publicas['Usuario'].unique():
                     with st.expander(f"Predicciones de {user}"):
                         user_p = ver_publicas[ver_publicas['Usuario'] == user]
                         st.table(user_p[['Partido', 'P_L', 'P_V']].rename(columns={'P_L': 'Local', 'P_V': 'Visitante'}))
+        else:
+            st.write("No hay datos disponibles.")
 
     with tab3:
         st.header("📊 Clasificaciones")
@@ -193,7 +267,6 @@ else:
                     key = (row.Jornada, row.Partido)
                     if key in resultados_dict:
                         res = resultados_dict[key]
-                        # MODIFICACIÓN: Solo sumar puntos si el admin marcó "Finalizado"
                         if str(res.get('Finalizado')) == "SI":
                             pts = calcular_puntos(row.P_L, row.P_V, res['R_L'], res['R_V'], res['Tipo'])
                             pts_total += pts
@@ -228,7 +301,6 @@ else:
                 hora = c_h.selectbox("Hora", horas_permitidas, format_func=lambda x: x.strftime("%H:%M"), key=f"ah_{i}", index=36)
                 rl = c_rl.number_input("L", 0, key=f"arl_{i}")
                 rv = c_rv.number_input("V", 0, key=f"arv_{i}")
-                # NUEVA OPCIÓN: Marcar como finalizado
                 finalizado = c_fin.checkbox("¿Finalizado?", key=f"afin_{i}")
                 
                 dt_inicio = datetime.combine(fecha, hora).strftime("%Y-%m-%d %H:%M:%S")
@@ -246,3 +318,5 @@ else:
                 df_new = pd.concat([df_res_old, pd.DataFrame(config)], ignore_index=True)
                 conn.update(worksheet="Resultados", data=df_new)
                 st.success("¡Datos actualizados!")
+        else:
+            st.error("Acceso denegado.")
