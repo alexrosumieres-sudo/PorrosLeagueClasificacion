@@ -62,7 +62,7 @@ if 'autenticado' not in st.session_state:
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<h1 style='text-align:center;'>🏆 Porra League</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center;'>🏆 Porros League</h1>", unsafe_allow_html=True)
         modo = st.radio("Selecciona", ["Iniciar Sesión", "Registrarse"], horizontal=True)
         user_input = st.text_input("Usuario")
         pass_input = st.text_input("Contraseña", type="password")
@@ -197,3 +197,4 @@ else:
                 if not df_old.empty: df_old = df_old[df_old['Jornada'] != j_adm]
                 conn.update(worksheet="Resultados", data=pd.concat([df_old, pd.DataFrame(conf)], ignore_index=True))
                 st.success("¡Datos guardados!")
+
