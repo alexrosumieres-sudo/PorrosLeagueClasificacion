@@ -31,25 +31,35 @@ SCORING = {
     "Esquizo": (1.0, 1.5, 3.0)
 }
 
+CODIGO_INVITACION = "LIGA2026" # Código para poder registrarse
+
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     if pd.isna(r_l) or pd.isna(r_v): return 0
     p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
+    
+    # 1. Resultado exacto
     if p_l == r_l and p_v == r_v: return p_exacto
+    
+    # Signos (1: local, 0: empate, -1: visitante)
     signo_p = (p_l > p_v) - (p_l < p_v)
     signo_r = (r_l > r_v) - (r_l < r_v)
+    
     if signo_p == signo_r:
+        # 2. Diferencia de goles (incluye empates)
         if (p_l - p_v) == (r_l - r_v): return p_diff
+        # 3. Acierto simple
         return p_ganador
     return 0.0
 
-# --- INICIO DE APP ---
-st.set_page_config(page_title="Liga Pro", page_icon="⚽", layout="centered")
+# --- CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="Liga de Fútbol", page_icon="⚽", layout="centered")
 
-# Ocultar la barra lateral por defecto con CSS
+# CSS para ocultar sidebar y centrar contenido
 st.markdown("""
     <style>
         [data-testid="stSidebar"] {display: none;}
-        .stButton>button {width: 100%;}
+        .stButton>button {width: 100%; border-radius: 10px; height: 3em; background-color: #007bff; color: white;}
+        .main-title {text-align: center; color: #1E1E1E;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -58,90 +68,125 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 if 'autenticado' not in st.session_state:
     st.session_state.autenticado = False
 
-# --- LÓGICA DE ACCESO (CENTRO DE PANTALLA) ---
+# --- LÓGICA DE ACCESO (LOGIN / REGISTRO) ---
 if not st.session_state.autenticado:
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
-        st.title("🔐 Acceso a la Liga")
+        st.markdown("<h1 class='main-title'>🏆 Porra League</h1>", unsafe_allow_html=True)
+        
+        modo = st.radio("Selecciona", ["Iniciar Sesión", "Registrarse"], horizontal=True)
+        
         user_input = st.text_input("Usuario")
         pass_input = st.text_input("Contraseña", type="password")
-        if st.button("Entrar"):
-            df_users = conn.read(worksheet="Usuarios")
-            user_db = df_users[(df_users['Usuario'] == user_input) & (df_users['Password'] == str(pass_input))]
-            if not user_db.empty:
-                st.session_state.autenticado = True
-                st.session_state.user = user_input
-                st.session_state.rol = user_db.iloc[0]['Rol']
-                st.rerun()
-            else:
-                st.error("⚠️ Usuario o contraseña incorrectos")
+        
+        if modo == "Iniciar Sesión":
+            if st.button("Entrar"):
+                df_u = conn.read(worksheet="Usuarios")
+                user_db = df_u[(df_u['Usuario'] == user_input) & (df_u['Password'] == str(pass_input))]
+                if not user_db.empty:
+                    st.session_state.autenticado = True
+                    st.session_state.user = user_input
+                    st.session_state.rol = user_db.iloc[0]['Rol']
+                    st.rerun()
+                else:
+                    st.error("❌ Datos incorrectos")
+        
+        else: # Registro
+            cod_inv = st.text_input("Código de Invitación")
+            if st.button("Crear Cuenta"):
+                df_u = conn.read(worksheet="Usuarios")
+                if cod_inv != CODIGO_INVITACION:
+                    st.error("🚫 Código de invitación no válido")
+                elif user_input in df_u['Usuario'].values:
+                    st.warning("Ese usuario ya existe")
+                elif not user_input or not pass_input:
+                    st.error("Rellena todos los campos")
+                else:
+                    nueva_fila = pd.DataFrame([{"Usuario": user_input, "Password": pass_input, "Rol": "user"}])
+                    df_u_final = pd.concat([df_u, nueva_fila], ignore_index=True)
+                    conn.update(worksheet="Usuarios", data=df_u_final)
+                    st.success("✅ ¡Registrado! Ahora inicia sesión.")
+
+# --- APP PRINCIPAL ---
 else:
-    # --- APP UNA VEZ LOGUEADO ---
-    st.title(f"⚽ ¡Bienvenido, {st.session_state.user}!")
-    
-    # Botón de cerrar sesión arriba a la derecha
-    c1, c2 = st.columns([7, 1])
+    c1, c2 = st.columns([6, 1])
+    c1.title(f"Hola, {st.session_state.user} 👋")
     if c2.button("Salir"):
         st.session_state.autenticado = False
         st.rerun()
 
-    tab1, tab2, tab3 = st.tabs(["✍️ Mis Apuestas", "📊 Clasificación", "🛠️ Admin"])
+    tab1, tab2, tab3 = st.tabs(["✍️ Mis Apuestas", "📊 Clasificación", "⚙️ Admin"])
 
     with tab1:
-        jornada_sel = st.selectbox("Selecciona la Jornada", list(JORNADAS.keys()))
-        partidos = JORNADAS[jornada_sel]
+        j_sel = st.selectbox("Elegir Jornada", list(JORNADAS.keys()))
         df_r = conn.read(worksheet="Resultados")
-        df_r_j = df_r[df_r['Jornada'] == jornada_sel]
+        df_r_j = df_r[df_r['Jornada'] == j_sel]
         
-        st.divider()
+        st.write(f"### Tus predicciones para la {j_sel}")
+        
         preds_actuales = []
-        for i, (loc, vis) in enumerate(partidos):
+        for i, (loc, vis) in enumerate(JORNADAS[j_sel]):
             match_name = f"{loc}-{vis}"
-            tipo_row = df_r_j[df_r_j['Partido'] == match_name]
-            tipo_p = tipo_row.iloc[0]['Tipo'] if not tipo_row.empty else "Normal"
+            tipo = df_r_j[df_r_j['Partido'] == match_name]['Tipo'].values[0] if not df_r_j[df_r_j['Partido'] == match_name].empty else "Normal"
             
-            # Etiqueta de color según tipo
-            color = "blue" if tipo_p == "Doble" else ("red" if tipo_p == "Esquizo" else "gray")
-            st.markdown(f"**{loc} vs {vis}** :{color}[({tipo_p})]")
-            
+            st.markdown(f"**{loc} vs {vis}** ({tipo})")
             col_l, col_v = st.columns(2)
-            pl = col_l.number_input(f"Goles {loc}", min_value=0, step=1, key=f"l_{jornada_sel}_{i}")
-            pv = col_v.number_input(f"Goles {vis}", min_value=0, step=1, key=f"v_{jornada_sel}_{i}")
-            preds_actuales.append({"Usuario": st.session_state.user, "Jornada": jornada_sel, "Partido": match_name, "P_L": pl, "P_V": pv})
+            pl = col_l.number_input(f"Goles {loc}", min_value=0, step=1, key=f"pl_{i}_{j_sel}")
+            pv = col_v.number_input(f"Goles {vis}", min_value=0, step=1, key=f"pv_{i}_{j_sel}")
+            preds_actuales.append({"Usuario": st.session_state.user, "Jornada": j_sel, "Partido": match_name, "P_L": pl, "P_V": pv})
             st.divider()
 
-        if st.button("💾 Guardar mis predicciones"):
+        if st.button("💾 Guardar Porra"):
             df_p = conn.read(worksheet="Predicciones")
-            df_final = df_p[~((df_p['Usuario'] == st.session_state.user) & (df_p['Jornada'] == jornada_sel))]
-            df_final = pd.concat([df_final, pd.DataFrame(preds_actuales)], ignore_index=True)
-            conn.update(worksheet="Predicciones", data=df_final)
-            st.success("✅ ¡Guardado correctamente!")
+            df_p = df_p[~((df_p['Usuario'] == st.session_state.user) & (df_p['Jornada'] == j_sel))]
+            df_p = pd.concat([df_p, pd.DataFrame(preds_actuales)], ignore_index=True)
+            conn.update(worksheet="Predicciones", data=df_p)
+            st.success("¡Predicciones enviadas!")
 
     with tab2:
-        st.header("Ranking de la Jornada")
-        # Aquí se aplica la lógica de puntos sumando el 'tipo' de partido
-        # (Lógica simplificada para visualización)
-        st.info("La clasificación se actualiza cuando el Admin sube los resultados.")
+        st.header("Ranking")
+        df_p = conn.read(worksheet="Predicciones")
+        df_r = conn.read(worksheet="Resultados")
+        
+        # Filtrar jornada actual
+        df_p_j = df_p[df_p['Jornada'] == j_sel]
+        df_r_j = df_r[df_r['Jornada'] == j_sel]
+
+        if df_r_j.empty:
+            st.info("Esperando a que el Admin suba resultados...")
+        else:
+            puntos_list = []
+            for user in df_p_j['Usuario'].unique():
+                u_preds = df_p_j[df_p_j['Usuario'] == user]
+                total = 0
+                for row in u_preds.itertuples():
+                    res_r = df_r_j[df_r_j['Partido'] == row.Partido]
+                    if not res_r.empty:
+                        total += calcular_puntos(row.P_L, row.P_V, res_r.iloc[0]['R_L'], res_r.iloc[0]['R_V'], res_r.iloc[0]['Tipo'])
+                puntos_list.append({"Usuario": user, "Puntos": total})
+            
+            ranking = pd.DataFrame(puntos_list).sort_values("Puntos", ascending=False)
+            st.table(ranking)
 
     with tab3:
         if st.session_state.rol == "admin":
-            st.header("🛠️ Panel de Control")
-            j_admin = st.selectbox("Configurar Jornada:", list(JORNADAS.keys()), key="j_admin")
+            st.header("🛠️ Panel de Administración")
+            j_admin = st.selectbox("Gestionar Jornada", list(JORNADAS.keys()), key="admin_j")
             
-            config_partidos = []
+            config = []
             for i, (loc, vis) in enumerate(JORNADAS[j_admin]):
-                st.write(f"--- {loc} vs {vis} ---")
+                st.write(f"**{loc} - {vis}**")
                 c1, c2, c3 = st.columns(3)
                 tipo = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], key=f"t_{i}")
-                rl = c2.number_input("R. Local", min_value=0, step=1, key=f"rl_{i}")
-                rv = c3.number_input("R. Visitante", min_value=0, step=1, key=f"rv_{i}")
-                config_partidos.append({"Jornada": j_admin, "Partido": f"{loc}-{vis}", "Tipo": tipo, "R_L": rl, "R_V": rv})
+                rl = c2.number_input("Real L", min_value=0, step=1, key=f"rl_{i}")
+                rv = c3.number_input("Real V", min_value=0, step=1, key=f"rv_{i}")
+                config.append({"Jornada": j_admin, "Partido": f"{loc}-{vis}", "Tipo": tipo, "R_L": rl, "R_V": rv})
             
-            if st.button("🚀 Publicar Resultados"):
-                df_res_all = conn.read(worksheet="Resultados")
-                df_res_all = df_res_all[df_res_all['Jornada'] != j_admin]
-                df_res_all = pd.concat([df_res_all, pd.DataFrame(config_partidos)], ignore_index=True)
-                conn.update(worksheet="Resultados", data=df_res_all)
-                st.success("Resultados publicados.")
+            if st.button("🚀 Publicar Resultados Reales"):
+                df_res_old = conn.read(worksheet="Resultados")
+                df_res_old = df_res_old[df_res_old['Jornada'] != j_admin]
+                df_new = pd.concat([df_res_old, pd.DataFrame(config)], ignore_index=True)
+                conn.update(worksheet="Resultados", data=df_new)
+                st.success("¡Resultados actualizados!")
         else:
-            st.warning("🔒 Esta sección es solo para administradores.")
+            st.error("Área restringida.")
