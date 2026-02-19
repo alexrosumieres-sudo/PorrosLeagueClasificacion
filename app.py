@@ -61,11 +61,14 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 # --- FUNCIÓN DE LECTURA ROBUSTA (PARA EVITAR EL HTTPERROR) ---
 def leer_datos(pestaña):
     try:
-        # Forzamos ttl=0 para que siempre lea datos frescos y no use caché corrupta
-        return conn.read(worksheet=pestaña, ttl=0)
+        # Extraemos el ID directamente de la URL que pusiste en Secrets
+        sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
+        # Construimos una URL de exportación directa que Google no puede bloquear
+        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
+        return pd.read_csv(url)
     except Exception as e:
-        # Si falla la lectura por nombre, intentamos lectura general
-        st.error(f"Error al leer la pestaña {pestaña}. Revisa que el nombre sea exacto.")
+        st.error(f"Error al leer la pestaña {pestaña}")
+        st.info("Asegúrate de que la hoja sea 'Editor' para cualquier persona con el enlace.")
         return pd.DataFrame()
 
 if 'autenticado' not in st.session_state:
@@ -193,3 +196,4 @@ else:
                 st.success("¡Resultados publicados!")
         else:
             st.error("Área restringida.")
+
