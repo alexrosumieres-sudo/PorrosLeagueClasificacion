@@ -29,7 +29,7 @@ SCORING = {
 CODIGO_INVITACION = "LIGA2026"
 
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
-    if pd.isna(r_l) or pd.isna(r_v): return 0
+    # Esta función solo se llamará si el partido está marcado como Finalizado
     p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
     if p_l == r_l and p_v == r_v: return p_exacto
     signo_p = (p_l > p_v) - (p_l < p_v)
@@ -156,27 +156,24 @@ else:
             df_p = leer_datos("Predicciones")
             if not df_p.empty:
                 df_p = df_p[~((df_p['Usuario'] == st.session_state.user) & (df_p['Jornada'] == j_sel))]
-            # CORRECCIÓN NameError: usamos preds_enviar
             df_p = pd.concat([df_p, pd.DataFrame(preds_enviar)], ignore_index=True)
             conn.update(worksheet="Predicciones", data=df_p)
             st.success("¡Tus apuestas se han guardado!")
 
     with tab2:
-        st.header("🔍 Predicciones públicas de la comunidad")
+        st.header("🔍 Predicciones públicas")
         j_view = st.selectbox("Ver jornada:", list(JORNADAS.keys()), key="view_j")
         df_all_p = leer_datos("Predicciones")
         
         if not df_all_p.empty:
             ver_publicas = df_all_p[(df_all_p['Jornada'] == j_view) & (df_all_p['Publica'] == "SI")]
             if ver_publicas.empty:
-                st.info("No hay predicciones públicas para esta jornada.")
+                st.info("No hay predicciones públicas.")
             else:
                 for user in ver_publicas['Usuario'].unique():
                     with st.expander(f"Predicciones de {user}"):
                         user_p = ver_publicas[ver_publicas['Usuario'] == user]
                         st.table(user_p[['Partido', 'P_L', 'P_V']].rename(columns={'P_L': 'Local', 'P_V': 'Visitante'}))
-        else:
-            st.write("No hay datos disponibles.")
 
     with tab3:
         st.header("📊 Clasificaciones")
@@ -184,56 +181,63 @@ else:
         df_r = leer_datos("Resultados")
         
         if not df_r.empty and not df_p.empty:
-            # Cálculo de puntos
             resultados_dict = df_r.set_index(['Jornada', 'Partido']).to_dict('index')
             puntos_totales = []
 
             for user in df_p['Usuario'].unique():
                 u_preds = df_p[df_p['Usuario'] == user]
-                puntos_jornada_actual = 0
-                puntos_totales_user = 0
+                pts_jornada = 0
+                pts_total = 0
 
                 for row in u_preds.itertuples():
                     key = (row.Jornada, row.Partido)
                     if key in resultados_dict:
                         res = resultados_dict[key]
-                        pts = calcular_puntos(row.P_L, row.P_V, res['R_L'], res['R_V'], res['Tipo'])
-                        puntos_totales_user += pts
-                        if row.Jornada == j_sel:
-                            puntos_jornada_actual += pts
+                        # MODIFICACIÓN: Solo sumar puntos si el admin marcó "Finalizado"
+                        if str(res.get('Finalizado')) == "SI":
+                            pts = calcular_puntos(row.P_L, row.P_V, res['R_L'], res['R_V'], res['Tipo'])
+                            pts_total += pts
+                            if row.Jornada == j_sel:
+                                pts_jornada += pts
                 
-                puntos_totales.append({"Usuario": user, "Jornada": puntos_jornada_actual, "Total": puntos_totales_user})
+                puntos_totales.append({"Usuario": user, f"Puntos {j_sel}": pts_jornada, "Puntos Totales": pts_total})
 
             df_ranking = pd.DataFrame(puntos_totales)
-            
-            col_rank1, col_rank2 = st.columns(2)
-            with col_rank1:
+            col_r1, col_r2 = st.columns(2)
+            with col_r1:
                 st.subheader(f"Ranking {j_sel}")
-                st.table(df_ranking[['Usuario', 'Jornada']].sort_values('Jornada', ascending=False))
-            with col_rank2:
+                st.table(df_ranking[['Usuario', f"Puntos {j_sel}"]].sort_values(f"Puntos {j_sel}", ascending=False))
+            with col_r2:
                 st.subheader("Ranking General")
-                st.table(df_ranking[['Usuario', 'Total']].sort_values('Total', ascending=False))
+                st.table(df_ranking[['Usuario', 'Puntos Totales']].sort_values('Puntos Totales', ascending=False))
         else:
-            st.info("Aún no hay resultados publicados.")
+            st.info("No hay resultados finalizados todavía.")
 
     with tab4:
         if st.session_state.rol == "admin":
-            st.header("🛠️ Configuración Admin")
+            st.header("🛠️ Panel de Administración")
             j_admin = st.selectbox("Gestionar Jornada", list(JORNADAS.keys()), key="admin_j")
             horas_permitidas = [time(h, m) for h in range(12, 23) for m in [0, 15, 30, 45]]
             
             config = []
             for i, (loc, vis) in enumerate(JORNADAS[j_admin]):
                 st.write(f"--- {loc} vs {vis} ---")
-                c_t, c_f, c_h, c_rl, col_rv = st.columns(5)
+                c_t, c_f, c_h, c_rl, c_rv, c_fin = st.columns([2, 2, 2, 1, 1, 2])
                 tipo = c_t.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], key=f"at_{i}")
                 fecha = c_f.date_input("Fecha", key=f"af_{i}")
                 hora = c_h.selectbox("Hora", horas_permitidas, format_func=lambda x: x.strftime("%H:%M"), key=f"ah_{i}", index=36)
-                rl = c_rl.number_input("R. L", 0, key=f"arl_{i}")
-                rv = col_rv.number_input("R. V", 0, key=f"arv_{i}")
+                rl = c_rl.number_input("L", 0, key=f"arl_{i}")
+                rv = c_rv.number_input("V", 0, key=f"arv_{i}")
+                # NUEVA OPCIÓN: Marcar como finalizado
+                finalizado = c_fin.checkbox("¿Finalizado?", key=f"afin_{i}")
                 
                 dt_inicio = datetime.combine(fecha, hora).strftime("%Y-%m-%d %H:%M:%S")
-                config.append({"Jornada": j_admin, "Partido": f"{loc}-{vis}", "Tipo": tipo, "R_L": rl, "R_V": rv, "Hora_Inicio": dt_inicio})
+                config.append({
+                    "Jornada": j_admin, "Partido": f"{loc}-{vis}", 
+                    "Tipo": tipo, "R_L": rl, "R_V": rv, 
+                    "Hora_Inicio": dt_inicio, 
+                    "Finalizado": "SI" if finalizado else "NO"
+                })
             
             if st.button("🚀 Actualizar Resultados"):
                 df_res_old = leer_datos("Resultados")
