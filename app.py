@@ -66,7 +66,6 @@ if 'autenticado' not in st.session_state:
 
 # --- LÓGICA DE ACCESO ---
 if not st.session_state.autenticado:
-    # ... (Se mantiene igual que el anterior para login/registro)
     col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
         st.markdown("<h1 class='main-title'>🏆 Porra League</h1>", unsafe_allow_html=True)
@@ -126,7 +125,6 @@ else:
             bloqueado = False
             tipo = "Normal"
             
-            # Verificar si el partido ya empezó
             if not df_r_j.empty and match_name in df_r_j['Partido'].values:
                 info_p = df_r_j[df_r_j['Partido'] == match_name].iloc[0]
                 tipo = info_p['Tipo']
@@ -134,7 +132,6 @@ else:
                     hora_limite = datetime.strptime(str(info_p['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                     if ahora > hora_limite: bloqueado = True
 
-            # Layout: Partido | Goles | Checkbox Público
             st.markdown(f"**{loc} vs {vis}** ({tipo})")
             col_l, col_v, col_pub = st.columns([2, 2, 2])
             
@@ -158,9 +155,9 @@ else:
         if st.button("💾 Guardar Cambios"):
             df_p = leer_datos("Predicciones")
             if not df_p.empty:
-                # Borramos solo las predicciones del usuario para esta jornada antes de re-insertar
                 df_p = df_p[~((df_p['Usuario'] == st.session_state.user) & (df_p['Jornada'] == j_sel))]
-            df_p = pd.concat([df_p, pd.DataFrame(preds_actuales)], ignore_index=True)
+            # CORRECCIÓN NameError: usamos preds_enviar
+            df_p = pd.concat([df_p, pd.DataFrame(preds_enviar)], ignore_index=True)
             conn.update(worksheet="Predicciones", data=df_p)
             st.success("¡Tus apuestas se han guardado!")
 
@@ -170,51 +167,61 @@ else:
         df_all_p = leer_datos("Predicciones")
         
         if not df_all_p.empty:
-            # Filtrar solo las que son públicas ("SI")
             ver_publicas = df_all_p[(df_all_p['Jornada'] == j_view) & (df_all_p['Publica'] == "SI")]
-            
             if ver_publicas.empty:
-                st.info("No hay predicciones públicas compartidas para esta jornada.")
+                st.info("No hay predicciones públicas para esta jornada.")
             else:
-                # Agrupamos por usuario para mostrarlo mejor
                 for user in ver_publicas['Usuario'].unique():
                     with st.expander(f"Predicciones de {user}"):
                         user_p = ver_publicas[ver_publicas['Usuario'] == user]
-                        # Creamos una tabla pequeñita para cada usuario
-                        tabla_user = user_p[['Partido', 'P_L', 'P_V']].copy()
-                        tabla_user.columns = ['Partido', 'Local', 'Visitante']
-                        st.table(tabla_user)
+                        st.table(user_p[['Partido', 'P_L', 'P_V']].rename(columns={'P_L': 'Local', 'P_V': 'Visitante'}))
         else:
-            st.write("Aún no hay predicciones en el sistema.")
+            st.write("No hay datos disponibles.")
 
     with tab3:
-        # ... (Se mantiene igual que el anterior para el Ranking de la jornada)
-        st.header("Ranking de la Jornada")
+        st.header("📊 Clasificaciones")
         df_p = leer_datos("Predicciones")
         df_r = leer_datos("Resultados")
-        if not df_r.empty and j_sel in df_r['Jornada'].values:
-            df_p_j = df_p[df_p['Jornada'] == j_sel] if not df_p.empty else pd.DataFrame()
-            df_r_j = df_r[df_r['Jornada'] == j_sel]
+        
+        if not df_r.empty and not df_p.empty:
+            # Cálculo de puntos
+            resultados_dict = df_r.set_index(['Jornada', 'Partido']).to_dict('index')
+            puntos_totales = []
+
+            for user in df_p['Usuario'].unique():
+                u_preds = df_p[df_p['Usuario'] == user]
+                puntos_jornada_actual = 0
+                puntos_totales_user = 0
+
+                for row in u_preds.itertuples():
+                    key = (row.Jornada, row.Partido)
+                    if key in resultados_dict:
+                        res = resultados_dict[key]
+                        pts = calcular_puntos(row.P_L, row.P_V, res['R_L'], res['R_V'], res['Tipo'])
+                        puntos_totales_user += pts
+                        if row.Jornada == j_sel:
+                            puntos_jornada_actual += pts
+                
+                puntos_totales.append({"Usuario": user, "Jornada": puntos_jornada_actual, "Total": puntos_totales_user})
+
+            df_ranking = pd.DataFrame(puntos_totales)
             
-            puntos_list = []
-            if not df_p_j.empty:
-                for user in df_p_j['Usuario'].unique():
-                    total = 0
-                    u_preds = df_p_j[df_p_j['Usuario'] == user]
-                    for row in u_preds.itertuples():
-                        res_r = df_r_j[df_r_j['Partido'] == row.Partido]
-                        if not res_r.empty:
-                            total += calcular_puntos(row.P_L, row.P_V, res_r.iloc[0]['R_L'], res_r.iloc[0]['R_V'], res_r.iloc[0]['Tipo'])
-                    puntos_list.append({"Usuario": user, "Puntos": total})
-                st.table(pd.DataFrame(puntos_list).sort_values("Puntos", ascending=False))
+            col_rank1, col_rank2 = st.columns(2)
+            with col_rank1:
+                st.subheader(f"Ranking {j_sel}")
+                st.table(df_ranking[['Usuario', 'Jornada']].sort_values('Jornada', ascending=False))
+            with col_rank2:
+                st.subheader("Ranking General")
+                st.table(df_ranking[['Usuario', 'Total']].sort_values('Total', ascending=False))
+        else:
+            st.info("Aún no hay resultados publicados.")
 
     with tab4:
-        # ... (Se mantiene igual que el anterior para el Panel de Admin con selectbox de horas)
         if st.session_state.rol == "admin":
             st.header("🛠️ Configuración Admin")
             j_admin = st.selectbox("Gestionar Jornada", list(JORNADAS.keys()), key="admin_j")
-            
             horas_permitidas = [time(h, m) for h in range(12, 23) for m in [0, 15, 30, 45]]
+            
             config = []
             for i, (loc, vis) in enumerate(JORNADAS[j_admin]):
                 st.write(f"--- {loc} vs {vis} ---")
