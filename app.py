@@ -22,26 +22,26 @@ JORNADAS = {
 }
 
 LOGOS = {
-    "Athletic": "https://upload.wikimedia.org/wikipedia/en/thumb/9/98/Club_Athletic_Bilbao_logo.svg/200px-Club_Athletic_Bilbao_logo.svg.png",
-    "Elche": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/Elche_CF_logo.svg/200px-Elche_CF_logo.svg.png",
-    "R. Sociedad": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f1/Real_Sociedad_logo.svg/200px-Real_Sociedad_logo.svg.png",
-    "Real Madrid": "https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Real_Madrid_CF.svg/200px-Real_Madrid_CF.svg.png",
-    "Barcelona": "https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_(crest).svg/200px-FC_Barcelona_(crest).svg.png",
-    "Atlético": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f4/Atletico_Madrid_2017_logo.svg/200px-Atletico_Madrid_2017_logo.svg.png",
-    "Rayo": "https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/Rayo_Vallecano_logo_2.svg/200px-Rayo_Vallecano_logo_2.svg.png",
-    "Sevilla": "https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/Sevilla_FC_logo.svg/200px-Sevilla_FC_logo.svg.png",
-    "Valencia": "https://upload.wikimedia.org/wikipedia/en/thumb/c/ce/Valenciacf.svg/200px-Valenciacf.svg.png",
-    "Girona": "https://upload.wikimedia.org/wikipedia/en/thumb/9/90/Girona_FC_logo.svg/200px-Girona_FC_logo.svg.png",
-    "Osasuna": "https://upload.wikimedia.org/wikipedia/en/thumb/d/db/Osasuna_logo.svg/200px-Osasuna_logo.svg.png",
-    "Getafe": "https://upload.wikimedia.org/wikipedia/en/thumb/7/7f/Getafe_CF_logo.svg/200px-Getafe_CF_logo.svg.png",
-    "Celta": "https://upload.wikimedia.org/wikipedia/en/thumb/1/12/RC_Celta_de_Vigo_logo.svg/200px-RC_Celta_de_Vigo_logo.svg.png",
-    "Mallorca": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e0/Rcd_mallorca.svg/200px-Rcd_mallorca.svg.png",
-    "Villarreal": "https://upload.wikimedia.org/wikipedia/en/thumb/7/70/Villarreal_CF_logo.svg/200px-Villarreal_CF_logo.svg.png",
-    "Alavés": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f8/Deportivo_Alav%C3%A9s_logo_%282020%29.svg/200px-Deportivo_Alav%C3%A9s_logo_%282020%29.svg.png",
-    "Espanyol": "https://upload.wikimedia.org/wikipedia/en/thumb/d/d6/Rcd_espanyol_logo.svg/200px-Rcd_espanyol_logo.svg.png",
-    "Betis": "https://upload.wikimedia.org/wikipedia/en/thumb/1/13/Real_betis_logo.svg/200px-Real_betis_logo.svg.png",
-    "Levante": "https://upload.wikimedia.org/wikipedia/en/thumb/7/7b/Levante_Uni%C3%B3n_Deportiva%2C_S.A.D._logo.svg/200px-Levante_Uni%C3%B3n_Deportiva%2C_S.A.D._logo.svg.png",
-    "Oviedo": "https://upload.wikimedia.org/wikipedia/en/thumb/4/45/Real_Oviedo_logo.svg/200px-Real_Oviedo_logo.svg.png"
+    "Athletic": "logos/athletic.jpeg",
+    "Elche": "logos/elche.jpeg",
+    "R. Sociedad": "logos/sociedad.jpeg",
+    "Real Madrid": "logos/madrid.jpeg",
+    "Barcelona": "logos/barca.jpeg",
+    "Atlético": "logos/atletico.jpeg",
+    "Rayo": "logos/rayo.jpeg",
+    "Sevilla": "logos/sevilla.jpeg",
+    "Valencia": "logos/valencia.jpeg",
+    "Girona": "logos/girona.jpeg",
+    "Osasuna": "logos/osasuna.jpeg",
+    "Getafe": "logos/getafe.jpeg",
+    "Celta": "logos/celta.jpeg",
+    "Mallorca": "logos/mallorca.jpeg",
+    "Villarreal": "logos/villarreal.jpeg",
+    "Alavés": "logos/alaves.jpeg",
+    "Espanyol": "logos/espanyol.jpeg",
+    "Betis": "logos/betis.jpeg",
+    "Levante": "logos/levante.jpeg",
+    "Oviedo": "logos/oviedo.jpeg"
 }
 
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
@@ -271,6 +271,7 @@ else:
                 st.success("¡Datos guardados!")
         else:
             st.error("Acceso denegado.")
+
 
 
 
