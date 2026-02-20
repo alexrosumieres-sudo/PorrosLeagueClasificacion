@@ -89,7 +89,7 @@ def aplicar_color_estilo(valor, tipo_partido):
     return ''
 
 def obtener_perfil_apostador(df_usuario):
-    if df_usuario.empty: return "Novato 🐣", "Sin datos aún.", 0.0
+    if df_usuario is None or df_usuario.empty: return "Novato 🐣", "Sin datos aún.", 0.0
     avg_goles = (df_usuario['P_L'] + df_usuario['P_V']).mean()
     locuras = 0
     for row in df_usuario.itertuples():
@@ -99,14 +99,14 @@ def obtener_perfil_apostador(df_usuario):
             if (lvl_l >= lvl_v + 2 and row.P_L > row.P_V) or (lvl_v >= lvl_l + 2 and row.P_V > row.P_L):
                 locuras += 1
         except: continue
-    total = len(df_usuario)
-    pct_locuras = locuras / total if total > 0 else 0
+    pct_locuras = locuras / len(df_usuario) if len(df_usuario) > 0 else 0
     riesgo = (avg_goles / 5.0) + (pct_locuras * 0.5)
     if pct_locuras > 0.15: return "EL VISIONARIO / ESQUIZO 🔮", f"Apuesta contra pronóstico ({locuras} veces).", riesgo
     if avg_goles > 3.4: return "BUSCADOR DE PLENOS 🤪", "Busca el ataque total.", riesgo
     if avg_goles < 2.1: return "CONSERVADOR / AMARRETE 🛡️", "Fiel al 1-0.", riesgo
     return "ESTRATEGA ⚖️", "Apuesta con lógica.", riesgo
 
+# --- 3. INICIO APP ---
 st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -119,7 +119,6 @@ def leer_datos(pestaña):
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
-# --- 3. ACCESO ---
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -141,12 +140,17 @@ if not st.session_state.autenticado:
                 nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
                 conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
                 st.success("✅ Registrado.")
-
-# --- 4. CONTENIDO PRINCIPAL ---
 else:
+    # --- CARGA DE DATOS ---
     df_perfiles = leer_datos("ImagenesPerfil")
-    foto_dict = df_perfiles.set_index('Usuario')['ImagenPath'].to_dict() if not df_perfiles.empty else {}
+    df_r_all = leer_datos("Resultados")
+    df_p_all = leer_datos("Predicciones")
+    df_u_all = leer_datos("Usuarios")
+    df_base = leer_datos("PuntosBase")
     
+    foto_dict = df_perfiles.set_index('Usuario')['ImagenPath'].to_dict() if not df_perfiles.empty else {}
+    admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist() if not df_u_all.empty else []
+
     # Header
     c_h1, c_h2, c_h3 = st.columns([1, 5, 1])
     with c_h1:
@@ -162,12 +166,7 @@ else:
 
     tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏆 Detalles", "🔮 Simulador", "⚙️ Admin"])
 
-    df_r_all = leer_datos("Resultados")
-    df_p_all = leer_datos("Predicciones")
-    df_u_all = leer_datos("Usuarios")
-    df_base = leer_datos("PuntosBase")
-
-    # --- TAB 1: MIS APUESTAS ---
+    # --- TAB 1: APUESTAS ---
     with tabs[0]:
         if st.session_state.rol == "admin": st.info("Modo Admin.")
         else:
@@ -202,21 +201,35 @@ else:
                 with c6: pub = st.checkbox("Público", value=def_pub, key=f"pb_{j_global}_{i}", disabled=bloqueado)
                 preds_env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": match_name, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
                 st.divider()
-            if st.button("💾 Guardar Cambios"):
+            if st.button("💾 Guardar"):
                 old = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))] if not df_p_all.empty else pd.DataFrame()
                 conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(preds_env)], ignore_index=True))
                 st.success("Guardado."); st.rerun()
 
+    # --- TAB 2: OTROS (PÚBLICOS) ---
+    with tabs[1]:
+        st.header("🔍 Predicciones Públicas")
+        if not df_p_all.empty:
+            p_pub = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI")]
+            if p_pub.empty:
+                st.warning("Nadie ha marcado sus apuestas como 'Públicas' para esta jornada.")
+            else:
+                for u in p_pub['Usuario'].unique():
+                    with st.expander(f"Apuestas de {u}"):
+                        st.table(p_pub[p_pub['Usuario'] == u][['Partido', 'P_L', 'P_V']])
+        else:
+            st.info("No hay predicciones registradas aún.")
+
     # --- TAB 3: CLASIFICACIÓN ---
     with tabs[2]:
         st.header("📊 Clasificación")
-        admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()
         if not df_u_all.empty:
             res_dict = df_r_all.set_index(['Jornada', 'Partido']).to_dict('index') if not df_r_all.empty else {}
             jornadas_fin = sorted(df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()) if not df_r_all.empty else []
             usuarios_jug = [u for u in df_u_all['Usuario'].unique() if u not in admins]
             
             historia = []
+            # Base
             temp_base = []
             for u in usuarios_jug:
                 p_base = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
@@ -264,13 +277,63 @@ else:
                 with c_r4: st.markdown(f"#### {row['Puntos']:.2f} pts")
                 st.divider()
 
+    # --- TAB 4: DETALLES ---
+    with tabs[3]:
+        st.header(f"🏆 Detalle Puntos: {j_global}")
+        df_r_j_f = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")] if not df_r_all.empty else pd.DataFrame()
+        if not df_r_j_f.empty:
+            jugs = [u for u in df_u_all['Usuario'].unique() if u not in admins]
+            c_mini = st.columns([2] + [1]*len(jugs))
+            c_mini[0].write("**Partido**")
+            for i, u in enumerate(jugs):
+                fp = foto_dict.get(u)
+                if fp and pd.notna(fp) and os.path.exists(str(fp)): st.image(str(fp), width=45)
+                else: c_mini[i+1].write(u[:3])
+            
+            m_pts = pd.DataFrame(index=df_r_j_f['Partido'].unique(), columns=jugs)
+            m_sty = pd.DataFrame(index=df_r_j_f['Partido'].unique(), columns=jugs)
+            for p in m_pts.index:
+                inf = df_r_j_f[df_r_j_f['Partido'] == p].iloc[0]
+                for u in jugs:
+                    u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global) & (df_p_all['Partido'] == p)] if not df_p_all.empty else pd.DataFrame()
+                    pts = calcular_puntos(u_p.iloc[0]['P_L'], u_p.iloc[0]['P_V'], inf['R_L'], inf['R_V'], inf['Tipo']) if not u_p.empty else 0.0
+                    m_pts.at[p, u], m_sty.at[p, u] = pts, aplicar_color_estilo(pts, inf['Tipo'])
+            st.dataframe(m_pts.style.apply(lambda x: m_sty, axis=None).format("{:.2f}"))
+        else:
+            st.warning("Todavía no hay partidos marcados como 'Finalizado' en esta jornada.")
+
+    # --- TAB 5: SIMULADOR ---
+    with tabs[4]:
+        st.header("🔮 Simulador de LaLiga")
+        usuarios_lista = [u for u in df_u_all['Usuario'].unique() if u not in admins] if not df_u_all.empty else []
+        if usuarios_lista:
+            usr_sim = st.selectbox("Simular resultados según predicciones de:", usuarios_lista)
+            if st.button("🚀 Ejecutar Simulación"):
+                clas = PUNTOS_LALIGA_BASE.copy()
+                u_preds = df_p_all[df_p_all['Usuario'] == usr_sim] if not df_p_all.empty else pd.DataFrame()
+                if u_preds.empty:
+                    st.error(f"{usr_sim} no tiene predicciones guardadas.")
+                else:
+                    for p in u_preds.itertuples():
+                        try:
+                            tl, tv = p.Partido.split('-')
+                            if p.P_L > p.P_V: clas[tl] += 3
+                            elif p.P_V > p.P_L: clas[tv] += 3
+                            else: clas[tl] += 1; clas[tv] += 1
+                        except: continue
+                    df_s = pd.DataFrame(list(clas.items()), columns=['Equipo', 'Pts']).sort_values('Pts', ascending=False)
+                    df_s['Pos'] = range(1, 21)
+                    st.table(df_s[['Pos', 'Equipo', 'Pts']])
+        else:
+            st.info("No hay usuarios registrados para simular.")
+
     # --- TAB 6: ADMIN ---
     with tabs[5]:
         if st.session_state.rol == "admin":
             st.header("🛠️ Panel Control")
             adm_tabs = st.tabs(["⭐ Puntos Base", "📸 Avatares", "⚽ Resultados"])
             
-            with adm_tabs[0]: # Puntos Base
+            with adm_tabs[0]:
                 base_upd = []
                 for u in [usr for usr in df_u_all['Usuario'].unique() if usr not in admins]:
                     p_ex = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
@@ -278,7 +341,7 @@ else:
                     base_upd.append({"Usuario": u, "Puntos": v_n})
                 if st.button("Guardar Bases"): conn.update(worksheet="PuntosBase", data=pd.DataFrame(base_upd)); st.rerun()
             
-            with adm_tabs[1]: # Avatares
+            with adm_tabs[1]:
                 if os.path.exists(PERFILES_DIR):
                     fotos = sorted(os.listdir(PERFILES_DIR))
                     p_data = []
@@ -292,7 +355,7 @@ else:
                         p_data.append({"Usuario": u, "ImagenPath": f"{PERFILES_DIR}{f_sel}" if f_sel != "Ninguna" else ""})
                     if st.button("Asociar Avatares"): conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(p_data)); st.rerun()
             
-            with adm_tabs[2]: # Resultados
+            with adm_tabs[2]:
                 r_env = []
                 h_perm = [time(h, m) for h in range(12, 23) for m in [0, 15, 30, 45]]
                 for i, (l, v) in enumerate(JORNADAS[j_global]):
@@ -324,4 +387,4 @@ else:
                 if st.button("Actualizar Resultados"):
                     old = df_r_all[df_r_all['Jornada'] != j_global] if not df_r_all.empty else pd.DataFrame()
                     conn.update(worksheet="Resultados", data=pd.concat([old, pd.DataFrame(r_env)], ignore_index=True))
-                    st.success("¡Resultados y horarios guardados!"); st.rerun()
+                    st.success("¡Resultados actualizados!"); st.rerun()
