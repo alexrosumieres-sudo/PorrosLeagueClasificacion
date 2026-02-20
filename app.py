@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-from datetime import datetime, time,误差
+from datetime import datetime, time
 import os
 import plotly.express as px
 
@@ -63,8 +63,7 @@ def safe_float(valor):
 
 def get_logo(equipo):
     path = LOGOS.get(equipo)
-    if path and os.path.exists(path): return path
-    return None
+    return path if path and os.path.exists(path) else None
 
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
@@ -72,8 +71,7 @@ def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     signo_p = (p_l > p_v) - (p_l < p_v)
     signo_r = (r_l > r_v) - (r_l < r_v)
     if signo_p == signo_r:
-        if (p_l - p_v) == (r_l - r_v): return p_diff
-        return p_ganador
+        return p_diff if (p_l - p_v) == (r_l - r_v) else p_ganador
     return 0.0
 
 def aplicar_color_estilo(valor, tipo_partido):
@@ -81,19 +79,18 @@ def aplicar_color_estilo(valor, tipo_partido):
     if tipo_partido == "Normal":
         if valor == 0.5: return 'background-color: #ffd700; color: black'
         if valor == 0.75: return 'background-color: #ffa500; color: black'
-        if valor == 1.0: return 'background-color: #2baf2b; color: black'
-    elif tipo_partido == "Doble":
+        return 'background-color: #2baf2b; color: black'
+    if tipo_partido == "Doble":
         if valor in [1.0, 1.5]: return 'background-color: #a020f0; color: white'
-        if valor == 2.0: return 'background-color: #2baf2b; color: black'
-    elif tipo_partido == "Esquizo":
+        return 'background-color: #2baf2b; color: black'
+    if tipo_partido == "Esquizo":
         if valor in [1.0, 1.5]: return 'background-color: #00f2ff; color: black'
-        if valor == 3.0: return 'background-color: #2baf2b; color: black'
+        return 'background-color: #2baf2b; color: black'
     return ''
 
 def obtener_perfil_apostador(df_usuario):
     if df_usuario.empty: return "Novato 🐣", "Sin datos aún.", 0.0
     avg_goles = (df_usuario['P_L'] + df_usuario['P_V']).mean()
-    dif_promedio = abs(df_usuario['P_L'] - df_usuario['P_V']).mean()
     locuras = 0
     for row in df_usuario.itertuples():
         try:
@@ -105,12 +102,11 @@ def obtener_perfil_apostador(df_usuario):
     total = len(df_usuario)
     pct_locuras = locuras / total if total > 0 else 0
     riesgo = (avg_goles / 5.0) + (pct_locuras * 0.5)
-    if pct_locuras > 0.15: return "EL VISIONARIO / ESQUIZO TOTAL 🔮", f"Confía en los milagros ({locuras} locuras).", riesgo
+    if pct_locuras > 0.15: return "EL VISIONARIO / ESQUIZO 🔮", f"Apuesta contra pronóstico ({locuras} veces).", riesgo
     if avg_goles > 3.4: return "BUSCADOR DE PLENOS 🤪", "Busca el ataque total.", riesgo
     if avg_goles < 2.1: return "CONSERVADOR / AMARRETE 🛡️", "Fiel al 1-0.", riesgo
     return "ESTRATEGA ⚖️", "Apuesta con lógica.", riesgo
 
-# --- 4. CONFIGURACIÓN APP ---
 st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -123,7 +119,7 @@ def leer_datos(pestaña):
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
-# --- ACCESO ---
+# --- 3. ACCESO ---
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -138,28 +134,30 @@ if not st.session_state.autenticado:
                     if not user_db.empty:
                         st.session_state.autenticado, st.session_state.user, st.session_state.rol = True, u_in, user_db.iloc[0]['Rol']
                         st.rerun()
-                    else: st.error("❌ Datos incorrectos")
+                    else: st.error("❌ Credenciales incorrectas.")
         else:
             if st.button("Crear Cuenta"):
                 df_u = leer_datos("Usuarios")
                 nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
                 conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
-                st.success("✅ Registrado")
-# --- CONTENIDO ---
+                st.success("✅ Registrado.")
+
+# --- 4. CONTENIDO PRINCIPAL ---
 else:
     df_perfiles = leer_datos("ImagenesPerfil")
     foto_dict = df_perfiles.set_index('Usuario')['ImagenPath'].to_dict() if not df_perfiles.empty else {}
     
+    # Header
     c_h1, c_h2, c_h3 = st.columns([1, 5, 1])
     with c_h1:
-        mi_foto = foto_dict.get(st.session_state.user)
-        if mi_foto and pd.notna(mi_foto) and os.path.exists(str(mi_foto)): st.image(str(mi_foto), width=70)
+        mi_f = foto_dict.get(st.session_state.user)
+        if mi_f and pd.notna(mi_f) and os.path.exists(str(mi_f)): st.image(str(mi_f), width=70)
         else: st.subheader("👤")
     with c_h2: st.title(f"Hola, {st.session_state.user} 👋")
     with c_h3: 
         if st.button("Salir"): st.session_state.autenticado = False; st.rerun()
 
-    j_global = st.selectbox("📅 Seleccionar Jornada:", list(JORNADAS.keys()), key="global_j")
+    j_global = st.selectbox("📅 Jornada Seleccionada:", list(JORNADAS.keys()), key="global_j")
     st.divider()
 
     tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏆 Detalles", "🔮 Simulador", "⚙️ Admin"])
@@ -171,7 +169,7 @@ else:
 
     # --- TAB 1: MIS APUESTAS ---
     with tabs[0]:
-        if st.session_state.rol == "admin": st.info("💡 Modo Admin activo.")
+        if st.session_state.rol == "admin": st.info("Modo Admin.")
         else:
             mis_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)] if not df_p_all.empty else pd.DataFrame()
             df_r_j = df_r_all[df_r_all['Jornada'] == j_global] if not df_r_all.empty else pd.DataFrame()
@@ -182,39 +180,36 @@ else:
                 if not mis_preds.empty:
                     m_prev = mis_preds[mis_preds['Partido'] == match_name]
                     if not m_prev.empty:
-                        def_l, def_v = int(m_prev.iloc[0]['P_L']), int(m_prev.iloc[0]['P_V'])
-                        def_pub = True if str(m_prev.iloc[0]['Publica']) == "SI" else False
+                        def_l, def_v, def_pub = int(m_prev.iloc[0]['P_L']), int(m_prev.iloc[0]['P_V']), str(m_prev.iloc[0]['Publica']) == "SI"
                 if not df_r_j.empty and match_name in df_r_j['Partido'].values:
-                    info = df_r_j[df_r_j['Partido'] == match_name].iloc[0]
-                    tipo = info['Tipo']
-                    try:
-                        limite = datetime.strptime(str(info['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
-                        if ahora > limite: bloqueado = True
-                    except: pass
+                    inf = df_r_j[df_r_j['Partido'] == match_name].iloc[0]
+                    tipo, lim = inf['Tipo'], datetime.strptime(str(inf['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                    if ahora > lim: bloqueado = True
+                
                 st.markdown(f"#### {tipo} {'🔒' if bloqueado else '🔓'}")
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
                 with c1: 
-                    logo = get_logo(loc)
-                    if logo: st.image(logo, width=65)
+                    l_logo = get_logo(loc)
+                    if l_logo: st.image(l_logo, width=65)
                     else: st.markdown("⚽")
                 with c2: pl = st.number_input(f"{loc}", 0, value=def_l, key=f"l_{j_global}_{i}", disabled=bloqueado)
-                with c3: st.markdown("<br><br>VS", unsafe_allow_html=True)
+                with c3: st.markdown("<br>VS", unsafe_allow_html=True)
                 with c4: pv = st.number_input(f"{vis}", 0, value=def_v, key=f"v_{j_global}_{i}", disabled=bloqueado)
-                with c5:
-                    logo_v = get_logo(vis)
-                    if logo_v: st.image(logo_v, width=65)
+                with c5: 
+                    v_logo = get_logo(vis)
+                    if v_logo: st.image(v_logo, width=65)
                     else: st.markdown("⚽")
                 with c6: pub = st.checkbox("Público", value=def_pub, key=f"pb_{j_global}_{i}", disabled=bloqueado)
                 preds_env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": match_name, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
                 st.divider()
-            if st.button("💾 Guardar"):
-                old_p = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))] if not df_p_all.empty else pd.DataFrame()
-                conn.update(worksheet="Predicciones", data=pd.concat([old_p, pd.DataFrame(preds_env)], ignore_index=True))
-                st.success("Guardado"); st.rerun()
+            if st.button("💾 Guardar Cambios"):
+                old = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))] if not df_p_all.empty else pd.DataFrame()
+                conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(preds_env)], ignore_index=True))
+                st.success("Guardado."); st.rerun()
 
     # --- TAB 3: CLASIFICACIÓN ---
     with tabs[2]:
-        st.header("📊 Clasificación y Evolución")
+        st.header("📊 Clasificación")
         admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()
         if not df_u_all.empty:
             res_dict = df_r_all.set_index(['Jornada', 'Partido']).to_dict('index') if not df_r_all.empty else {}
@@ -224,9 +219,7 @@ else:
             historia = []
             temp_base = []
             for u in usuarios_jug:
-                p_base = 0.0
-                if not df_base.empty and u in df_base['Usuario'].values:
-                    p_base = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos'])
+                p_base = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
                 temp_base.append({"Usuario": u, "Puntos": p_base})
             df_b_rank = pd.DataFrame(temp_base).sort_values("Puntos", ascending=False)
             df_b_rank['Posicion'] = range(1, len(df_b_rank) + 1)
@@ -254,7 +247,6 @@ else:
                 fig.update_yaxes(autorange="reversed", tick0=1, dtick=1); st.plotly_chart(fig, use_container_width=True)
 
             st.divider()
-            st.subheader("🏆 Leaderboard")
             ultima_j = jornadas_fin[-1] if jornadas_fin else "Base"
             df_act = df_hist[df_hist['Jornada'] == ultima_j].sort_values("Posicion")
             for _, row in df_act.iterrows():
@@ -272,30 +264,7 @@ else:
                 with c_r4: st.markdown(f"#### {row['Puntos']:.2f} pts")
                 st.divider()
 
-    # --- TAB 4: DETALLES ---
-    with tabs[3]:
-        st.header(f"🏆 Detalle Puntos: {j_global}")
-        df_r_j_f = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")] if not df_r_all.empty else pd.DataFrame()
-        if not df_r_j_f.empty:
-            jugs = [u for u in df_u_all['Usuario'].unique() if u not in admins]
-            c_mini = st.columns([2] + [1]*len(jugs))
-            c_mini[0].write("**Partido**")
-            for i, u in enumerate(jugs):
-                fp = foto_dict.get(u)
-                if fp and pd.notna(fp) and os.path.exists(str(fp)): c_mini[i+1].image(str(fp), width=45)
-                else: c_mini[i+1].write(u[:3])
-            m_pts = pd.DataFrame(index=df_r_j_f['Partido'].unique(), columns=jugs)
-            m_sty = pd.DataFrame(index=df_r_j_f['Partido'].unique(), columns=jugs)
-            for p in m_pts.index:
-                inf = df_r_j_f[df_r_j_f['Partido'] == p].iloc[0]
-                for u in jugs:
-                    u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global) & (df_p_all['Partido'] == p)] if not df_p_all.empty else pd.DataFrame()
-                    pts = calcular_puntos(u_p.iloc[0]['P_L'], u_p.iloc[0]['P_V'], inf['R_L'], inf['R_V'], inf['Tipo']) if not u_p.empty else 0.0
-                    m_pts.at[p, u], m_sty.at[p, u] = pts, aplicar_color_estilo(pts, inf['Tipo'])
-            st.dataframe(m_pts.style.apply(lambda x: m_sty, axis=None).format("{:.2f}"))
-        else: st.info("Sin partidos finalizados.")
-
-    # --- TAB 6: ADMIN (REVISADA) ---
+    # --- TAB 6: ADMIN ---
     with tabs[5]:
         if st.session_state.rol == "admin":
             st.header("🛠️ Panel Control")
@@ -305,7 +274,7 @@ else:
                 base_upd = []
                 for u in [usr for usr in df_u_all['Usuario'].unique() if usr not in admins]:
                     p_ex = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
-                    v_n = st.number_input(f"Base {u}", value=p_ex, key=f"b_{u}")
+                    v_n = st.number_input(f"Base {u}", value=p_ex, key=f"base_{u}")
                     base_upd.append({"Usuario": u, "Puntos": v_n})
                 if st.button("Guardar Bases"): conn.update(worksheet="PuntosBase", data=pd.DataFrame(base_upd)); st.rerun()
             
@@ -317,27 +286,21 @@ else:
                         idx_f = 0
                         path_db = foto_dict.get(u)
                         if pd.notna(path_db):
-                            nombre_archivo = str(path_db).replace(PERFILES_DIR, "")
-                            if nombre_archivo in fotos: idx_f = fotos.index(nombre_archivo) + 1
+                            archivo = str(path_db).replace(PERFILES_DIR, "")
+                            if archivo in fotos: idx_f = fotos.index(archivo) + 1
                         f_sel = st.selectbox(f"Imagen para {u}", ["Ninguna"] + fotos, index=idx_f, key=f"img_{u}")
                         p_data.append({"Usuario": u, "ImagenPath": f"{PERFILES_DIR}{f_sel}" if f_sel != "Ninguna" else ""})
                     if st.button("Asociar Avatares"): conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(p_data)); st.rerun()
-
-            with adm_tabs[2]: # Resultados (ESTA ES LA PARTE QUE FALLABA)
+            
+            with adm_tabs[2]: # Resultados
                 r_env = []
                 h_perm = [time(h, m) for h in range(12, 23) for m in [0, 15, 30, 45]]
                 for i, (l, v) in enumerate(JORNADAS[j_global]):
                     st.write(f"--- {l} vs {v} ---")
-                    # BUSCAR SI YA EXISTE DATOS DE ESTE PARTIDO EN EL EXCEL
-                    match_id = f"{l}-{v}"
-                    ex_data = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == match_id)]
+                    m_id = f"{l}-{v}"
+                    ex_data = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == m_id)] if not df_r_all.empty else pd.DataFrame()
                     
-                    # Valores por defecto inteligentes
-                    def_tipo = "Normal"
-                    def_fecha = datetime.now()
-                    def_hora_idx = 36 # 21:00h
-                    def_rl, def_rv, def_fin = 0, 0, False
-
+                    def_tipo, def_fecha, def_hora_idx, def_rl, def_rv, def_fin = "Normal", datetime.now(), 36, 0, 0, False
                     if not ex_data.empty:
                         def_tipo = ex_data.iloc[0]['Tipo']
                         def_rl, def_rv = int(ex_data.iloc[0]['R_L']), int(ex_data.iloc[0]['R_V'])
@@ -345,9 +308,7 @@ else:
                         try:
                             dt_obj = datetime.strptime(str(ex_data.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                             def_fecha = dt_obj.date()
-                            # Buscar el índice de la hora en h_perm
-                            t_obj = dt_obj.time()
-                            if t_obj in h_perm: def_hora_idx = h_perm.index(t_obj)
+                            if dt_obj.time() in h_perm: def_hora_idx = h_perm.index(dt_obj.time())
                         except: pass
 
                     c1, c2, c3, c4, c5, c6 = st.columns([2, 2, 2, 1, 1, 2])
@@ -359,9 +320,8 @@ else:
                     fin_a = c6.checkbox("Fin", value=def_fin, key=f"fi_{j_global}_{i}")
                     
                     dt_str = datetime.combine(fec_a, hor_a).strftime("%Y-%m-%d %H:%M:%S")
-                    r_env.append({"Jornada": j_global, "Partido": match_id, "Tipo": tip_a, "R_L": rl_a, "R_V": rv_a, "Hora_Inicio": dt_str, "Finalizado": "SI" if fin_a else "NO"})
-                
+                    r_env.append({"Jornada": j_global, "Partido": m_id, "Tipo": tip_a, "R_L": rl_a, "R_V": rv_a, "Hora_Inicio": dt_str, "Finalizado": "SI" if fin_a else "NO"})
                 if st.button("Actualizar Resultados"):
                     old = df_r_all[df_r_all['Jornada'] != j_global] if not df_r_all.empty else pd.DataFrame()
                     conn.update(worksheet="Resultados", data=pd.concat([old, pd.DataFrame(r_env)], ignore_index=True))
-                    st.success("¡Resultados y horarios actualizados!"); st.rerun()
+                    st.success("¡Resultados y horarios guardados!"); st.rerun()
