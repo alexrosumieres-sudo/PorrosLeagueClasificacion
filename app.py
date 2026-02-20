@@ -3,7 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime, time
 import os
-import plotly.express as px # Nueva librería para el gráfico
+import plotly.express as px
 
 # --- 1. CONFIGURACIÓN DE JORNADAS ---
 JORNADAS = {
@@ -23,6 +23,7 @@ JORNADAS = {
     "Jornada 38": [("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"), ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"), ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"), ("Villarreal", "Atlético")]
 }
 
+# --- 2. DICCIONARIO DE LOGOS (RUTAS LOCALES) ---
 LOGOS = {
     "Athletic": "logos/athletic.jpeg", "Elche": "logos/elche.jpeg", "R. Sociedad": "logos/sociedad.jpeg",
     "Real Madrid": "logos/madrid.jpeg", "Barcelona": "logos/barca.jpeg", "Atlético": "logos/atletico.jpeg",
@@ -36,7 +37,7 @@ LOGOS = {
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
 CODIGO_INVITACION = "LIGA2026"
 
-# --- 2. FUNCIONES DE APOYO ---
+# --- 3. FUNCIONES ---
 def get_logo(equipo):
     path = LOGOS.get(equipo)
     if path and os.path.exists(path): return path
@@ -76,10 +77,9 @@ def leer_datos(pestaña):
         return pd.read_csv(url)
     except: return pd.DataFrame()
 
-if 'autenticado' not in st.session_state:
-    st.session_state.autenticado = False
+if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
-# --- ACCESO ---
+# --- 4. ACCESO ---
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -120,7 +120,7 @@ else:
     df_r_all = leer_datos("Resultados")
     df_p_all = leer_datos("Predicciones")
     df_u_all = leer_datos("Usuarios")
-    df_base = leer_datos("PuntosBase") # Leemos los puntos iniciales
+    df_base = leer_datos("PuntosBase")
 
     with tab1:
         if st.session_state.rol == "admin":
@@ -139,7 +139,8 @@ else:
                         def_pub = True if str(m_prev.iloc[0]['Publica']) == "SI" else False
                 if not df_r_j.empty and match_name in df_r_j['Partido'].values:
                     info = df_r_j[df_r_j['Partido'] == match_name].iloc[0]
-                    tipo, limite = info['Tipo'], datetime.strptime(str(info['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                    tipo = info['Tipo']
+                    limite = datetime.strptime(str(info['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                     if ahora > limite: bloqueado = True
                 st.markdown(f"#### {tipo} {'🔒' if bloqueado else '🔓'}")
                 c_img1, c_in1, c_vs, c_in2, c_img2, c_chk = st.columns([1, 2, 0.5, 2, 1, 2])
@@ -184,11 +185,10 @@ else:
             for j_prog in jornadas_fin:
                 temp = []
                 for u in usuarios:
-                    # Buscamos puntos base en el dataframe de PuntosBase
                     pts_base = 0.0
-                    if not df_base.empty:
-                        match_base = df_base[df_base['Usuario'] == u]
-                        if not match_base.empty: pts_base = float(match_base.iloc[0]['Puntos'])
+                    if not df_base.empty and 'Puntos' in df_base.columns:
+                        m_b = df_base[df_base['Usuario'] == u]
+                        if not m_b.empty: pts_base = float(m_b.iloc[0]['Puntos'])
                     
                     pts_acum = pts_base
                     u_preds = df_p_all[df_p_all['Usuario'] == u]
@@ -215,9 +215,8 @@ else:
                 
                 with c_r2:
                     st.subheader("📈 Evolución de Posiciones")
-                    df_piv = df_hist.pivot(index='Jornada', columns='Usuario', values='Posicion')
                     fig = px.line(df_hist, x="Jornada", y="Posicion", color="Usuario", markers=True)
-                    fig.update_yaxes(autorange="reversed", tick0=1, dtick=1) # Invertimos eje Y
+                    fig.update_yaxes(autorange="reversed", tick0=1, dtick=1)
                     st.plotly_chart(fig, use_container_width=True)
 
     with tab4:
@@ -241,21 +240,19 @@ else:
     with tab5:
         if st.session_state.rol == "admin":
             st.header("🛠️ Panel Admin")
-            # --- SUB-SECCIÓN: PUNTOS INICIALES ---
             with st.expander("⭐ Configurar Puntos Iniciales (Pre-J25)"):
                 base_data = []
                 for u in [usr for usr in df_u_all['Usuario'].unique() if usr not in admins]:
                     pts_ex = 0.0
-                    if not df_base.empty:
+                    if not df_base.empty and 'Puntos' in df_base.columns:
                         m_b = df_base[df_base['Usuario'] == u]
                         if not m_b.empty: pts_ex = float(m_b.iloc[0]['Puntos'])
                     new_pts = st.number_input(f"Puntos base para {u}", value=pts_ex, step=0.25, key=f"base_{u}")
                     base_data.append({"Usuario": u, "Puntos": new_pts})
                 if st.button("Guardar Puntos Iniciales"):
                     conn.update(worksheet="PuntosBase", data=pd.DataFrame(base_data))
-                    st.success("Puntos base actualizados")
+                    st.success("Actualizado"); st.rerun()
 
-            # --- GESTIÓN DE RESULTADOS ---
             st.write(f"Configurando: {j_global}")
             h_perm, conf_admin = [time(h, m) for h in range(12, 23) for m in [0, 15, 30, 45]], []
             for i, (loc, vis) in enumerate(JORNADAS[j_global]):
