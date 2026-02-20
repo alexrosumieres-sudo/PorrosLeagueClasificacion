@@ -57,34 +57,50 @@ JORNADAS = {
     "Jornada 38": [("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"), ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"), ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"), ("Villarreal", "Atlético")]
 }
 
-LOGOS = {
-    "Athletic": f"{LOGOS_DIR}athletic.jpeg", "Elche": f"{LOGOS_DIR}elche.jpeg", "R. Sociedad": f"{LOGOS_DIR}sociedad.jpeg",
-    "Real Madrid": f"{LOGOS_DIR}madrid.jpeg", "Barcelona": f"{LOGOS_DIR}barca.jpeg", "Atlético": f"{LOGOS_DIR}atletico.jpeg",
-    "Rayo": f"{LOGOS_DIR}rayo.jpeg", "Sevilla": f"{LOGOS_DIR}sevilla.jpeg", "Valencia": f"{LOGOS_DIR}valencia.jpeg",
-    "Girona": f"{LOGOS_DIR}girona.jpeg", "Osasuna": f"{LOGOS_DIR}osasuna.jpeg", "Getafe": f"{LOGOS_DIR}getafe.jpeg",
-    "Celta": f"{LOGOS_DIR}celta.jpeg", "Mallorca": f"{LOGOS_DIR}mallorca.jpeg", "Villarreal": f"{LOGOS_DIR}villarreal.jpeg",
-    "Alavés": f"{LOGOS_DIR}alaves.jpeg", "Espanyol": f"{LOGOS_DIR}espanyol.jpeg", "Betis": f"{LOGOS_DIR}betis.jpeg",
-    "Levante": f"{LOGOS_DIR}levante.jpeg", "Oviedo": f"{LOGOS_DIR}oviedo.jpeg"
-}
-
+LOGOS = {eq: f"{LOGOS_DIR}{eq.lower().replace(' ', '').replace('.', '')}.jpeg" for eq in STATS_LALIGA_BASE.keys()}
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
 
+# --- FRASES MÍTICAS CON AUTOR ---
 FRASES_PUESTOS = {
-    "oro": ["¿Por qué? Porque soy rico, guapo y un gran jugador.", "I am the Special One.", "Vuestra envidia me hace fuerte.", "No soy el mejor, soy el mejor de la historia."],
-    "plata": ["Ganar, ganar y volver a ganar.", "Fútbol es fútbol.", "Partido a partido.", "Ni antes éramos tan buenos, ni ahora tan malos."],
-    "bronce": ["¿Por qué? ¿Por qué?", "No me pises, que llevo chanclas.", "¡A las canicas no!", "Me cortaron las piernas."],
-    "barro": ["Se queda... (en el pozo).", "Estamos en la UVI, pero vivos.", "¿Alguien tiene el teléfono del VAR?", "A veces se aprende, tú hoy eres catedrático."]
+    "oro": [
+        ("¿Por qué? Porque soy rico, guapo y un gran jugador. Me tienen envidia.", "Cristiano Ronaldo"),
+        ("I am the Special One.", "José Mourinho"),
+        ("Vuestra envidia me hace fuerte, vuestro odio me hace imparable.", "Cristiano Ronaldo"),
+        ("No soy el mejor del mundo, soy el mejor de la historia.", "Cristiano Ronaldo"),
+        ("A mí me gusta sentirme presionado, si no, no hay gracia.", "Zlatan Ibrahimovic")
+    ],
+    "plata": [
+        ("Ganar, ganar, ganar y volver a ganar.", "Luis Aragonés"),
+        ("Fútbol es fútbol.", "Vujadin Boškov"),
+        ("Partido a partido.", "Cholo Simeone"),
+        ("Ni antes éramos tan buenos, ni ahora tan malos.", "Cliché deportivo"),
+        ("Las estadísticas están para romperse.", "Leyenda del fútbol")
+    ],
+    "bronce": [
+        ("¿Por qué? ¿Por qué? ¿Por qué?", "José Mourinho"),
+        ("No me pises, que llevo chanclas.", "Luis Aragonés"),
+        ("¡A qué estamos jugando! ¡A las canicas no!", "Luis Aragonés"),
+        ("Me cortaron las piernas.", "Diego Maradona"),
+        ("¡Digo lo que pienso y no me callo nada!", "Jesús Gil")
+    ],
+    "barro": [
+        ("Se queda... (pero en el pozo de la tabla).", "Gerard Piqué"),
+        ("Estamos en la UVI, pero todavía estamos vivos.", "Javier Clemente"),
+        ("¿Alguien tiene el teléfono del VAR?", "Apostador desesperado"),
+        ("A veces se gana, otras veces se aprende. Tú hoy eres catedrático.", "Anónimo"),
+        ("He fallado más de 9.000 tiros en mi carrera... y tú hoy todos.", "Michael Jordan (adaptada)")
+    ]
 }
 
 LOGROS_DATA = {
     "guru": {"icon": "🔮", "name": "El Gurú", "desc": "Pleno en partido Esquizo."},
     "hattrick": {"icon": "🎯", "name": "Hat-Trick", "desc": "3+ resultados exactos en la jornada."},
-    "cima": {"icon": "🏔️", "name": "En la Cima", "desc": "Líder de la general."},
+    "cima": {"icon": "🏔️", "name": "En la Cima", "desc": "Líder de la clasificación general."},
     "amarrategui": {"icon": "🧱", "name": "Amarrategui", "desc": "5+ aciertos con 1-0, 0-1 o 0-0."},
-    "pleno": {"icon": "💯", "name": "Pleno", "desc": "Puntuado en los 10 partidos."}
+    "pleno": {"icon": "💯", "name": "Pleno", "desc": "Puntuado en los 10 partidos de la jornada."}
 }
 
-# --- 2. FUNCIONES ---
+# --- 2. FUNCIONES DE APOYO ---
 
 def safe_float(valor):
     try:
@@ -112,14 +128,12 @@ def obtener_perfil_apostador(df_u):
     if avg_g < 2.1: return "CONSERVADOR / AMARRETE 🛡️", "Fiel al 1-0.", riesgo
     return "ESTRATEGA ⚖️", "Apuestas equilibradas.", riesgo
 
-def calcular_logros_completo(usuario, df_p_all, df_r_all, jornada_sel, ranking_actual):
+def calcular_logros_u(usuario, df_p_all, df_r_all, jornada_sel, ranking):
     logros = []
-    if df_p_all.empty or df_r_all.empty: return logros
+    if not ranking.empty and ranking.iloc[0]['Usuario'] == usuario: logros.append("cima")
     u_p = df_p_all[(df_p_all['Usuario'] == usuario) & (df_p_all['Jornada'] == jornada_sel)]
     res_j = df_r_all[(df_r_all['Jornada'] == jornada_sel) & (df_r_all['Finalizado'] == "SI")]
-    if not ranking_actual.empty and ranking_actual.iloc[0]['Usuario'] == usuario: logros.append("cima")
     if u_p.empty or res_j.empty: return logros
-    
     pts_j, exactos, amarra = [], 0, 0
     for row in u_p.itertuples():
         m = res_j[res_j['Partido'] == row.Partido]
@@ -181,7 +195,13 @@ if not st.session_state.autenticado:
                 if not user_db.empty:
                     st.session_state.autenticado, st.session_state.user, st.session_state.rol = True, u_in, user_db.iloc[0]['Rol']
                     st.rerun()
-                else: st.error("❌ Fallo")
+                else: st.error("❌ Datos incorrectos")
+        else:
+            if st.button("Crear Cuenta"):
+                df_u = leer_datos("Usuarios")
+                nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
+                conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
+                st.success("✅ Registrado")
 else:
     df_perfiles = leer_datos("ImagenesPerfil")
     df_r_all, df_p_all, df_u_all, df_base = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase")
@@ -201,13 +221,13 @@ else:
     st.divider()
     tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Estadísticas PRO", "🏆 Detalles", "🔮 Simulador", "⚙️ Admin"])
 
-    with tabs[2]: # RANKING
-        tipo_r = st.radio("Ver:", ["General", "Jornada"], horizontal=True)
+    with tabs[2]: # RANKING CON FRASES Y LOGROS
+        tipo_r = st.radio("Ver Ranking:", ["General", "De esta Jornada"], horizontal=True)
         u_jug = [u for u in df_u_all['Usuario'].unique() if u not in admins]
         pts_list = []
         for u in u_jug:
             p = safe_float(df_base[df_base['Usuario']==u].iloc[0]['Puntos']) if tipo_r=="General" else 0.0
-            u_p = df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)] if tipo_r=="Jornada" else df_p_all[df_p_all['Usuario']==u]
+            u_p = df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)] if tipo_r=="De esta Jornada" else df_p_all[df_p_all['Usuario']==u]
             for r in u_p.itertuples():
                 m = df_r_all[(df_r_all['Jornada']==r.Jornada)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
                 if not m.empty: p += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
@@ -216,12 +236,14 @@ else:
         df_rank['Posicion'] = range(1, len(df_rank)+1)
 
         for _, row in df_rank.iterrows():
-            if row['Posicion'] <= 2: frase = random.choice(FRASES_PUESTOS['oro'])
-            elif row['Posicion'] <= 4: frase = random.choice(FRASES_PUESTOS['plata'])
-            elif row['Posicion'] <= 6: frase = random.choice(FRASES_PUESTOS['bronce'])
-            else: frase = random.choice(FRASES_PUESTOS['barro'])
+            # Lógica de frases para 7 jugadores
+            if row['Posicion'] <= 2: frase_tupla = random.choice(FRASES_PUESTOS['oro'])
+            elif row['Posicion'] <= 4: frase_tupla = random.choice(FRASES_PUESTOS['plata'])
+            elif row['Posicion'] <= 6: frase_tupla = random.choice(FRASES_PUESTOS['bronce'])
+            else: frase_tupla = random.choice(FRASES_PUESTOS['barro'])
             
-            l_u = calcular_logros_completo(row['Usuario'], df_p_all, df_r_all, j_global, df_rank)
+            frase_texto, frase_autor = frase_tupla
+            l_u = calcular_logros_u(row['Usuario'], df_p_all, df_r_all, j_global, df_rank)
             icons = "".join([LOGROS_DATA[lid]['icon'] for lid in l_u])
             n, d, r = obtener_perfil_apostador(df_p_all[df_p_all['Usuario']==row['Usuario']])
 
@@ -233,7 +255,8 @@ else:
                 else: st.subheader("👤")
             with c3:
                 st.markdown(f"**{row['Usuario']}** {icons}")
-                st.info(f"_{frase}_")
+                # Mostrar frase y autor con estilo
+                st.info(f"_{frase_texto}_ \n\n **— {frase_autor}**")
                 st.progress(r); st.caption(f"{n} | {d}")
             with c4: st.markdown(f"#### {row['Puntos']:.2f} pts")
             st.divider()
@@ -258,24 +281,6 @@ else:
                 elif adn['avg_g'] - adn['real_g'] < -0.5: st.info("Eres un Amarrategui")
                 else: st.success("Ojo Clínico")
         else: st.info("Faltan partidos finalizados para el análisis.")
-
-    with tabs[4]: # DETALLES
-        df_rf = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
-        if not df_rf.empty:
-            jugs = [u for u in df_u_all['Usuario'].unique() if u not in admins]
-            c_m = st.columns([2] + [1]*len(jugs))
-            for i, u in enumerate(jugs):
-                fp = foto_dict.get(u)
-                if fp and pd.notna(fp) and os.path.exists(str(fp)): c_m[i+1].image(str(fp), width=45)
-                else: c_m[i+1].write(u[:3])
-            m_p = pd.DataFrame(index=df_rf['Partido'].unique(), columns=jugs)
-            for p in m_p.index:
-                inf = df_rf[df_rf['Partido'] == p].iloc[0]
-                for u in jugs:
-                    up = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global) & (df_p_all['Partido'] == p)]
-                    pts = calcular_puntos(up.iloc[0]['P_L'], up.iloc[0]['P_V'], inf['R_L'], inf['R_V'], inf['Tipo']) if not up.empty else 0.0
-                    m_p.at[p, u] = pts
-            st.dataframe(m_p)
 
     with tabs[5]: # SIMULADOR
         st.header("🔮 Simulador LaLiga")
@@ -326,11 +331,6 @@ else:
                 old = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
                 conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(env)], ignore_index=True)); st.rerun()
 
-    with tabs[1]: # OTROS
-        p_pub = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI")]
-        for u in p_pub['Usuario'].unique():
-            with st.expander(f"Apuestas de {u}"): st.table(p_pub[p_pub['Usuario'] == u][['Partido', 'P_L', 'P_V']])
-
     with tabs[6]: # ADMIN
         if st.session_state.rol == "admin":
             a_t = st.tabs(["⭐ Bases", "📸 Fotos", "⚽ Resultados"])
@@ -354,6 +354,3 @@ else:
                 if st.button("Actualizar"):
                     old = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([old, pd.DataFrame(r_e)], ignore_index=True)); st.rerun()
-
-def AplicarColor(v, t):
-    return 'background-color: #2baf2b' if v > 0 else 'background-color: #ff4b4b'
