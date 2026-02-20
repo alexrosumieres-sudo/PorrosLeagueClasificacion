@@ -323,7 +323,7 @@ else:
                         except: continue
                     df_s = pd.DataFrame(list(clas.items()), columns=['Equipo', 'Pts']).sort_values('Pts', ascending=False)
                     df_s['Pos'] = range(1, 21)
-                    st.table(df_s[['Pos', 'Equipo', 'Pts']])
+                    st.dataframe(df_s[['Pos', 'Equipo', 'Pts']], hide_index=True, use_container_width=True)
         else:
             st.info("No hay usuarios registrados para simular.")
 
@@ -388,3 +388,4 @@ else:
                     old = df_r_all[df_r_all['Jornada'] != j_global] if not df_r_all.empty else pd.DataFrame()
                     conn.update(worksheet="Resultados", data=pd.concat([old, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("¡Resultados actualizados!"); st.rerun()
+
