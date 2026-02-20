@@ -26,7 +26,7 @@ LOGOS = {
     "Elche": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/Elche_CF_logo.svg/1200px-Elche_CF_logo.svg.png",
     "R. Sociedad": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f1/Real_Sociedad_logo.svg/1200px-Real_Sociedad_logo.svg.png",
     "Real Madrid": "https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Real_Madrid_CF.svg/1200px-Real_Madrid_CF.svg.png",
-    "Barcelona": "https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_(crest).svg/1200px-FC_Barcelona_(crest).svg.png",
+    "Barcelona": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzZJw089u7WlxPcNcERGbLnxxcrLhpLoGO2A&s",
     "Atlético": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f4/Atletico_Madrid_2017_logo.svg/1200px-Atletico_Madrid_2017_logo.svg.png",
     "Rayo": "https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/Rayo_Vallecano_logo.svg/1200px-Rayo_Vallecano_logo.svg.png",
     "Sevilla": "https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/Sevilla_FC_logo.svg/1200px-Sevilla_FC_logo.svg.png",
@@ -271,3 +271,4 @@ else:
                 st.success("¡Datos guardados!")
         else:
             st.error("Acceso denegado.")
+
