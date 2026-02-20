@@ -243,6 +243,19 @@ else:
     foto_dict = df_perfiles.set_index('Usuario')['ImagenPath'].to_dict() if not df_perfiles.empty else {}
     admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist() if not df_u_all.empty else []
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in admins]
+    c_h1, c_h2, c_h3 = st.columns([1, 5, 1])
+    with c_h1:
+        mi_f = foto_dict.get(st.session_state.user)
+        if mi_f and pd.notna(mi_f) and os.path.exists(str(mi_f)): 
+            st.image(str(mi_f), width=75)
+        else: 
+            st.subheader("👤")
+    with c_h2: 
+        st.title(f"Hola, {st.session_state.user} 👋")
+    with c_h3: 
+        if st.button("Salir"): 
+            st.session_state.autenticado = False
+            st.rerun()
 
     j_global = st.selectbox("📅 Jornada:", list(JORNADAS.keys()), key="global_j")
     p_pend = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]
@@ -427,4 +440,5 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
