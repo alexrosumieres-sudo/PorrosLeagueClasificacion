@@ -69,22 +69,22 @@ LOGOS = {
 
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
 
-# --- LOGROS DATA ---
 LOGROS_DATA = {
     "guru": {"icon": "🔮", "name": "El Gurú", "desc": "Acierto exacto en un partido tipo Esquizo."},
-    "hattrick": {"icon": "🎯", "name": "Hat-Trick", "desc": "3+ resultados exactos en una sola jornada."},
+    "hattrick": {"icon": "🎯", "name": "Hat-Trick", "desc": "3 o más resultados exactos en una sola jornada."},
     "cazagigantes": {"icon": "⚔️", "name": "Cazagigantes", "desc": "Acierto exacto de un Nivel 4 ganando a un Nivel 1."},
     "halcon": {"icon": "🦅", "name": "Ojo de Halcón", "desc": "Único usuario en acertar el ganador de un partido."},
     "pleno": {"icon": "💯", "name": "Pleno", "desc": "Puntuar en los 10 partidos de la jornada."},
     "cima": {"icon": "🏔️", "name": "En la Cima", "desc": "Líder de la clasificación general."},
-    "amarrategui": {"icon": "🧱", "name": "Amarrategui", "desc": "5+ aciertos con 1-0, 0-1 o 0-0."},
-    "empate": {"icon": "🤝", "name": "Rey Empate", "desc": "Acierto exacto en empate que no sea 0-0."},
-    "gafe": {"icon": "🕯️", "name": "Gafe Oficial", "desc": "0 puntos en una jornada completa."},
-    "casi": {"icon": "🤏", "name": "Casi...", "desc": "5+ veces fallando el pleno por solo un gol."},
-    "estrellado": {"icon": "🤡", "name": "Estrellado", "desc": "Apostar por el humilde y recibir goleada (+3)."}
+    "amarrategui": {"icon": "🧱", "name": "Amarrategui de Oro", "desc": "5+ aciertos con resultados 1-0, 0-1 o 0-0."},
+    "empate": {"icon": "🤝", "name": "Rey del Empate", "desc": "Acierto exacto en un empate que no sea 0-0."},
+    "kamikaze": {"icon": "🎰", "name": "Kamikaze Responsable", "desc": "Acertar ganador con diferencia de 2 niveles contra pronóstico."},
+    "gafe": {"icon": "🕯️", "name": "Gafe Oficial", "desc": "0 puntos en una jornada completa habiéndolo apostado todo."},
+    "casi": {"icon": "🤏", "name": "Casi, pero No", "desc": "5+ veces fallando el pleno por solo un gol."},
+    "estrellado": {"icon": "🤡", "name": "Estrellado", "desc": "Apostar por el humilde y recibir una goleada (+3)."}
 }
 
-# --- 2. FUNCIONES ---
+# --- 2. FUNCIONES DE APOYO ---
 
 def safe_float(valor):
     try:
@@ -104,12 +104,23 @@ def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     if signo_p == signo_r: return p_diff if (p_l - p_v) == (r_l - r_v) else p_ganador
     return 0.0
 
+def aplicar_color_estilo(valor, tipo_partido):
+    if valor == 0: return 'background-color: #ff4b4b; color: black'
+    if tipo_partido == "Normal":
+        if valor == 0.5: return 'background-color: #ffd700; color: black'
+        if valor == 0.75: return 'background-color: #ffa500; color: black'
+        return 'background-color: #2baf2b; color: black'
+    if tipo_partido in ["Doble", "Esquizo"]:
+        color = '#a020f0' if tipo_partido == "Doble" else '#00f2ff'
+        if valor in [1.0, 1.5]: return f'background-color: {color}; color: black'
+        return 'background-color: #2baf2b; color: black'
+    return ''
+
 def obtener_perfil_apostador(df_u):
     if df_u is None or df_u.empty: return "Novato 🐣", "Sin datos aún.", 0.0
     avg_g = (df_u['P_L'] + df_u['P_V']).mean()
-    # Lógica de riesgo basada en promedio de goles
     riesgo = min(avg_g / 5.0, 1.0)
-    if avg_g > 3.4: return "BUSCADOR DE PLENOS 🤪", "Ataque total en cada partido.", riesgo
+    if avg_g > 3.4: return "BUSCADOR DE PLENOS 🤪", "Busca el ataque total.", riesgo
     if avg_g < 2.1: return "CONSERVADOR / AMARRETE 🛡️", "Fiel al 1-0 y 0-0.", riesgo
     return "ESTRATEGA ⚖️", "Apuestas equilibradas con lógica.", riesgo
 
@@ -130,7 +141,6 @@ def calcular_logros_completo(usuario, df_p_all, df_r_all, jornada_sel, ranking_a
             pts_j.append(pts)
             eq_l, eq_v = row.Partido.split('-')
             lv_l, lv_v = NIVEL_EQUIPOS.get(eq_l, 3), NIVEL_EQUIPOS.get(eq_v, 3)
-            # Reglas
             if pts == SCORING.get(inf['Tipo'], SCORING["Normal"])[2]:
                 exactos += 1
                 if inf['Tipo'] == "Esquizo": logros.append("guru")
@@ -150,7 +160,7 @@ def calcular_logros_completo(usuario, df_p_all, df_r_all, jornada_sel, ranking_a
         if casi >= 5: logros.append("casi")
     return list(set(logros))
 
-# --- 3. APP ---
+# --- 3. INICIO APP ---
 st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -167,21 +177,23 @@ if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("<h1 style='text-align:center;'>🏆 Porra League</h1>", unsafe_allow_html=True)
-        modo = st.radio("Modo", ["Iniciar Sesión", "Registrarse"], horizontal=True)
+        modo = st.radio("Selecciona", ["Iniciar Sesión", "Registrarse"], horizontal=True)
         u_in, p_in = st.text_input("Usuario"), st.text_input("Contraseña", type="password")
-        if st.button("Aceptar"):
+        if st.button("Entrar"):
             df_u = leer_datos("Usuarios")
-            if modo == "Iniciar Sesión":
-                u_db = df_u[(df_u['Usuario'].astype(str)==str(u_in)) & (df_u['Password'].astype(str)==str(p_in))]
-                if not u_db.empty:
-                    st.session_state.autenticado, st.session_state.user, st.session_state.rol = True, u_in, u_db.iloc[0]['Rol']
+            if not df_u.empty:
+                user_db = df_u[(df_u['Usuario'].astype(str) == str(u_in)) & (df_u['Password'].astype(str) == str(p_in))]
+                if not user_db.empty:
+                    st.session_state.autenticado, st.session_state.user, st.session_state.rol = True, u_in, user_db.iloc[0]['Rol']
                     st.rerun()
-                else: st.error("❌ Fallo")
-            else:
-                conn.update(worksheet="Usuarios", data=pd.concat([df_u, pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])], ignore_index=True))
-                st.success("✅ Hecho")
+                else: st.error("❌ Datos incorrectos")
+        else:
+            if st.button("Crear Cuenta"):
+                df_u = leer_datos("Usuarios")
+                nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
+                conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
+                st.success("✅ Registrado")
 else:
-    # CARGA DATOS
     df_perfiles = leer_datos("ImagenesPerfil")
     df_r_all, df_p_all, df_u_all, df_base = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase")
     foto_dict = df_perfiles.set_index('Usuario')['ImagenPath'].to_dict() if not df_perfiles.empty else {}
@@ -189,23 +201,24 @@ else:
 
     c_h1, c_h2, c_h3 = st.columns([1, 5, 1])
     with c_h1:
-        mi_f = foto_dict.get(st.session_state.user)
-        if mi_f and pd.notna(mi_f) and os.path.exists(str(mi_f)): st.image(str(mi_f), width=75)
-        else: st.subheader("👤")
+        mi_foto = foto_dict.get(st.session_state.user)
+        if mi_foto and pd.notna(mi_foto) and os.path.exists(str(mi_foto)):
+            st.image(str(mi_foto), width=75)
+        else:
+            st.subheader("👤")
     with c_h2: st.title(f"Hola, {st.session_state.user} 👋")
     with c_h3: 
         if st.button("Salir"): st.session_state.autenticado = False; st.rerun()
 
-    j_global = st.selectbox("📅 Jornada:", list(JORNADAS.keys()), key="global_j")
+    j_global = st.selectbox("📅 Jornada Seleccionada:", list(JORNADAS.keys()), key="global_j")
     st.divider()
 
     tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏆 Detalles", "🔮 Simulador", "⚙️ Admin"])
 
-    with tabs[2]: # CLASIFICACIÓN COMPLETA
+    with tabs[2]: # CLASIFICACIÓN CON LOGROS Y PERFILES
         st.header("📊 Ranking General")
         if not df_u_all.empty:
             u_jug = [u for u in df_u_all['Usuario'].unique() if u not in admins]
-            # Cálculo Puntos Actuales
             pts_hist = []
             for u in u_jug:
                 pts = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
@@ -221,12 +234,9 @@ else:
 
             logros_temp = {}
             for _, row in df_rank.iterrows():
-                # ASIGNAR LOGROS
                 l_u = calcular_logros_completo(row['Usuario'], df_p_all, df_r_all, j_global, df_rank)
                 logros_temp[row['Usuario']] = l_u
                 icons = "".join([LOGROS_DATA[lid]['icon'] for lid in l_u])
-
-                # ASIGNAR PERFIL Y BARRA
                 u_apuestas = df_p_all[df_p_all['Usuario'] == row['Usuario']]
                 n_perfil, d_perfil, riesgo_val = obtener_perfil_apostador(u_apuestas)
 
@@ -248,12 +258,12 @@ else:
                 with st.expander("🎖️ Significado de los Logros Activos"):
                     for lid in vistos: st.write(f"{LOGROS_DATA[lid]['icon']} **{LOGROS_DATA[lid]['name']}**: {LOGROS_DATA[lid]['desc']}")
 
-    with tabs[4]: # SIMULADOR PRO SIN ESCUDOS
+    with tabs[4]: # SIMULADOR PRO
         st.header("🔮 Simulador de LaLiga")
         u_sim = [u for u in df_u_all['Usuario'].unique() if u not in admins]
         if u_sim:
-            usr_s = st.selectbox("Simular según:", u_sim)
-            if st.button("🚀 Simular"):
+            usr_s = st.selectbox("Simular según predicciones de:", u_sim)
+            if st.button("🚀 Ejecutar Simulación"):
                 sim_d = {k: v.copy() for k, v in STATS_LALIGA_BASE.items()}
                 for p in (df_p_all[df_p_all['Usuario'] == usr_s].itertuples() if not df_p_all.empty else []):
                     try:
@@ -290,11 +300,17 @@ else:
                     if datetime.now() > datetime.strptime(str(inf['Hora_Inicio']), "%Y-%m-%d %H:%M:%S"): bloq = True
                 st.markdown(f"#### {t} {'🔒' if bloq else '🔓'}")
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
-                with c1: logo = get_logo(loc); st.image(logo, width=65) if logo else st.markdown("⚽")
+                with c1: 
+                    l_logo = get_logo(loc)
+                    if l_logo: st.image(l_logo, width=65)
+                    else: st.markdown("⚽")
                 with c2: pl = st.number_input(f"{loc}", 0, value=dl, key=f"l_{j_global}_{i}", disabled=bloq)
                 with c3: st.markdown("<br>VS", unsafe_allow_html=True)
                 with c4: pv = st.number_input(f"{vis}", 0, value=dv, key=f"v_{j_global}_{i}", disabled=bloq)
-                with c5: logo_v = get_logo(vis); st.image(logo_v, width=65) if logo_v else st.markdown("⚽")
+                with c5: 
+                    v_logo = get_logo(vis)
+                    if v_logo: st.image(v_logo, width=65)
+                    else: st.markdown("⚽")
                 with c6: pub = st.checkbox("Público", value=dp, key=f"pb_{j_global}_{i}", disabled=bloq)
                 preds_env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
             if st.button("💾 Guardar"):
@@ -302,7 +318,7 @@ else:
                 conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(preds_env)], ignore_index=True)); st.rerun()
 
     with tabs[1]: # OTROS
-        st.header("🔍 Públicas")
+        st.header("🔍 Predicciones Públicas")
         if not df_p_all.empty:
             p_pub = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI")]
             for u in p_pub['Usuario'].unique():
@@ -331,6 +347,26 @@ else:
     with tabs[5]: # ADMIN
         if st.session_state.rol == "admin":
             a_tabs = st.tabs(["⭐ Bases", "📸 Fotos", "⚽ Resultados"])
+            with a_tabs[0]:
+                upd_b = []
+                for u in [usr for usr in df_u_all['Usuario'].unique() if usr not in admins]:
+                    pts_ex = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
+                    val = st.number_input(f"Base {u}", value=pts_ex, key=f"ba_{u}")
+                    upd_b.append({"Usuario": u, "Puntos": val})
+                if st.button("Guardar Bases"): conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b)); st.rerun()
+            with a_tabs[1]:
+                if os.path.exists(PERFILES_DIR):
+                    fotos = sorted(os.listdir(PERFILES_DIR))
+                    upd_f = []
+                    for u in [usr for usr in df_u_all['Usuario'].unique() if usr not in admins]:
+                        idx = 0
+                        db_p = foto_dict.get(u)
+                        if pd.notna(db_p):
+                            f_file = str(db_p).replace(PERFILES_DIR, "")
+                            if f_file in fotos: idx = fotos.index(f_file) + 1
+                        fs = st.selectbox(f"Foto {u}", ["Ninguna"] + fotos, index=idx, key=f"im_{u}")
+                        upd_f.append({"Usuario": u, "ImagenPath": f"{PERFILES_DIR}{fs}" if fs != "Ninguna" else ""})
+                    if st.button("Asociar Fotos"): conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(upd_f)); st.rerun()
             with a_tabs[2]:
                 r_env, h_p = [], [time(h, m) for h in range(12, 23) for m in [0, 15, 30, 45]]
                 for i, (l, v) in enumerate(JORNADAS[j_global]):
