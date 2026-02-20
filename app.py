@@ -3,7 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime, time
 
-# --- 1. CONFIGURACIÓN DE JORNADAS Y EQUIPOS ---
+# --- 1. CONFIGURACIÓN DE JORNADAS ---
 JORNADAS = {
     "Jornada 25": [("Athletic", "Elche"), ("R. Sociedad", "Oviedo"), ("Betis", "Rayo"), ("Osasuna", "Real Madrid"), ("Atlético", "Espanyol"), ("Getafe", "Sevilla"), ("Barcelona", "Levante"), ("Celta", "Mallorca"), ("Villarreal", "Valencia"), ("Alavés", "Girona")],
     "Jornada 26": [("Levante", "Alavés"), ("Rayo", "Athletic"), ("Barcelona", "Villarreal"), ("Mallorca", "R. Sociedad"), ("Oviedo", "Atlético"), ("Elche", "Espanyol"), ("Valencia", "Osasuna"), ("Betis", "Sevilla"), ("Girona", "Celta"), ("Real Madrid", "Getafe")],
@@ -21,6 +21,7 @@ JORNADAS = {
     "Jornada 38": [("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"), ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"), ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"), ("Villarreal", "Atlético")]
 }
 
+# --- 2. DICCIONARIO DE LOGOS (RUTAS LOCALES) ---
 LOGOS = {
     "Athletic": "logos/athletic.jpeg",
     "Elche": "logos/elche.jpeg",
@@ -47,9 +48,9 @@ LOGOS = {
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
 CODIGO_INVITACION = "LIGA2026"
 
-# --- 2. FUNCIONES ---
+# --- 3. FUNCIONES DE APOYO ---
 def get_logo(equipo):
-    return LOGOS.get(equipo, "⚽")
+    return LOGOS.get(equipo, None)
 
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
@@ -62,11 +63,10 @@ def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     return 0.0
 
 def color_celulas(val):
-    if val == 0: color = '#ff4b4b' 
-    elif val >= 1.5: color = '#00f2ff'
-    elif val >= 1.0: color = '#2baf2b' 
-    else: color = '#ffd700' 
-    return f'background-color: {color}; color: black'
+    if val == 0: return 'background-color: #ff4b4b; color: black'
+    elif val >= 1.5: return 'background-color: #00f2ff; color: black'
+    elif val >= 1.0: return 'background-color: #2baf2b; color: black'
+    else: return 'background-color: #ffd700; color: black'
 
 st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -111,7 +111,7 @@ if not st.session_state.autenticado:
                     conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
                     st.success("✅ Registrado con éxito")
 
-# --- 5. CONTENIDO PRINCIPAL ---
+# --- 5. CONTENIDO ---
 else:
     c_head1, c_head2 = st.columns([6, 1])
     c_head1.title(f"Bienvenido, {st.session_state.user} 👋")
@@ -119,13 +119,11 @@ else:
         st.session_state.autenticado = False
         st.rerun()
 
-    # SELECTOR GLOBAL DE JORNADA
-    j_global = st.selectbox("📅 Seleccionar Jornada:", list(JORNADAS.keys()), key="global_j")
+    j_global = st.selectbox("📅 Seleccionar Jornada:", list(JORNADAS.keys()), key="global_j_sel")
     st.divider()
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["✍️ Mis Apuestas", "👀 Ver Otras", "📊 Ranking", "🏆 Detalles", "⚙️ Admin"])
 
-    # LEEMOS DATOS UNA VEZ PARA TODAS LAS PESTAÑAS
     df_r_all = leer_datos("Resultados")
     df_p_all = leer_datos("Predicciones")
     df_u_all = leer_datos("Usuarios")
@@ -134,7 +132,7 @@ else:
         if st.session_state.rol == "admin":
             st.info("💡 Eres Administrador. Gestiona la liga en la pestaña 'Admin'.")
         else:
-            # Precarga de datos
+            # Precarga de datos del usuario
             mis_preds = pd.DataFrame()
             if not df_p_all.empty:
                 mis_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
@@ -147,7 +145,6 @@ else:
                 match_name = f"{loc}-{vis}"
                 bloqueado, tipo = False, "Normal"
                 
-                # Valores por defecto
                 def_l, def_v, def_pub = 0, 0, False
                 if not mis_preds.empty:
                     m_prev = mis_preds[mis_preds['Partido'] == match_name]
@@ -167,17 +164,19 @@ else:
                 c_img1, c_in1, c_vs, c_in2, c_img2, c_chk = st.columns([1, 2, 0.5, 2, 1, 2])
                 
                 with c_img1: 
-                    logo = get_logo(loc)
-                    if logo.startswith("http"): st.image(logo, width=50)
-                    else: st.write(logo)
+                    logo_l = get_logo(loc)
+                    if logo_l: st.image(logo_l, width=65)
+                    else: st.subheader("⚽")
                 with c_in1: pl = st.number_input(f"{loc}", 0, value=def_l, key=f"l_{j_global}_{i}", disabled=bloqueado)
-                with c_vs: st.markdown("<br>VS", unsafe_allow_html=True)
+                with c_vs: st.markdown("<br><br>VS", unsafe_allow_html=True)
                 with c_in2: pv = st.number_input(f"{vis}", 0, value=def_v, key=f"v_{j_global}_{i}", disabled=bloqueado)
                 with c_img2:
-                    logo = get_logo(vis)
-                    if logo.startswith("http"): st.image(logo, width=50)
-                    else: st.write(logo)
-                with c_chk: pub = st.checkbox("Público", value=def_pub, key=f"pb_{j_global}_{i}", disabled=bloqueado)
+                    logo_v = get_logo(vis)
+                    if logo_v: st.image(logo_v, width=65)
+                    else: st.subheader("⚽")
+                with c_chk: 
+                    st.write("") # Espaciador
+                    pub = st.checkbox("Público", value=def_pub, key=f"pb_{j_global}_{i}", disabled=bloqueado)
                 
                 preds_a_enviar.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": match_name, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
                 st.divider()
@@ -186,8 +185,7 @@ else:
                 df_p_write = leer_datos("Predicciones")
                 if not df_p_write.empty:
                     df_p_write = df_p_write[~((df_p_write['Usuario'] == st.session_state.user) & (df_p_write['Jornada'] == j_global))]
-                df_final_save = pd.concat([df_p_write, pd.DataFrame(preds_a_enviar)], ignore_index=True)
-                conn.update(worksheet="Predicciones", data=df_final_save)
+                conn.update(worksheet="Predicciones", data=pd.concat([df_p_write, pd.DataFrame(preds_a_enviar)], ignore_index=True))
                 st.success("¡Datos guardados!")
                 st.rerun()
 
@@ -271,8 +269,3 @@ else:
                 st.success("¡Datos guardados!")
         else:
             st.error("Acceso denegado.")
-
-
-
-
-
