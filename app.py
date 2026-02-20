@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 from datetime import datetime, time
+import os
 
 # --- 1. CONFIGURACIÓN DE JORNADAS ---
 JORNADAS = {
@@ -21,36 +22,27 @@ JORNADAS = {
     "Jornada 38": [("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"), ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"), ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"), ("Villarreal", "Atlético")]
 }
 
-# --- 2. DICCIONARIO DE LOGOS (RUTAS LOCALES) ---
+# --- 2. DICCIONARIO DE LOGOS ---
 LOGOS = {
-    "Athletic": "logos/athletic.jpeg",
-    "Elche": "logos/elche.jpeg",
-    "R. Sociedad": "logos/sociedad.jpeg",
-    "Real Madrid": "logos/madrid.jpeg",
-    "Barcelona": "logos/barca.jpeg",
-    "Atlético": "logos/atletico.jpeg",
-    "Rayo": "logos/rayo.jpeg",
-    "Sevilla": "logos/sevilla.jpeg",
-    "Valencia": "logos/valencia.jpeg",
-    "Girona": "logos/girona.jpeg",
-    "Osasuna": "logos/osasuna.jpeg",
-    "Getafe": "logos/getafe.jpeg",
-    "Celta": "logos/celta.jpeg",
-    "Mallorca": "logos/mallorca.jpeg",
-    "Villarreal": "logos/villarreal.jpeg",
-    "Alavés": "logos/alaves.jpeg",
-    "Espanyol": "logos/espanyol.jpeg",
-    "Betis": "logos/betis.jpeg",
-    "Levante": "logos/levante.jpeg",
-    "Oviedo": "logos/oviedo.jpeg"
+    "Athletic": "logos/athletic.jpeg", "Elche": "logos/elche.jpeg", "R. Sociedad": "logos/sociedad.jpeg",
+    "Real Madrid": "logos/madrid.jpeg", "Barcelona": "logos/barca.jpeg", "Atlético": "logos/atletico.jpeg",
+    "Rayo": "logos/rayo.jpeg", "Sevilla": "logos/sevilla.jpeg", "Valencia": "logos/valencia.jpeg",
+    "Girona": "logos/girona.jpeg", "Osasuna": "logos/osasuna.jpeg", "Getafe": "logos/getafe.jpeg",
+    "Celta": "logos/celta.jpeg", "Mallorca": "logos/mallorca.jpeg", "Villarreal": "logos/villarreal.jpeg",
+    "Alavés": "logos/alaves.jpeg", "Espanyol": "logos/espanyol.jpeg", "Betis": "logos/betis.jpeg",
+    "Levante": "logos/levante.jpeg", "Oviedo": "logos/oviedo.jpeg"
 }
 
+# --- PUNTUACIONES Y REGLAS ---
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
 CODIGO_INVITACION = "LIGA2026"
 
 # --- 3. FUNCIONES DE APOYO ---
 def get_logo(equipo):
-    return LOGOS.get(equipo, None)
+    path = LOGOS.get(equipo)
+    if path and os.path.exists(path):
+        return path
+    return None
 
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
@@ -62,11 +54,24 @@ def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
         return p_ganador
     return 0.0
 
-def color_celulas(val):
-    if val == 0: return 'background-color: #ff4b4b; color: black'
-    elif val >= 1.5: return 'background-color: #00f2ff; color: black'
-    elif val >= 1.0: return 'background-color: #2baf2b; color: black'
-    else: return 'background-color: #ffd700; color: black'
+# NUEVA FUNCIÓN DE COLORES SEGÚN TIPO DE PARTIDO
+def aplicar_color_estilo(valor, tipo_partido):
+    if valor == 0: return 'background-color: #ff4b4b; color: black' # Rojo siempre para 0
+    
+    if tipo_partido == "Normal":
+        if valor == 0.5: return 'background-color: #ffd700; color: black' # Amarillo
+        if valor == 0.75: return 'background-color: #ffa500; color: black' # Naranja
+        if valor == 1.0: return 'background-color: #2baf2b; color: black' # Verde
+        
+    elif tipo_partido == "Doble":
+        if valor in [1.0, 1.5]: return 'background-color: #a020f0; color: white' # Morado
+        if valor == 2.0: return 'background-color: #2baf2b; color: black' # Verde
+        
+    elif tipo_partido == "Esquizo":
+        if valor in [1.0, 1.5]: return 'background-color: #00f2ff; color: black' # Azul
+        if valor == 3.0: return 'background-color: #2baf2b; color: black' # Verde
+        
+    return ''
 
 st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -132,26 +137,21 @@ else:
         if st.session_state.rol == "admin":
             st.info("💡 Eres Administrador. Gestiona la liga en la pestaña 'Admin'.")
         else:
-            # Precarga de datos del usuario
             mis_preds = pd.DataFrame()
             if not df_p_all.empty:
                 mis_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
-
             df_r_j = df_r_all[df_r_all['Jornada'] == j_global] if not df_r_all.empty else pd.DataFrame()
             ahora = datetime.now()
-            
             preds_a_enviar = []
             for i, (loc, vis) in enumerate(JORNADAS[j_global]):
                 match_name = f"{loc}-{vis}"
                 bloqueado, tipo = False, "Normal"
-                
                 def_l, def_v, def_pub = 0, 0, False
                 if not mis_preds.empty:
                     m_prev = mis_preds[mis_preds['Partido'] == match_name]
                     if not m_prev.empty:
                         def_l, def_v = int(m_prev.iloc[0]['P_L']), int(m_prev.iloc[0]['P_V'])
                         def_pub = True if str(m_prev.iloc[0]['Publica']) == "SI" else False
-
                 if not df_r_j.empty and match_name in df_r_j['Partido'].values:
                     info = df_r_j[df_r_j['Partido'] == match_name].iloc[0]
                     tipo = info['Tipo']
@@ -159,10 +159,8 @@ else:
                         limite = datetime.strptime(str(info['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                         if ahora > limite: bloqueado = True
                     except: pass
-
                 st.markdown(f"#### {tipo} {'🔒' if bloqueado else '🔓'}")
                 c_img1, c_in1, c_vs, c_in2, c_img2, c_chk = st.columns([1, 2, 0.5, 2, 1, 2])
-                
                 with c_img1: 
                     logo_l = get_logo(loc)
                     if logo_l: st.image(logo_l, width=65)
@@ -175,12 +173,10 @@ else:
                     if logo_v: st.image(logo_v, width=65)
                     else: st.subheader("⚽")
                 with c_chk: 
-                    st.write("") # Espaciador
+                    st.write("")
                     pub = st.checkbox("Público", value=def_pub, key=f"pb_{j_global}_{i}", disabled=bloqueado)
-                
                 preds_a_enviar.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": match_name, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
                 st.divider()
-
             if st.button("💾 Guardar Cambios"):
                 df_p_write = leer_datos("Predicciones")
                 if not df_p_write.empty:
@@ -215,7 +211,6 @@ else:
                         pt += pts
                         if r.Jornada == j_global: pj += pts
                 ranking.append({"Usuario": u, "Puntos Jornada": pj, "Puntos Totales": pt})
-            
             if ranking:
                 df_final_rank = pd.DataFrame(ranking)
                 cr1, cr2 = st.columns(2)
@@ -231,17 +226,24 @@ else:
         if not df_p_all.empty and not df_r_all.empty:
             admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()
             df_r_j_fin = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
-            
-            if df_r_j_fin.empty: st.warning("Sin partidos finalizados.")
+            if df_r_j_fin.empty:
+                st.warning("Sin partidos finalizados.")
             else:
                 usrs = [u for u in df_p_all['Usuario'].unique() if u not in admins]
-                pts_matriz = pd.DataFrame(index=df_r_j_fin['Partido'].unique(), columns=usrs)
-                for part in pts_matriz.index:
-                    rv_info = df_r_j_fin[df_r_j_fin['Partido'] == part].iloc[0]
+                # Matriz para los puntos y matriz para los estilos
+                matriz_puntos = pd.DataFrame(index=df_r_j_fin['Partido'].unique(), columns=usrs)
+                matriz_estilos = pd.DataFrame(index=df_r_j_fin['Partido'].unique(), columns=usrs)
+                for part in matriz_puntos.index:
+                    info_partido = df_r_j_fin[df_r_j_fin['Partido'] == part].iloc[0]
+                    tipo = info_partido['Tipo']
+                    res_l, res_v = info_partido['R_L'], info_partido['R_V']
                     for u in usrs:
                         u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global) & (df_p_all['Partido'] == part)]
-                        pts_matriz.at[part, u] = calcular_puntos(u_p.iloc[0]['P_L'], u_p.iloc[0]['P_V'], rv_info['R_L'], rv_info['R_V'], rv_info['Tipo']) if not u_p.empty else 0
-                st.dataframe(pts_matriz.style.applymap(color_celulas).format("{:.2f}"))
+                        pts = calcular_puntos(u_p.iloc[0]['P_L'], u_p.iloc[0]['P_V'], res_l, res_v, tipo) if not u_p.empty else 0.0
+                        matriz_puntos.at[part, u] = pts
+                        matriz_estilos.at[part, u] = aplicar_color_estilo(pts, tipo)
+                # Mostramos la tabla aplicando la matriz de estilos
+                st.dataframe(matriz_puntos.style.apply(lambda x: matriz_estilos, axis=None).format("{:.2f}"))
 
     with tab5:
         if st.session_state.rol == "admin":
@@ -258,10 +260,8 @@ else:
                 rl_a = c_rl.number_input("L", 0, key=f"arl_{j_global}_{i}")
                 rv_a = c_rv.number_input("V", 0, key=f"arv_{j_global}_{i}")
                 fin_a = c_fi.checkbox("Finalizado", key=f"afi_{j_global}_{i}")
-                
                 dt_save = datetime.combine(fec_a, hor_a).strftime("%Y-%m-%d %H:%M:%S")
                 conf_admin.append({"Jornada": j_global, "Partido": f"{loc}-{vis}", "Tipo": tipo_a, "R_L": rl_a, "R_V": rv_a, "Hora_Inicio": dt_save, "Finalizado": "SI" if fin_a else "NO"})
-            
             if st.button("🚀 Actualizar"):
                 df_old_res = leer_datos("Resultados")
                 if not df_old_res.empty: df_old_res = df_old_res[df_old_res['Jornada'] != j_global]
