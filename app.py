@@ -23,7 +23,7 @@ JORNADAS = {
     "Jornada 38": [("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"), ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"), ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"), ("Villarreal", "Atlético")]
 }
 
-# --- 2. DICCIONARIO DE LOGOS (RUTAS LOCALES) ---
+# --- 2. DICCIONARIO DE LOGOS ---
 LOGOS = {
     "Athletic": "logos/athletic.jpeg", "Elche": "logos/elche.jpeg", "R. Sociedad": "logos/sociedad.jpeg",
     "Real Madrid": "logos/madrid.jpeg", "Barcelona": "logos/barca.jpeg", "Atlético": "logos/atletico.jpeg",
@@ -79,7 +79,7 @@ def leer_datos(pestaña):
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
-# --- 4. ACCESO ---
+# --- ACCESO ---
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -139,8 +139,7 @@ else:
                         def_pub = True if str(m_prev.iloc[0]['Publica']) == "SI" else False
                 if not df_r_j.empty and match_name in df_r_j['Partido'].values:
                     info = df_r_j[df_r_j['Partido'] == match_name].iloc[0]
-                    tipo = info['Tipo']
-                    limite = datetime.strptime(str(info['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                    tipo, limite = info['Tipo'], datetime.strptime(str(info['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                     if ahora > limite: bloqueado = True
                 st.markdown(f"#### {tipo} {'🔒' if bloqueado else '🔓'}")
                 c_img1, c_in1, c_vs, c_in2, c_img2, c_chk = st.columns([1, 2, 0.5, 2, 1, 2])
@@ -188,7 +187,9 @@ else:
                     pts_base = 0.0
                     if not df_base.empty and 'Puntos' in df_base.columns:
                         m_b = df_base[df_base['Usuario'] == u]
-                        if not m_b.empty: pts_base = float(m_b.iloc[0]['Puntos'])
+                        if not m_b.empty:
+                            try: pts_base = float(m_b.iloc[0]['Puntos'])
+                            except: pts_base = 0.0
                     
                     pts_acum = pts_base
                     u_preds = df_p_all[df_p_all['Usuario'] == u]
@@ -246,7 +247,9 @@ else:
                     pts_ex = 0.0
                     if not df_base.empty and 'Puntos' in df_base.columns:
                         m_b = df_base[df_base['Usuario'] == u]
-                        if not m_b.empty: pts_ex = float(m_b.iloc[0]['Puntos'])
+                        if not m_b.empty:
+                            try: pts_ex = float(m_b.iloc[0]['Puntos'])
+                            except: pts_ex = 0.0
                     new_pts = st.number_input(f"Puntos base para {u}", value=pts_ex, step=0.25, key=f"base_{u}")
                     base_data.append({"Usuario": u, "Puntos": new_pts})
                 if st.button("Guardar Puntos Iniciales"):
