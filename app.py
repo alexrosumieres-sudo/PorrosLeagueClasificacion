@@ -16,7 +16,6 @@ NIVEL_EQUIPOS = {
     "Mallorca": 4, "Levante": 4, "Oviedo": 4
 }
 
-# Puntos oficiales extraídos de la clasificación proporcionada
 PUNTOS_LALIGA_BASE = {
     "Real Madrid": 60, "Barcelona": 58, "Villarreal": 48, "Atlético": 45,
     "Betis": 41, "Espanyol": 35, "Celta": 34, "R. Sociedad": 31, "Athletic": 31,
@@ -26,7 +25,19 @@ PUNTOS_LALIGA_BASE = {
 
 JORNADAS = {
     "Jornada 25": [("Athletic", "Elche"), ("R. Sociedad", "Oviedo"), ("Betis", "Rayo"), ("Osasuna", "Real Madrid"), ("Atlético", "Espanyol"), ("Getafe", "Sevilla"), ("Barcelona", "Levante"), ("Celta", "Mallorca"), ("Villarreal", "Valencia"), ("Alavés", "Girona")],
-    # ... (Añadir el resto de jornadas aquí)
+    "Jornada 26": [("Levante", "Alavés"), ("Rayo", "Athletic"), ("Barcelona", "Villarreal"), ("Mallorca", "R. Sociedad"), ("Oviedo", "Atlético"), ("Elche", "Espanyol"), ("Valencia", "Osasuna"), ("Betis", "Sevilla"), ("Girona", "Celta"), ("Real Madrid", "Getafe")],
+    "Jornada 27": [("Osasuna", "Mallorca"), ("Getafe", "Betis"), ("Levante", "Girona"), ("Atlético", "R. Sociedad"), ("Celta", "Real Madrid"), ("Villarreal", "Elche"), ("Athletic", "Barcelona"), ("Sevilla", "Rayo"), ("Valencia", "Alavés"), ("Espanyol", "Oviedo")],
+    "Jornada 28": [("Alavés", "Villarreal"), ("Girona", "Athletic"), ("Atlético", "Getafe"), ("Oviedo", "Valencia"), ("Real Madrid", "Elche"), ("Mallorca", "Espanyol"), ("Barcelona", "Sevilla"), ("Betis", "Celta"), ("Osasuna", "Rayo"), ("Levante", "R. Sociedad")],
+    "Jornada 29": [("Athletic", "Betis"), ("Barcelona", "Rayo"), ("Celta", "Alavés"), ("Elche", "Mallorca"), ("Espanyol", "Getafe"), ("Levante", "Oviedo"), ("Osasuna", "Girona"), ("Real Madrid", "Atlético"), ("Sevilla", "Valencia"), ("Villarreal", "R. Sociedad")],
+    "Jornada 30": [("Alavés", "Osasuna"), ("Atlético", "Barcelona"), ("Getafe", "Athletic"), ("Girona", "Villarreal"), ("Mallorca", "Real Madrid"), ("Rayo", "Elche"), ("Betis", "Espanyol"), ("Oviedo", "Sevilla"), ("R. Sociedad", "Levante"), ("Valencia", "Celta")],
+    "Jornada 31": [("Athletic", "Villarreal"), ("Barcelona", "Espanyol"), ("Celta", "Oviedo"), ("Elche", "Valencia"), ("Levante", "Getafe"), ("Mallorca", "Rayo"), ("Osasuna", "Betis"), ("Real Madrid", "Girona"), ("R. Sociedad", "Alavés"), ("Sevilla", "Atlético")],
+    "Jornada 32": [("Alavés", "Mallorca"), ("Atlético", "Athletic"), ("Espanyol", "Levante"), ("Getafe", "Barcelona"), ("Osasuna", "Sevilla"), ("Rayo", "R. Sociedad"), ("Betis", "Real Madrid"), ("Oviedo", "Elche"), ("Valencia", "Girona"), ("Villarreal", "Celta")],
+    "Jornada 33": [("Athletic", "Osasuna"), ("Barcelona", "Celta"), ("Elche", "Atlético"), ("Girona", "Betis"), ("Levante", "Sevilla"), ("Mallorca", "Valencia"), ("Rayo", "Espanyol"), ("Real Madrid", "Alavés"), ("Oviedo", "Villarreal"), ("R. Sociedad", "Getafe")],
+    "Jornada 34": [("Alavés", "Athletic"), ("Celta", "Elche"), ("Espanyol", "Real Madrid"), ("Getafe", "Rayo"), ("Girona", "Mallorca"), ("Osasuna", "Barcelona"), ("Betis", "Oviedo"), ("Sevilla", "R. Sociedad"), ("Valencia", "Atlético"), ("Villarreal", "Levante")],
+    "Jornada 35": [("Athletic", "Valencia"), ("Atlético", "Celta"), ("Barcelona", "Real Madrid"), ("Elche", "Alavés"), ("Levante", "Osasuna"), ("Mallorca", "Villarreal"), ("Rayo", "Girona"), ("Oviedo", "Getafe"), ("R. Sociedad", "Betis"), ("Sevilla", "Espanyol")],
+    "Jornada 36": [("Alavés", "Barcelona"), ("Celta", "Levante"), ("Espanyol", "Athletic"), ("Getafe", "Mallorca"), ("Girona", "R. Sociedad"), ("Osasuna", "Atlético"), ("Betis", "Elche"), ("Real Madrid", "Oviedo"), ("Valencia", "Rayo"), ("Villarreal", "Sevilla")],
+    "Jornada 37": [("Athletic", "Celta"), ("Atlético", "Girona"), ("Barcelona", "Betis"), ("Elche", "Getafe"), ("Levante", "Mallorca"), ("Osasuna", "Espanyol"), ("Rayo", "Villarreal"), ("Oviedo", "Alavés"), ("R. Sociedad", "Valencia"), ("Sevilla", "Real Madrid")],
+    "Jornada 38": [("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"), ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"), ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"), ("Villarreal", "Atlético")]
 }
 
 LOGOS = {
@@ -43,6 +54,16 @@ SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0
 CODIGO_INVITACION = "LIGA2026"
 
 # --- 2. FUNCIONES DE APOYO ---
+
+def safe_float(valor):
+    """Convierte un valor a float de forma segura manejando errores de formato."""
+    try:
+        if pd.isna(valor) or str(valor).strip() == "":
+            return 0.0
+        return float(str(valor).replace(',', '.'))
+    except ValueError:
+        return 0.0
+
 def get_logo(equipo):
     path = LOGOS.get(equipo)
     return path if path and os.path.exists(path) else None
@@ -140,7 +161,7 @@ else:
     df_perfiles = leer_datos("ImagenesPerfil")
     foto_dict = df_perfiles.set_index('Usuario')['ImagenPath'].to_dict() if not df_perfiles.empty else {}
 
-    with tabs[0]: # Apuestas
+    with tabs[0]: # Mis Apuestas
         if st.session_state.rol == "admin": st.info("Modo Admin.")
         else:
             mis_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)] if not df_p_all.empty else pd.DataFrame()
@@ -185,9 +206,8 @@ else:
                 temp = []
                 for u in usuarios_jug:
                     pts_base = 0.0
-                    if not df_base.empty:
-                        m_b = df_base[df_base['Usuario'] == u]
-                        if not m_b.empty: pts_base = float(m_b.iloc[0]['Puntos'])
+                    if not df_base.empty and u in df_base['Usuario'].values:
+                        pts_base = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos'])
                     pts_acum = pts_base
                     for r in df_p_all[df_p_all['Usuario'] == u].itertuples():
                         if r.Jornada in jornadas_fin[:jornadas_fin.index(j_prog)+1]:
@@ -252,7 +272,7 @@ else:
         st.header("🔮 Simulador de LaLiga")
         usr_sim = st.selectbox("Simular resultados según:", [u for u in df_p_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()])
         if st.button("🚀 Ejecutar Simulación"):
-            clas = PUNTOS_LALIGA_BASE.copy() #
+            clas = PUNTOS_LALIGA_BASE.copy()
             for p in df_p_all[df_p_all['Usuario'] == usr_sim].itertuples():
                 try:
                     tl, tv = p.Partido.split('-')
@@ -270,7 +290,7 @@ else:
             with adm_tabs[0]: # Puntos Base
                 base_upd = []
                 for u in [usr for usr in df_u_all['Usuario'].unique() if usr not in df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()]:
-                    pts_ex = float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
+                    pts_ex = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
                     val = st.number_input(f"Base {u}", value=pts_ex, key=f"base_{u}")
                     base_upd.append({"Usuario": u, "Puntos": val})
                 if st.button("Guardar Bases"): conn.update(worksheet="PuntosBase", data=pd.DataFrame(base_upd)); st.rerun()
