@@ -43,18 +43,6 @@ STATS_LALIGA_BASE = {
 JORNADAS = {
     "Jornada 25": [("Athletic", "Elche"), ("R. Sociedad", "Oviedo"), ("Betis", "Rayo"), ("Osasuna", "Real Madrid"), ("Atlético", "Espanyol"), ("Getafe", "Sevilla"), ("Barcelona", "Levante"), ("Celta", "Mallorca"), ("Villarreal", "Valencia"), ("Alavés", "Girona")],
     "Jornada 26": [("Levante", "Alavés"), ("Rayo", "Athletic"), ("Barcelona", "Villarreal"), ("Mallorca", "R. Sociedad"), ("Oviedo", "Atlético"), ("Elche", "Espanyol"), ("Valencia", "Osasuna"), ("Betis", "Sevilla"), ("Girona", "Celta"), ("Real Madrid", "Getafe")],
-    "Jornada 27": [("Osasuna", "Mallorca"), ("Getafe", "Betis"), ("Levante", "Girona"), ("Atlético", "R. Sociedad"), ("Celta", "Real Madrid"), ("Villarreal", "Elche"), ("Athletic", "Barcelona"), ("Sevilla", "Rayo"), ("Valencia", "Alavés"), ("Espanyol", "Oviedo")],
-    "Jornada 28": [("Alavés", "Villarreal"), ("Girona", "Athletic"), ("Atlético", "Getafe"), ("Oviedo", "Valencia"), ("Real Madrid", "Elche"), ("Mallorca", "Espanyol"), ("Barcelona", "Sevilla"), ("Betis", "Celta"), ("Osasuna", "Rayo"), ("Levante", "R. Sociedad")],
-    "Jornada 29": [("Athletic", "Betis"), ("Barcelona", "Rayo"), ("Celta", "Alavés"), ("Elche", "Mallorca"), ("Espanyol", "Getafe"), ("Levante", "Oviedo"), ("Osasuna", "Girona"), ("Real Madrid", "Atlético"), ("Sevilla", "Valencia"), ("Villarreal", "R. Sociedad")],
-    "Jornada 30": [("Alavés", "Osasuna"), ("Atlético", "Barcelona"), ("Getafe", "Athletic"), ("Girona", "Villarreal"), ("Mallorca", "Real Madrid"), ("Rayo", "Elche"), ("Betis", "Espanyol"), ("Oviedo", "Sevilla"), ("R. Sociedad", "Levante"), ("Valencia", "Celta")],
-    "Jornada 31": [("Athletic", "Villarreal"), ("Barcelona", "Espanyol"), ("Celta", "Oviedo"), ("Elche", "Valencia"), ("Levante", "Getafe"), ("Mallorca", "Rayo"), ("Osasuna", "Betis"), ("Real Madrid", "Girona"), ("R. Sociedad", "Alavés"), ("Sevilla", "Atlético")],
-    "Jornada 32": [("Alavés", "Mallorca"), ("Atlético", "Athletic"), ("Espanyol", "Levante"), ("Getafe", "Barcelona"), ("Osasuna", "Sevilla"), ("Rayo", "R. Sociedad"), ("Betis", "Real Madrid"), ("Oviedo", "Elche"), ("Valencia", "Girona"), ("Villarreal", "Celta")],
-    "Jornada 33": [("Athletic", "Osasuna"), ("Barcelona", "Celta"), ("Elche", "Atlético"), ("Girona", "Betis"), ("Levante", "Sevilla"), ("Mallorca", "Valencia"), ("Rayo", "Espanyol"), ("Real Madrid", "Alavés"), ("Oviedo", "Villarreal"), ("R. Sociedad", "Getafe")],
-    "Jornada 34": [("Alavés", "Athletic"), ("Celta", "Elche"), ("Espanyol", "Real Madrid"), ("Getafe", "Rayo"), ("Girona", "Mallorca"), ("Osasuna", "Barcelona"), ("Betis", "Oviedo"), ("Sevilla", "R. Sociedad"), ("Valencia", "Atlético"), ("Villarreal", "Levante")],
-    "Jornada 35": [("Athletic", "Valencia"), ("Atlético", "Celta"), ("Barcelona", "Real Madrid"), ("Elche", "Alavés"), ("Levante", "Osasuna"), ("Mallorca", "Villarreal"), ("Rayo", "Girona"), ("Oviedo", "Getafe"), ("R. Sociedad", "Betis"), ("Sevilla", "Espanyol")],
-    "Jornada 36": [("Alavés", "Barcelona"), ("Celta", "Levante"), ("Espanyol", "Athletic"), ("Getafe", "Mallorca"), ("Girona", "R. Sociedad"), ("Osasuna", "Atlético"), ("Betis", "Elche"), ("Real Madrid", "Oviedo"), ("Valencia", "Rayo"), ("Villarreal", "Sevilla")],
-    "Jornada 37": [("Athletic", "Celta"), ("Atlético", "Girona"), ("Barcelona", "Betis"), ("Elche", "Getafe"), ("Levante", "Mallorca"), ("Osasuna", "Espanyol"), ("Rayo", "Villarreal"), ("Oviedo", "Alavés"), ("R. Sociedad", "Valencia"), ("Sevilla", "Real Madrid")],
-    "Jornada 38": [("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"), ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"), ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"), ("Villarreal", "Atlético")]
 }
 
 LOGOS = {eq: f"{LOGOS_DIR}{eq.lower().replace(' ', '').replace('.', '')}.jpeg" for eq in STATS_LALIGA_BASE.keys()}
@@ -91,7 +79,8 @@ def aplicar_color_estilo(valor, tipo_partido):
         if valor == 0.75: return 'background-color: #ffa500; color: black'
         return 'background-color: #2baf2b; color: black'
     if tipo_partido in ["Doble", "Esquizo"]:
-        if valor in [1.0, 1.5]: return 'background-color: #a020f0; color: white' if tipo_partido == "Doble" else 'background-color: #00f2ff; color: black'
+        color = '#a020f0' if tipo_partido == "Doble" else '#00f2ff'
+        if valor in [1.0, 1.5]: return f'background-color: {color}; color: black'
         return 'background-color: #2baf2b; color: black'
     return ''
 
@@ -139,12 +128,13 @@ if not st.session_state.autenticado:
                 if not user_db.empty:
                     st.session_state.autenticado, st.session_state.user, st.session_state.rol = True, u_in, user_db.iloc[0]['Rol']
                     st.rerun()
-                else: st.error("❌ Error")
+                else: st.error("❌ Datos incorrectos")
             else:
                 nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
                 conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
                 st.success("✅ Registrado")
 else:
+    # --- CARGA DE DATOS ---
     df_perfiles = leer_datos("ImagenesPerfil")
     df_r_all = leer_datos("Resultados")
     df_p_all = leer_datos("Predicciones")
@@ -156,8 +146,8 @@ else:
     # Header
     c_h1, c_h2, c_h3 = st.columns([1, 5, 1])
     with c_h1:
-        f_mi = foto_dict.get(st.session_state.user)
-        if f_mi and pd.notna(f_mi) and os.path.exists(str(f_mi)): st.image(str(f_mi), width=75)
+        mi_f = foto_dict.get(st.session_state.user)
+        if mi_f and pd.notna(mi_f) and os.path.exists(str(mi_f)): st.image(str(mi_f), width=75)
         else: st.subheader("👤")
     with c_h2: st.title(f"Hola, {st.session_state.user} 👋")
     with c_h3: 
@@ -187,15 +177,15 @@ else:
                 st.markdown(f"#### {tipo} {'🔒' if bloq else '🔓'}")
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
                 with c1: 
-                    l_img = get_logo(loc)
-                    if l_img: st.image(l_img, width=65)
+                    l_logo = get_logo(loc)
+                    if l_logo: st.image(l_logo, width=65)
                     else: st.markdown("⚽")
                 with c2: pl = st.number_input(f"{loc}", 0, value=dl, key=f"l_{j_global}_{i}", disabled=bloq)
                 with c3: st.markdown("<br>VS", unsafe_allow_html=True)
                 with c4: pv = st.number_input(f"{vis}", 0, value=dv, key=f"v_{j_global}_{i}", disabled=bloq)
-                with c5:
-                    v_img = get_logo(vis)
-                    if v_img: st.image(v_img, width=65)
+                with c5: 
+                    v_logo = get_logo(vis)
+                    if v_logo: st.image(v_logo, width=65)
                     else: st.markdown("⚽")
                 with c6: pub = st.checkbox("Público", value=dp, key=f"pb_{j_global}_{i}", disabled=bloq)
                 preds_env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
@@ -206,7 +196,7 @@ else:
                 st.success("Guardado"); st.rerun()
 
     with tabs[1]: # Otros
-        st.header("🔍 Públicas")
+        st.header("🔍 Predicciones Públicas")
         if not df_p_all.empty:
             p_pub = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI")]
             if p_pub.empty: st.warning("Sin datos públicos.")
@@ -219,11 +209,9 @@ else:
             j_fin = sorted(df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()) if not df_r_all.empty else []
             u_jug = [u for u in df_u_all['Usuario'].unique() if u not in admins]
             hist = []
-            # Base
             for u in u_jug:
                 pb = safe_float(df_base[df_base['Usuario'] == u].iloc[0]['Puntos']) if not df_base.empty and u in df_base['Usuario'].values else 0.0
                 hist.append({"Jornada": "Base", "Usuario": u, "Puntos": pb})
-            # Jornadas
             res_d = df_r_all.set_index(['Jornada', 'Partido']).to_dict('index') if not df_r_all.empty else {}
             for j in j_fin:
                 for u in u_jug:
@@ -262,7 +250,7 @@ else:
         st.header(f"🏆 Detalles J: {j_global}")
         df_rf = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")] if not df_r_all.empty else pd.DataFrame()
         if not df_rf.empty:
-            jugs = [u for u in df_u_all['Usuario'].unique() if u not in admins]
+            jugs = [u for u in df_p_all['Usuario'].unique() if u not in admins]
             c_m = st.columns([2] + [1]*len(jugs))
             c_m[0].write("**Partido**")
             for i, u in enumerate(jugs):
@@ -280,7 +268,7 @@ else:
             st.dataframe(m_pts.style.apply(lambda x: m_sty, axis=None).format("{:.2f}"))
         else: st.warning("Sin datos finalizados.")
 
-    with tabs[4]: # Simulador Pro
+    with tabs[4]: # Simulador Pro (Sin Escudos)
         st.header("🔮 Simulador de LaLiga")
         u_sim = [u for u in df_u_all['Usuario'].unique() if u not in admins] if not df_u_all.empty else []
         if u_sim:
@@ -301,16 +289,15 @@ else:
                 df_sim = pd.DataFrame.from_dict(sim_d, orient='index').reset_index()
                 df_sim.columns = ['Equipo', 'PJ', 'V', 'E', 'D', 'GF', 'GC', 'Pts']
                 df_sim['DG'] = df_sim['GF'] - df_sim['GC']
-                df_sim['Escudo'] = df_sim['Equipo'].apply(get_logo)
                 df_sim = df_sim.sort_values(by=['Pts', 'DG', 'GF'], ascending=False).reset_index(drop=True)
                 df_sim['Pos'] = range(1, 21)
-                st.dataframe(df_sim[['Pos', 'Escudo', 'Equipo', 'PJ', 'V', 'E', 'D', 'GF', 'GC', 'DG', 'Pts']],
-                             column_config={"Escudo": st.column_config.ImageColumn(" ", width="small")},
-                             hide_index=True, use_container_width=True) #
+                # Tabla sin columna 'Escudo' y empezando en 'Pos'
+                st.dataframe(df_sim[['Pos', 'Equipo', 'PJ', 'V', 'E', 'D', 'GF', 'GC', 'DG', 'Pts']],
+                             hide_index=True, use_container_width=True)
 
     with tabs[5]: # Admin
         if st.session_state.rol == "admin":
-            st.header("🛠️ Panel")
+            st.header("🛠️ Panel Control")
             a_tabs = st.tabs(["⭐ Bases", "📸 Fotos", "⚽ Resultados"])
             with a_tabs[0]:
                 upd_b = []
