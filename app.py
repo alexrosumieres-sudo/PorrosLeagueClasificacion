@@ -5,12 +5,20 @@ from datetime import datetime, time
 import os
 import plotly.express as px
 
-# --- 1. CONFIGURACIÓN DE NIVELES (Factor Equipo basado en Clasificación Real) ---
+# --- 1. CONFIGURACIÓN DE NIVELES (Factor Equipo) ---
 NIVEL_EQUIPOS = {
     "Real Madrid": 1, "Barcelona": 1, "Villarreal": 1, "Atlético": 1,
     "Betis": 2, "Espanyol": 2, "Celta": 2, "R. Sociedad": 2, "Athletic": 2,
     "Osasuna": 3, "Getafe": 3, "Girona": 3, "Sevilla": 3, "Alavés": 3, "Valencia": 3, "Elche": 3, "Rayo": 3,
     "Mallorca": 4, "Levante": 4, "Oviedo": 4
+}
+
+# --- PUNTOS REALES LALIGA J24 (Para el Simulador) ---
+PUNTOS_LALIGA_BASE = {
+    "Real Madrid": 60, "Barcelona": 58, "Villarreal": 48, "Atlético": 45,
+    "Betis": 41, "Espanyol": 35, "Celta": 34, "R. Sociedad": 31, "Athletic": 31,
+    "Osasuna": 30, "Getafe": 29, "Girona": 29, "Sevilla": 26, "Alavés": 26,
+    "Valencia": 26, "Elche": 25, "Rayo": 25, "Mallorca": 24, "Levante": 18, "Oviedo": 16
 }
 
 # --- 2. CONFIGURACIÓN DE JORNADAS ---
@@ -40,9 +48,6 @@ LOGOS = {
     "Alavés": "logos/alaves.jpeg", "Espanyol": "logos/espanyol.jpeg", "Betis": "logos/betis.jpeg",
     "Levante": "logos/levante.jpeg", "Oviedo": "logos/oviedo.jpeg"
 }
-
-SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
-CODIGO_INVITACION = "LIGA2026"
 
 # --- 3. FUNCIONES LÓGICAS ---
 
@@ -77,38 +82,26 @@ def aplicar_color_estilo(valor, tipo_partido):
 
 def obtener_perfil_apostador(df_usuario):
     if df_usuario.empty: return "Novato 🐣", "Sin datos aún.", 0.0
-    
     avg_goles = (df_usuario['P_L'] + df_usuario['P_V']).mean()
     dif_promedio = abs(df_usuario['P_L'] - df_usuario['P_V']).mean()
-    
     locuras = 0
     for row in df_usuario.itertuples():
         try:
             eq_l, eq_v = row.Partido.split('-')
-            lvl_l = NIVEL_EQUIPOS.get(eq_l, 3)
-            lvl_v = NIVEL_EQUIPOS.get(eq_v, 3)
+            lvl_l, lvl_v = NIVEL_EQUIPOS.get(eq_l, 3), NIVEL_EQUIPOS.get(eq_v, 3)
             if (lvl_l >= lvl_v + 2 and row.P_L > row.P_V) or (lvl_v >= lvl_l + 2 and row.P_V > row.P_L):
                 locuras += 1
         except: continue
-
     total = len(df_usuario)
     pct_locuras = locuras / total if total > 0 else 0
-    # Cálculo de riesgo para la barra (0.0 a 1.0)
     riesgo = (avg_goles / 5.0) + (pct_locuras * 0.5)
-
-    if pct_locuras > 0.15:
-        return "EL VISIONARIO / ESQUIZO TOTAL 🔮", f"Cree en los milagros. Ha apostado {locuras} veces por el más débil.", riesgo
-    if avg_goles > 3.4:
-        return "BUSCADOR DE PLENOS 🤪", "Para él no existen las defensas, solo el ataque total.", riesgo
-    if avg_goles < 2.1:
-        return "CONSERVADOR / AMARRETE 🛡️", "Fiel al 1-0. No arriesga ni un pelo.", riesgo
-    
-    avg_empates = (df_usuario['P_L'] == df_usuario['P_V']).mean()
-    if avg_empates > 0.35: return "PACIFISTA 🤝", "Su religión es el empate. Cree en repartir puntos.", riesgo
-        
+    if pct_locuras > 0.15: return "EL VISIONARIO / ESQUIZO TOTAL 🔮", f"Confía en los milagros. Ha apostado {locuras} veces por el débil.", riesgo
+    if avg_goles > 3.4: return "BUSCADOR DE PLENOS 🤪", "Para él no existen las defensas, solo el ataque total.", riesgo
+    if avg_goles < 2.1: return "CONSERVADOR / AMARRETE 🛡️", "Fiel al 1-0. No arriesga ni un pelo.", riesgo
+    if (df_usuario['P_L'] == df_usuario['P_V']).mean() > 0.35: return "PACIFISTA 🤝", "Su religión es el empate.", riesgo
     return "ESTRATEGA EQUILIBRADO ⚖️", "Analiza niveles y apuesta con lógica.", riesgo
 
-# --- 4. APP SETUP ---
+# --- 4. CONFIGURACIÓN APP ---
 st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -144,7 +137,7 @@ if not st.session_state.autenticado:
                 conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
                 st.success("✅ Registrado")
 
-# --- CONTENIDO PRINCIPAL ---
+# --- CONTENIDO ---
 else:
     c_h1, c_h2 = st.columns([6, 1])
     c_h1.title(f"Hola, {st.session_state.user} 👋")
@@ -155,15 +148,15 @@ else:
     j_global = st.selectbox("📅 Seleccionar Jornada:", list(JORNADAS.keys()), key="global_j")
     st.divider()
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["✍️ Mis Apuestas", "👀 Ver Otras", "📊 Ranking", "🏆 Detalles", "⚙️ Admin"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏆 Detalles", "🔮 Simulador", "⚙️ Admin"])
 
     df_r_all = leer_datos("Resultados")
     df_p_all = leer_datos("Predicciones")
     df_u_all = leer_datos("Usuarios")
     df_base = leer_datos("PuntosBase")
 
-    with tab1:
-        if st.session_state.rol == "admin": st.info("💡 Modo Administrador.")
+    with tab1: # Mis Apuestas
+        if st.session_state.rol == "admin": st.info("💡 Modo Admin activo.")
         else:
             mis_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)] if not df_p_all.empty else pd.DataFrame()
             df_r_j = df_r_all[df_r_all['Jornada'] == j_global] if not df_r_all.empty else pd.DataFrame()
@@ -200,7 +193,15 @@ else:
                 conn.update(worksheet="Predicciones", data=pd.concat([old_p, pd.DataFrame(preds_env)], ignore_index=True))
                 st.success("Guardado"); st.rerun()
 
-    with tab3:
+    with tab2: # Ver Otras
+        st.header("🔍 Predicciones Públicas")
+        if not df_p_all.empty:
+            p_pub = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI")]
+            for u in p_pub['Usuario'].unique():
+                with st.expander(f"Apuestas de {u}"):
+                    st.table(p_pub[p_pub['Usuario'] == u][['Partido', 'P_L', 'P_V']])
+
+    with tab3: # Clasificación
         st.header("📊 Clasificación y Evolución")
         admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()
         if not df_r_all.empty and not df_p_all.empty:
@@ -248,12 +249,9 @@ else:
                 df_u_perfil = df_p_all[df_p_all['Usuario'] == u]
                 nom_p, desc_p, riesgo = obtener_perfil_apostador(df_u_perfil)
                 with cols[idx % 3]:
-                    st.markdown(f"**{u}**")
-                    st.caption(nom_p)
-                    st.progress(min(riesgo, 1.0))
-                    st.info(desc_p)
+                    st.markdown(f"**{u}**"); st.caption(nom_p); st.progress(min(riesgo, 1.0)); st.info(desc_p)
 
-    with tab4:
+    with tab4: # Detalles
         st.header(f"🏆 Detalle Puntos: {j_global}")
         if not df_p_all.empty and not df_r_all.empty:
             admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()
@@ -270,12 +268,30 @@ else:
                         m_pts.at[p, u], m_sty.at[p, u] = pts_v, aplicar_color_estilo(pts_v, inf['Tipo'])
                 st.dataframe(m_pts.style.apply(lambda x: m_sty, axis=None).format("{:.2f}"))
 
-    with tab5:
+    with tab5: # Simulador
+        st.header("🔮 Simulador de Clasificación")
+        st.write("¿Cómo iría LaLiga si las predicciones de alguien fueran los resultados reales?")
+        usr_sim = st.selectbox("Elige a un amigo:", [u for u in df_p_all['Usuario'].unique() if u not in admins])
+        if st.button("Calcular Tabla"):
+            clasif = PUNTOS_LALIGA_BASE.copy()
+            u_preds = df_p_all[df_p_all['Usuario'] == usr_sim]
+            for p in u_preds.itertuples():
+                try:
+                    t_l, t_v = p.Partido.split('-')
+                    if p.P_L > p.P_V: clasif[t_l] += 3
+                    elif p.P_V > p.P_L: clasif[t_v] += 3
+                    else: clasif[t_l] += 1; clasif[t_v] += 1
+                except: continue
+            df_sim = pd.DataFrame(list(clasif.items()), columns=['Equipo', 'Puntos']).sort_values('Puntos', ascending=False)
+            df_sim['Pos'] = range(1, 21)
+            st.table(df_sim[['Pos', 'Equipo', 'Puntos']])
+
+    with tab6: # Admin
         if st.session_state.rol == "admin":
             st.header("🛠️ Panel Admin")
             with st.expander("⭐ Puntos Iniciales"):
                 base_upd = []
-                for u in [usr for usr in df_u_all['Usuario'].unique() if usr not in df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()]:
+                for u in [usr for usr in df_u_all['Usuario'].unique() if usr not in admins]:
                     pts_prev = 0.0
                     if not df_base.empty and 'Puntos' in df_base.columns:
                         m_b = df_base[df_base['Usuario'] == u]
@@ -284,9 +300,7 @@ else:
                             except: pts_prev = 0.0
                     val = st.number_input(f"Base {u}", value=pts_prev, key=f"b_{u}")
                     base_upd.append({"Usuario": u, "Puntos": val})
-                if st.button("Guardar Bases"): 
-                    conn.update(worksheet="PuntosBase", data=pd.DataFrame(base_upd))
-                    st.rerun()
+                if st.button("Guardar Bases"): conn.update(worksheet="PuntosBase", data=pd.DataFrame(base_upd)); st.rerun()
 
             res_env = []
             for i, (l, v) in enumerate(JORNADAS[j_global]):
@@ -298,7 +312,7 @@ else:
                 fin = c6.checkbox("Fin", key=f"fi_{j_global}_{i}")
                 dt = datetime.combine(fec, hor).strftime("%Y-%m-%d %H:%M:%S")
                 res_env.append({"Jornada": j_global, "Partido": f"{l}-{v}", "Tipo": tipo, "R_L": rl, "R_V": rv, "Hora_Inicio": dt, "Finalizado": "SI" if fin else "NO"})
-            if st.button("Actualizar Resultados"):
+            if st.button("Actualizar"):
                 old = df_r_all[df_r_all['Jornada'] != j_global] if not df_r_all.empty else pd.DataFrame()
                 conn.update(worksheet="Resultados", data=pd.concat([old, pd.DataFrame(res_env)], ignore_index=True))
                 st.success("¡Resultados actualizados!"); st.rerun()
