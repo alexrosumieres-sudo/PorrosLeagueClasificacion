@@ -72,7 +72,7 @@ FRASES_PUESTOS = {
     "plata": [
         ("Ganar, ganar, ganar y volver a ganar.", "Luis Aragonés"),
         ("Fútbol es fútbol.", "Vujadin Boškov"),
-        ("Partido a partido.", "Cholo Simeone"),
+        ("Predicción a predicción.", "Cholo Simeone"),
         ("Ni antes éramos tan buenos, ni ahora tan malos.", "Cliché deportivo"),
         ("Las estadísticas están para romperse.", "Leyenda del fútbol")
     ],
@@ -354,3 +354,4 @@ else:
                 if st.button("Actualizar"):
                     old = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([old, pd.DataFrame(r_e)], ignore_index=True)); st.rerun()
+
