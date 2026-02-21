@@ -192,7 +192,7 @@ FRASES_POR_PUESTO = {
         ("Eu farei 10x se for preciso. Eles não estão preparados", "Vinicius Jr"),
         ("Ni ahora somos el Leverkusen ni antes éramos la última mierda que cagó Pilatos", "Don Manolo Preciado"),
         ("Fallaste el 100% de los tiros que no intentas” -Wayne Gretzky", "Michael Scott"),
-        ("El gol es como las chicas en la discoteca, cuanto más te acercas, ellas más se alejan", "Miguel Angel Ramirez "MAR"")
+        ("El gol es como las chicas en la discoteca, cuanto más te acercas, ellas más se alejan", "Miguel Angel Ramirez (MAR)")
     ]
 }
 
@@ -546,6 +546,7 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
 
 
