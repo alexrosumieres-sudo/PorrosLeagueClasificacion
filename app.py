@@ -121,13 +121,23 @@ def get_logo(equipo):
     return None
 
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
-    p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
-    if p_l == r_l and p_v == r_v: return p_exacto
-    signo_p = (p_l > p_v) - (p_l < p_v)
-    signo_r = (r_l > r_v) - (r_l < r_v)
-    if signo_p == signo_r:
-        return p_diff if (p_l - p_v) == (r_l - r_v) else p_ganador
-    return 0.0
+    try:
+        # Esto convierte cualquier texto o vacío en número real. 
+        # Si falla (porque hay texto de verdad), devuelve 0 puntos y no rompe la app.
+        p_l, p_v, r_l, r_v = float(p_l), float(p_v), float(r_l), float(r_v)
+        
+        p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
+        
+        if p_l == r_l and p_v == r_v: return p_exacto
+        
+        signo_p = (p_l > p_v) - (p_l < p_v)
+        signo_r = (r_l > r_v) - (r_l < r_v)
+        
+        if signo_p == signo_r:
+            return p_diff if (p_l - p_v) == (r_l - r_v) else p_ganador
+        return 0.0
+    except:
+        return 0.0
 
 def obtener_perfil_apostador(df_u):
     if df_u is None or df_u.empty: return "Novato 🐣", "Sin datos.", 0.0
@@ -440,6 +450,7 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
 
 
