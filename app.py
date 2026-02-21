@@ -420,62 +420,58 @@ else:
         pts_list = []
         
         for u in u_jugadores:
-            # 1. Puntos base (solo si es ranking General)
-            pb = safe_float(df_base[df_base['Usuario']==u].iloc[0]['Puntos']) if tipo_r == "General" else 0.0
+            # Puntos base iniciales
+            p_base = safe_float(df_base[df_base['Usuario']==u].iloc[0]['Puntos']) if tipo_r == "General" else 0.0
             
-            # 2. Buscamos sus apuestas para la jornada seleccionada
+            # Filtramos las predicciones de este usuario para esta jornada
             u_p = df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)]
             
-            p_ac = pb
+            p_acumulado = p_base
 
-            # --- LA REGLA DEL VAGO ---
-            # Si el DataFrame de apuestas está vacío, es que no ha puesto NADA. 
-            # Ni le calculamos los puntos para que no se lleve un 0.5 de chiripa si hay empates.
-            if u_p.empty:
-                p_ac += 0.0 
-            else:
-                # Si tiene apuestas, recorremos cada partido finalizado
+            # LÓGICA DE VALIDACIÓN:
+            # Si u_p está vacío, el usuario no ha guardado nada. No entra al bucle de puntos.
+            if not u_p.empty:
                 for r in u_p.itertuples():
-                    m_k = df_r_all[(df_r_all['Jornada']==r.Jornada) & 
-                                   (df_r_all['Partido']==r.Partido) & 
-                                   (df_r_all['Finalizado']=="SI")]
+                    # Buscamos si el partido de la predicción ya está finalizado
+                    m_finalizado = df_r_all[(df_r_all['Jornada']==r.Jornada) & 
+                                           (df_r_all['Partido']==r.Partido) & 
+                                           (df_r_all['Finalizado']=="SI")]
                     
-                    if not m_k.empty:
-                        # Nuestra función calcular_puntos ya es "anti-errores" (try/except)
-                        p_ac += calcular_puntos(r.P_L, r.P_V, m_k.iloc[0]['R_L'], m_k.iloc[0]['R_V'], m_k.iloc[0]['Tipo'])
+                    if not m_finalizado.empty:
+                        # Solo sumamos si existe la predicción real
+                        p_acumulado += calcular_puntos(
+                            r.P_L, r.P_V, 
+                            m_finalizado.iloc[0]['R_L'], 
+                            m_finalizado.iloc[0]['R_V'], 
+                            m_finalizado.iloc[0]['Tipo']
+                        )
             
-            pts_list.append({"Usuario": u, "Puntos": p_ac})
+            pts_list.append({"Usuario": u, "Puntos": p_acumulado})
         
-        # 3. Generar el DataFrame de Ranking y asignar posiciones
+        # Ordenar ranking
         df_rank = pd.DataFrame(pts_list).sort_values("Puntos", ascending=False)
         df_rank['Posicion'] = range(1, len(df_rank)+1)
         
-        # 4. Mostrar el Ranking con frases personalizadas
+        # Renderizado de la tabla
         for _, row in df_rank.iterrows():
             pos = row['Posicion']
-            # Selección de frase según el puesto (del 1 al 7)
             key_pos = pos if pos in FRASES_POR_PUESTO else 7
             f_t = random.choice(FRASES_POR_PUESTO[key_pos])
             
-            # Cálculo de logros y perfil
             l_u = calcular_logros_u(row['Usuario'], df_p_all, df_r_all, j_global, df_rank)
             icons = "".join([LOGROS_DATA[lid]['icon'] for lid in l_u])
             n, d, r_v = obtener_perfil_apostador(df_p_all[df_p_all['Usuario']==row['Usuario']])
             
-            # Diseño de la tarjeta de usuario
             c1, c2, c3, c4 = st.columns([0.5, 1.2, 4, 1.5])
             with c1: 
                 st.markdown(f"### #{pos}")
             with c2:
                 fp = foto_dict.get(row['Usuario'])
-                if fp and os.path.exists(str(fp)): 
-                    st.image(fp, width=80)
-                else: 
-                    st.subheader("👤")
+                if fp and os.path.exists(str(fp)): st.image(fp, width=80)
+                else: st.subheader("👤")
             with c3:
-                # Troleo especial si el usuario tiene 0 puntos en la jornada
-                vago_msg = " (Vago detectado 🥱)" if row['Puntos'] == pb and not tipo_r == "General" else ""
-                st.markdown(f"**{row['Usuario']}**{vago_msg} {icons}")
+                # Nombre limpio, sin etiquetas de texto extra
+                st.markdown(f"**{row['Usuario']}** {icons}")
                 st.info(f"_{f_t[0]}_ \n\n **— {f_t[1]}**")
                 st.progress(min(r_v, 1.0))
                 st.caption(f"{n} | {d}")
@@ -581,6 +577,7 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
 
 
