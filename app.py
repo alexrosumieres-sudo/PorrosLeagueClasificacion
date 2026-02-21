@@ -73,30 +73,52 @@ LOGOS = {
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
 
 # --- FRASES MÍTICAS ---
-FRASES_PUESTOS = {
-    "oro": [
-        ("¿Por qué? Porque soy rico, guapo y un gran jugador. Me tienen envidia.", "Cristiano Ronaldo"),
-        ("I am the Special One.", "José Mourinho"),
-        ("Vuestra envidia me hace fuerte, vuestro odio me hace imparable.", "Cristiano Ronaldo"),
-        ("No soy el mejor del mundo, soy el mejor de la historia.", "Cristiano Ronaldo"),
-        ("A mí me gusta sentirme presionado, si no, no hay gracia.", "Zlatan Ibrahimovic")
-    ],
-    "plata": [
+FRASES_POR_PUESTO = {
+    1: [
         ("Ganar, ganar, ganar y volver a ganar.", "Luis Aragonés"),
-        ("Fútbol es fútbol.", "Vujadin Boškov"),
-        ("Partido a partido.", "Cholo Simeone"),
-        ("Ni antes éramos tan buenos, ni ahora tan malos.", "Cliché deportivo")
+        ("Yo soy el mejor.", "Cristiano Ronaldo"),
+        ("El éxito no es un accidente.", "Pelé"),
+        ("Cuando eres el mejor, no necesitas decirlo.", "Zlatan Ibrahimović"),
+        ("Cuanto más difícil es la victoria, mayor es la felicidad.", "Pelé"),
+        ("I am the Special One.", "José Mourinho")
     ],
-    "bronce": [
-        ("¿Por qué? ¿Por qué? ¿Por qué?", "José Mourinho"),
-        ("No me pises, que llevo chanclas.", "Luis Aragonés"),
-        ("¡A qué estamos jugando! ¡A las canicas no!", "Luis Aragonés"),
-        ("Me cortaron las piernas.", "Diego Maradona")
+    2: [
+        ("Perder una final es lo peor que hay.", "Lionel Messi"),
+        ("Estuvimos cerca.", "Sergio Ramos"),
+        ("Prefiero perder un partido que perder mi pasión.", "Zinedine Zidane"),
+        ("El fútbol siempre da otra oportunidad.", "Diego Simeone"),
+        ("A lo mejor me tienen envidia porque soy muy bueno.", "Cristiano Ronaldo")
     ],
-    "barro": [
-        ("Se queda... (pero en el pozo de la tabla).", "Gerard Piqué"),
-        ("Estamos en la UVI, pero todavía estamos vivos.", "Javier Clemente"),
-        ("He fallado más de 9.000 tiros en mi carrera... y tú hoy todos.", "Michael Jordan")
+    3: [
+        ("Paso a paso.", "Diego Simeone"),
+        ("El fútbol es un juego de errores.", "Johan Cruyff"),
+        ("Siempre positivo, nunca negativo.", "Louis van Gaal"),
+        ("Disfruten lo votado.", "Diego Simeone")
+    ],
+    4: [
+        ("El fútbol es así.", "Vujadin Boškov"),
+        ("Hay que seguir trabajando.", "Carlo Ancelotti"),
+        ("Esto es muy largo.", "Pep Guardiola"),
+        ("Estoy muy feliz.", "Cristiano Ronaldo")
+    ],
+    5: [
+        ("Un partido dura 90 minutos.", "Sepp Herberger"),
+        ("Sin sufrimiento no hay gloria.", "José Mourinho"),
+        ("El fútbol es estado de ánimo.", "Jorge Valdano"),
+        ("¿Por qué?", "José Mourinho")
+    ],
+    6: [
+        ("Prefiero no hablar.", "José Mourinho"),
+        ("Hay que levantarse.", "Cristiano Ronaldo"),
+        ("Esto es fútbol.", "Pep Guardiola"),
+        ("Si no puedes ganar, asegúrate de no perder.", "Johan Cruyff")
+    ],
+    7: [
+        ("Salimos como nunca, perdimos como siempre.", "Alfredo Di Stéfano"),
+        ("La pelota no se mancha.", "Diego Maradona"),
+        ("El fútbol es fútbol.", "Vujadin Boškov"),
+        ("A veces se gana, a veces se aprende.", "Zinedine Zidane"),
+        ("Estamos en la UVI, pero todavía estamos vivos.", "Javier Clemente")
     ]
 }
 
@@ -332,10 +354,10 @@ else:
         df_rank = pd.DataFrame(pts_list).sort_values("Puntos", ascending=False)
         df_rank['Posicion'] = range(1, len(df_rank)+1)
         for _, row in df_rank.iterrows():
-            if row['Posicion'] <= 2: f_t = random.choice(FRASES_PUESTOS['oro'])
-            elif row['Posicion'] <= 4: f_t = random.choice(FRASES_PUESTOS['plata'])
-            elif row['Posicion'] <= 6: f_t = random.choice(FRASES_PUESTOS['bronce'])
-            else: f_t = random.choice(FRASES_PUESTOS['barro'])
+            pos = row['Posicion']
+            # Selección inteligente: si hay más de 7 personas, el resto recibe frases del 7º
+            key_pos = pos if pos in FRASES_POR_PUESTO else 7
+            f_t = random.choice(FRASES_POR_PUESTO[key_pos])
             l_u = calcular_logros_u(row['Usuario'], df_p_all, df_r_all, j_global, df_rank)
             icons = "".join([LOGROS_DATA[lid]['icon'] for lid in l_u])
             n, d, r_val = obtener_perfil_apostador(df_p_all[df_p_all['Usuario']==row['Usuario']])
@@ -450,6 +472,7 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
 
 
