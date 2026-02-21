@@ -80,45 +80,119 @@ FRASES_POR_PUESTO = {
         ("El éxito no es un accidente.", "Pelé"),
         ("Cuando eres el mejor, no necesitas decirlo.", "Zlatan Ibrahimović"),
         ("Cuanto más difícil es la victoria, mayor es la felicidad.", "Pelé"),
-        ("I am the Special One.", "José Mourinho")
+        ("I am the Special One.", "José Mourinho"),
+        ("Yo no busco los récords, los récords me buscan a mí.", "Cristiano Ronaldo"),
+        ("Si hubiera querido un trabajo fácil, me habría quedado en el Oporto.", "José Mourinho"),
+        ("Zlatan no hace audiciones.", "Zlatan Ibrahimović"),
+        ("Vuestra envidia es mi motor.", "Cristiano Ronaldo"),
+        ("¿Presión? Presión es la que tienen los padres que no pueden dar de comer a sus hijos. Esto es fútbol.", "José Mourinho"),
+        ("No digo que sea el mejor entrenador del mundo, pero no creo que haya nadie mejor que yo.", "José Mourinho"),
+        ("Vuestro odio me hace imparable.", "Cristiano Ronaldo"),
+        ("Ganar no es lo más importante, es lo único. Ser segundo no vale.", "Carlos Bilardo"),
+        ("El fútbol es un deporte simple en el que a algunos les gusta hablar… a mí me encanta ganar.", "Fabio Capello"),
+        ("No me gusta perder a nada, siempre trato de ganar.", "Lionel Messi"),
+        ("Las finales no se juegan, se ganan.", "Luis Aragonés"),
+        ("Moriré con 90 años metiendo la polla en la boca de una puta y siendo feliz", "Lagarto Putero")
     ],
     2: [
         ("Perder una final es lo peor que hay.", "Lionel Messi"),
         ("Estuvimos cerca.", "Sergio Ramos"),
         ("Prefiero perder un partido que perder mi pasión.", "Zinedine Zidane"),
         ("El fútbol siempre da otra oportunidad.", "Diego Simeone"),
-        ("A lo mejor me tienen envidia porque soy muy bueno.", "Cristiano Ronaldo")
+        ("A lo mejor me tienen envidia porque soy muy bueno.", "Cristiano Ronaldo"),
+        ("Ser segundo es ser el primero de los perdedores.", "Ayrton Senna"),
+        ("El VAR nos tiene manía.", ""),
+        ("Merecimos ganar, pero el fútbol no es justicia, es gol.", "Unai Emery"),
+        ("Jugamos como nunca, pero nos faltó la suerte del campeón.", "Xavi Hernández"),
+        ("Nos vamos con la cara alta, pero con las manos vacías.", "Sergio Ramos"),
+        ("Si perdemos seremos los mejores, si ganamos seremos eternos.", "Pep Guardiola"),
+        ("Perdimos porque no ganamos.", "Ronaldo Nazário"),
+        ("Reconocer la derrota es la primera etapa de la victoria.", "Vittorio Pozzo"),
+        ("Las victorias son de todos y las derrotas solo de uno: yo.", "José Mourinho"),
+        ("El éxito sin honor es un fracaso.", "Vicente del Bosque"),
+        ("Prefiero perder un partido por nueve goles que nueve partidos por un gol.", "Vujadin Boškov")
     ],
     3: [
-        ("Paso a paso.", "Diego Simeone"),
+        ("Predicción a predicción.", "Diego Simeone"),
         ("El fútbol es un juego de errores.", "Johan Cruyff"),
         ("Siempre positivo, nunca negativo.", "Louis van Gaal"),
-        ("Disfruten lo votado.", "Diego Simeone")
+        ("Disfruten lo votado.", "Diego Simeone"),
+        ("El fútbol siempre es el mañana.", "Diego Simeone"),
+        ("No ganan siempre los buenos, ganan los que luchan.", "Diego Simeone"),
+        ("Jugar al fútbol es muy sencillo, pero jugar un fútbol sencillo es lo más difícil que hay.", "Johan Cruyff"),
+        ("El fútbol es lo más importante de lo menos importante.", "Jorge Valdano"),
+        ("El secreto de un buen equipo está en el orden.", "Pep Guardiola"),
+        ("Ningún jugador es tan bueno como todos juntos.", "Alfredo Di Stéfano")
     ],
     4: [
         ("El fútbol es así.", "Vujadin Boškov"),
         ("Hay que seguir trabajando.", "Carlo Ancelotti"),
         ("Esto es muy largo.", "Pep Guardiola"),
-        ("Estoy muy feliz.", "Cristiano Ronaldo")
+        ("Estoy muy feliz.", "Cristiano Ronaldo"),
+        ("Mi mayor logro fue quedar cuarto.", "Arsène Wenger"),
+        ("Firmaba este puesto al principio de la liga.", ""),
+        ("Puntuar fuera de casa siempre es bueno.", "Entrenador amarrategui"),
+        ("Ni frío ni calor.", "Anónimo"),
+        ("Perdonaré que no acierten, pero nunca que no se esfuercen.", "Pep Guardiola"),
+        ("Lo que te hace crecer es la derrota.", "Pep Guardiola"),
+        ("El talento depende de la inspiración, pero el esfuerzo depende de cada uno.", "Pep Guardiola"),
+        ("Hay que ganar con un fútbol espectacular.", "Carlo Ancelotti"),
+        ("Hay que tener autocrítica para seguir ganando.", "Marcelo Bielsa"),
+        ("Valorad lo que tenéis, nunca sabes cuándo llega tu momento.", "Tito Vilanova")
     ],
     5: [
         ("Un partido dura 90 minutos.", "Sepp Herberger"),
         ("Sin sufrimiento no hay gloria.", "José Mourinho"),
         ("El fútbol es estado de ánimo.", "Jorge Valdano"),
-        ("¿Por qué?", "José Mourinho")
+        ("¿Por qué?", "José Mourinho"),
+        ("Felicidades por vuestro título de posesión.", "José Mourinho"),
+        ("A este paso, no vamos ni a la Intertoto.", ""),
+        ("Este equipo tiene menos gol que el coche de los Picapiedra.", "Manolo Preciado"),
+        ("Ni fu, ni fa.", "Luis Aragonés"),
+        ("En el fútbol, como en la vida, hay que aprender de las derrotas.", "Iván Zamorano"),
+        ("El fútbol no perdona. Hay que ser el mejor todos los días.", "Luís Figo"),
+        ("Lo que te hace crecer es la derrota, el error.", "Pep Guardiola"),
+        ("Si no tienes suerte y gente que te ayude, nunca llegarás a ser el mejor.", "Zinedine Zidane"),
+        ("El fútbol es así, igual que la vida, te da sorpresas.", "Luis Enrique"),
+        ("Si perdemos seguiremos siendo el mejor equipo del mundo.", "Pep Guardiola")
     ],
     6: [
         ("Prefiero no hablar.", "José Mourinho"),
         ("Hay que levantarse.", "Cristiano Ronaldo"),
         ("Esto es fútbol.", "Pep Guardiola"),
-        ("Si no puedes ganar, asegúrate de no perder.", "Johan Cruyff")
+        ("Es una situación de mierda.", "Joaquín"),
+        ("A este equipo le falta alma.", "Guti"),
+        ("Estamos tocando fondo.", "Lionel Messi"),
+        ("Nos han faltado 11 jugadores y el entrenador.", "{usuario}"),
+        ("Si no puedes ganar, asegúrate de no perder... y ni eso hemos hecho.", "Johan Cruyff"),
+        ("Hay quien ríe después de una victoria, para mí no hay tiempo para festejar los éxitos.", "José Mourinho"),
+        ("El entrenador tiene que pensar en todo.", "Diego Simeone"),
+        ("Hay que levantarse tras no haber hecho bien las cosas y esforzarse para hacerlo mejor.", "Pep Guardiola"),
+        ("El equipo es como un ejército, hay que dejarse la vida para ganar.", "Louis van Gaal"),
+        ("Si tú tienes el balón, el rival no la tiene.", "Johan Cruyff"),
+        ("El día que no disfrute en el campo, voy a dejar el fútbol.", "Lionel Messi")
     ],
     7: [
         ("Salimos como nunca, perdimos como siempre.", "Alfredo Di Stéfano"),
         ("La pelota no se mancha.", "Diego Maradona"),
         ("El fútbol es fútbol.", "Vujadin Boškov"),
         ("A veces se gana, a veces se aprende.", "Zinedine Zidane"),
-        ("Estamos en la UVI, pero todavía estamos vivos.", "Javier Clemente")
+        ("Estamos en la UVI, pero todavía estamos vivos.", "Javier Clemente"),
+        ("¡Poned a los juveniles!", "Grito de la grada"),
+        ("He fallado más de 9000 tiros... y hoy he sumado uno más.", "Michael Jordan"),
+        ("Nuestra defensa tiene más agujeros que un queso suizo.", "{usuario}"),
+        ("¡Vete ya! ¡Vete ya!", "La afición a {usuario}"),
+        ("El fútbol es un deporte que inventaron los ingleses, juegan 11 contra 11 y siempre pierdo yo.", "Gary Lineker"),
+        ("El fútbol es así, igual que la vida… si solo ganaran los mejores, esto sería más aburrido que bailar con tu hermana.", "Luis Enrique"),
+        ("El fútbol es lo más importante de lo menos importante.", "Jorge Valdano"),
+        ("Si perdemos seremos los mejores, si ganamos seremos eternos.", "Pep Guardiola"),
+        ("Estoy arrepentido del 99% de todo lo que hice en mi vida, pero el 1% que es el fútbol salva el resto.", "Diego Maradona"),
+        ("Ser segundo es ser el primero de los últimos.", "Alfredo Di Stéfano"),
+        ("El asunto más difícil es encontrar algo para reemplazar al fútbol, porque no hay nada.", "Kevin Keegan"),
+        ("Eu farei 10x se for preciso. Eles não estão preparados", "Vinicius Jr"),
+        (""Ni ahora somos el Leverkusen ni antes éramos la última mierda que cagó Pilatos", "Don Manolo Preciado"),
+        ("Fallaste el 100% de los tiros que no intentas” -Wayne Gretzky", "Michael Scott"),
+        ("El gol es como las chicas en la discoteca, cuanto más te acercas, ellas más se alejan", "Miguel Angel Ramirez "MAR"")
     ]
 }
 
@@ -472,6 +546,7 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
 
 
