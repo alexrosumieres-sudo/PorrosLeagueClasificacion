@@ -122,7 +122,8 @@ FRASES_POR_PUESTO = {
         ("Jugar al fútbol es muy sencillo, pero jugar un fútbol sencillo es lo más difícil que hay.", "Johan Cruyff"),
         ("El fútbol es lo más importante de lo menos importante.", "Jorge Valdano"),
         ("El secreto de un buen equipo está en el orden.", "Pep Guardiola"),
-        ("Ningún jugador es tan bueno como todos juntos.", "Alfredo Di Stéfano")
+        ("Ningún jugador es tan bueno como todos juntos.", "Alfredo Di Stéfano"),
+        ("Ni ahora somos el Leverkusen ni antes éramos la última mierda que cagó Pilatos", "Don Manolo Preciado")
     ],
     4: [
         ("El fútbol es así.", "Vujadin Boškov"),
@@ -138,7 +139,8 @@ FRASES_POR_PUESTO = {
         ("El talento depende de la inspiración, pero el esfuerzo depende de cada uno.", "Pep Guardiola"),
         ("Hay que ganar con un fútbol espectacular.", "Carlo Ancelotti"),
         ("Hay que tener autocrítica para seguir ganando.", "Marcelo Bielsa"),
-        ("Valorad lo que tenéis, nunca sabes cuándo llega tu momento.", "Tito Vilanova")
+        ("Valorad lo que tenéis, nunca sabes cuándo llega tu momento.", "Tito Vilanova"),
+        ("Ni ahora somos el Leverkusen ni antes éramos la última mierda que cagó Pilatos", "Don Manolo Preciado")
     ],
     5: [
         ("Un partido dura 90 minutos.", "Sepp Herberger"),
@@ -190,7 +192,6 @@ FRASES_POR_PUESTO = {
         ("Ser segundo es ser el primero de los últimos.", "Alfredo Di Stéfano"),
         ("El asunto más difícil es encontrar algo para reemplazar al fútbol, porque no hay nada.", "Kevin Keegan"),
         ("Eu farei 10x se for preciso. Eles não estão preparados", "Vinicius Jr"),
-        ("Ni ahora somos el Leverkusen ni antes éramos la última mierda que cagó Pilatos", "Don Manolo Preciado"),
         ("Fallaste el 100% de los tiros que no intentas” -Wayne Gretzky", "Michael Scott"),
         ("El gol es como las chicas en la discoteca, cuanto más te acercas, ellas más se alejan", "Miguel Angel Ramirez (MAR)")
     ]
@@ -546,6 +547,7 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
 
 
