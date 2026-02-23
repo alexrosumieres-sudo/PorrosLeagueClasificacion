@@ -289,7 +289,7 @@ else:
                 for r in u_p_h.itertuples():
                     m = df_r_all[(df_r_all['Jornada']==j_global)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
                     if not m.empty: pts_h += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{pts_h:.2f}</span></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Jornada</span><span class="kpi-value" style="color:#007bff;">{pts_h:.2f}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
@@ -424,4 +424,5 @@ else:
             if st.button("Actualizar"):
                 otros = df_r_all[df_r_all['Jornada'] != j_global]
                 conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)); st.cache_data.clear(); st.rerun()
+
 
