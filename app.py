@@ -241,30 +241,58 @@ else:
     # --- CÁLCULO DE DASHBOARD HERO (LÍDER VS USUARIO) ---
     stats_hero = []
     for u in u_jugadores:
-        pb_row = df_base[df_base['Usuario']==u]
+        # Puntos base (con seguridad para evitar IndexErrors)
+        pb_row = df_base[df_base['Usuario'] == u]
         p_base = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
+        
+        # Puntos acumulados históricos
         u_p_hist = df_p_all[df_p_all['Usuario'] == u]
         p_acum = p_base
         for r in u_p_hist.itertuples():
-            m = df_r_all[(df_r_all['Jornada']==r.Jornada)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
-            if not m.empty: p_acum += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+            m = df_r_all[(df_r_all['Jornada'] == r.Jornada) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
+            if not m.empty:
+                p_acum += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+        
         stats_hero.append({"Usuario": u, "Puntos": p_acum})
     
     df_hero = pd.DataFrame(stats_hero).sort_values("Puntos", ascending=False).reset_index(drop=True)
-    df_hero['Posicion'] = range(1, len(df_hero)+1)
-    lider = df_hero.iloc[0]
-    mi_pos = df_hero[df_hero['Usuario'] == st.session_state.user]['Posicion'].values[0]
-    prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
+    df_hero['Posicion'] = range(1, len(df_hero) + 1)
+    
+    # 1. Identificar al Líder
+    if not df_hero.empty:
+        lider = df_hero.iloc[0]
+    else:
+        lider = {"Usuario": "Nadie", "Puntos": 0.0}
 
-    st.title(f"Hola, {st.session_state.user} 👋")
+    # 2. Identificar el Puesto (Manejo de Admin vs Jugador)
+    es_admin = st.session_state.rol == "admin"
+    
+    if es_admin:
+        mi_pos = "ADMIN"
+        mi_puntos_hoy = 0.00 # El admin normalmente no puntúa
+    else:
+        # Si es jugador, buscamos su puesto real
+        mi_pos_query = df_hero[df_hero['Usuario'] == st.session_state.user]['Posicion']
+        mi_pos = f"#{int(mi_pos_query.values[0])}" if not mi_pos_query.empty else "-"
+        
+        # Puntos del jugador en la jornada seleccionada
+        u_p_hoy = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
+        mi_puntos_hoy = 0.0
+        for r in u_p_hoy.itertuples():
+            m = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
+            if not m.empty:
+                mi_puntos_hoy += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+
+    # 3. Tiempo para el cierre
+    prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
 
     # --- RENDER DASHBOARD HERO ---
     with st.container():
         st.markdown('<div class="hero-bg">', unsafe_allow_html=True)
         col_lider, col_sep, col_datos = st.columns([1.5, 0.2, 3.5])
         
-        with col_lider: # SECCIÓN DEL LÍDER
-            st.markdown('<span class="section-tag">LÍDER ACTUAL</span>', unsafe_allow_html=True)
+        with col_lider: # FOTO Y NOMBRE DEL LÍDER
+            st.markdown('<span class="section-tag">LÍDER DE LA LIGA 🏆</span>', unsafe_allow_html=True)
             st.markdown('<div style="position: relative; text-align: center;">', unsafe_allow_html=True)
             st.markdown('<span class="crown">👑</span>', unsafe_allow_html=True)
             f_l = foto_dict.get(lider['Usuario'])
@@ -273,23 +301,20 @@ else:
             st.markdown(f"**{lider['Usuario']}**<br><span style='color:#daa520; font-weight:bold;'>{lider['Puntos']:.2f} Pts</span>", unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        with col_datos: # SECCIÓN TUS DATOS
-            st.markdown('<span class="section-tag">TUS ESTADÍSTICAS</span>', unsafe_allow_html=True)
+        with col_datos: # ESTADÍSTICAS DEL QUE ESTÁ LOGUEADO
+            tag_usuario = "TU PANEL DE CONTROL" if es_admin else "TUS ESTADÍSTICAS"
+            st.markdown(f'<span class="section-tag">{tag_usuario}</span>', unsafe_allow_html=True)
             c2, c3, c4 = st.columns(3)
-            with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">#{mi_pos}</span></div>', unsafe_allow_html=True)
+            with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
             with c3:
                 if not prox_p.empty:
                     diff = datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
                     h = max(0, int(diff.total_seconds() // 3600))
-                    st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre del siguiente partido</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
             with c4:
-                pts_h = 0.0
-                u_p_h = df_p_all[(df_p_all['Usuario']==st.session_state.user) & (df_p_all['Jornada']==j_global)]
-                for r in u_p_h.itertuples():
-                    m = df_r_all[(df_r_all['Jornada']==j_global)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
-                    if not m.empty: pts_h += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Jornada</span><span class="kpi-value" style="color:#007bff;">{pts_h:.2f}</span></div>', unsafe_allow_html=True)
+                color_pts = "#6c757d" if es_admin else "#007bff"
+                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:{color_pts};">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
@@ -424,5 +449,6 @@ else:
             if st.button("Actualizar"):
                 otros = df_r_all[df_r_all['Jornada'] != j_global]
                 conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)); st.cache_data.clear(); st.rerun()
+
 
 
