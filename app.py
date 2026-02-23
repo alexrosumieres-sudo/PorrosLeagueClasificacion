@@ -305,7 +305,7 @@ else:
         adn = analizar_adn_pro(u_sel, df_p_all, df_r_all)
         if adn:
             c1, c2, c3 = st.columns(3); c1.metric("⭐ Amuleto", adn['amuleto']); c2.metric("💀 Bestia", adn['bestia']); c3.metric("🎯 %", f"{(adn['signos']+adn['exactos'])/(adn['exactos']+adn['signos']+adn['fallos'])*100:.1f}%")
-            st.plotly_chart(px.pie(values=[adn['exactos'], adn['signos'], adn['fallos']], names=['Plenos', 'Signos', 'Fallos']), color_discrete_sequence=['#2baf2b', '#ffd700', '#ff4b4b']), use_container_width=True))
+            st.plotly_chart(px.pie(values=[adn['exactos'], adn['signos'], adn['fallos']], names=['Plenos', 'Signos', 'Fallos']), color_discrete_sequence=['#2baf2b', '#ffd700', '#ff4b4b'], use_container_width=True)
 
     with tabs[4]: # DETALLES
         df_rf = df_r_all[(df_r_all['Jornada'] == j_sel) & (df_r_all['Finalizado'] == "SI")]
@@ -360,5 +360,6 @@ else:
             if st.button("Actualizar"):
                 otros = df_r_all[df_r_all['Jornada'] != j_sel]
                 conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)); st.cache_data.clear(); st.rerun()
+
 
 
