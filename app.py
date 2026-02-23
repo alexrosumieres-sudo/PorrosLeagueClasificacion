@@ -207,16 +207,8 @@ LOGROS_DATA = {
 }
 
 # --- 2. FUNCIONES DE APOYO ---
-Aquí tienes el código completo a partir de la sección de funciones, integrando todas las mejoras críticas de rendimiento, seguridad y lógica de ranking acumulado que hemos analizado.
 
-He añadido el import de numpy por si decides activar las simulaciones de Monte Carlo más adelante.
-
-Python
-import numpy as np # Para futuras simulaciones pro
-
-# --- 2. FUNCIONES DE APOYO ---
-
-@st.cache_data(ttl=600) # Caché de 10 min: la app irá 10x más rápida
+@st.cache_data(ttl=600)
 def leer_datos(pestaña):
     try:
         sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
@@ -232,8 +224,7 @@ def safe_float(valor):
 
 def get_logo(equipo):
     path = LOGOS.get(equipo)
-    if path and os.path.exists(path): return path
-    return None
+    return path if path and os.path.exists(path) else None
 
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     try:
@@ -334,21 +325,19 @@ if not st.session_state.autenticado:
             else: st.error("❌ Credenciales incorrectas")
         if st.button("Registrarse"):
             df_u = leer_datos("Usuarios")
-            if u_in in df_u['Usuario'].values: # Punto 4: Duplicados
+            if u_in in df_u['Usuario'].values:
                 st.error("❌ El usuario ya existe")
             else:
                 nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
                 conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
                 st.success("✅ Registro completado. Ya puedes entrar.")
 else:
-    # CARGA DE DATOS CENTRALIZADA
     df_perf = leer_datos("ImagenesPerfil")
     df_r_all, df_p_all, df_u_all, df_base = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase")
     
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist()]
 
-    # --- CSS PREMIUM ---
     st.markdown("""
         <style>
         .stApp { background-color: #0e1117; color: #ffffff; }
@@ -385,17 +374,16 @@ else:
         env = []
         for i, (loc, vis) in enumerate(JORNADAS[j_sel]):
             m_id = f"{loc}-{vis}"
-            dl, dv, dp, t, lock = 0, 0, "NO", "Normal", False
+            dl, dv, dp, lock = 0, 0, "NO", False
             if not u_preds.empty:
                 row = u_preds[u_preds['Partido'] == m_id]
                 if not row.empty: dl, dv, dp = int(row.iloc[0]['P_L']), int(row.iloc[0]['P_V']), row.iloc[0]['Publica']
             
             inf = df_r_all[(df_r_all['Jornada']==j_sel) & (df_r_all['Partido']==m_id)]
             if not inf.empty:
-                t, lock = inf.iloc[0]['Tipo'], datetime.now() > datetime.strptime(str(inf.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                lock = datetime.now() > datetime.strptime(str(inf.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
             
             st.markdown(f'<div class="match-box">', unsafe_allow_html=True)
-            st.caption(f"{t} {'🔒 Cerrado' if lock else '🔓 Abierto'}")
             col1, col2, col3, col4, col5 = st.columns([2, 1, 0.5, 1, 2])
             with col1: 
                 logo = get_logo(loc)
@@ -413,35 +401,31 @@ else:
             env.append({"Usuario": st.session_state.user, "Jornada": j_sel, "Partido": m_id, "P_L": l, "P_V": v, "Publica": "SI" if pub else "NO"})
         
         if st.button("💾 Guardar Jornada"):
-            # Punto 6: Validación de seguridad al guardar
             ahora = datetime.now()
             invalidos = []
             for pred in env:
                 inf_p = df_r_all[(df_r_all['Partido']==pred['Partido']) & (df_r_all['Jornada']==j_sel)].iloc[0]
                 if ahora > datetime.strptime(str(inf_p['Hora_Inicio']), "%Y-%m-%d %H:%M:%S"):
                     invalidos.append(pred['Partido'])
-            
             if invalidos:
                 st.error(f"❌ No puedes guardar. Estos partidos ya empezaron: {', '.join(invalidos)}")
             else:
                 old = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_sel))]
                 conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(env)], ignore_index=True))
-                st.cache_data.clear() # Limpiar caché para ver cambios
-                st.success("¡Porra guardada correctamente!")
+                st.cache_data.clear()
+                st.success("¡Porra guardada!")
 
-    with tabs[2]: # CLASIFICACIÓN (PUNTO 1: RANKING ACUMULADO)
+    with tabs[2]: # CLASIFICACIÓN
         tipo_r = st.radio("Ver Ranking:", ["General", "Jornada"], horizontal=True)
         pts_list = []
         for u in u_jugadores:
             if tipo_r == "General":
-                # Punto 2: Evitar crash si no hay puntos base
                 pb_row = df_base[df_base['Usuario'] == u]
                 p_base = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
-                u_p = df_p_all[df_p_all['Usuario'] == u] # TODA la historia
+                u_p = df_p_all[df_p_all['Usuario'] == u]
             else:
                 p_base = 0.0
                 u_p = df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_sel)]
-            
             p_ac = p_base
             if not u_p.empty:
                 for r in u_p.itertuples():
@@ -449,15 +433,11 @@ else:
                     if not m_k.empty: 
                         p_ac += calcular_puntos(r.P_L, r.P_V, m_k.iloc[0]['R_L'], m_k.iloc[0]['R_V'], m_k.iloc[0]['Tipo'])
             pts_list.append({"Usuario": u, "Puntos": p_ac})
-        
         df_rank = pd.DataFrame(pts_list).sort_values("Puntos", ascending=False)
         df_rank['Posicion'] = range(1, len(df_rank)+1)
-
         for _, row in df_rank.iterrows():
             pos = row['Posicion']
             f_t = random.choice(FRASES_POR_PUESTO[pos if pos in FRASES_POR_PUESTO else 7])
-            n, d, r_v = obtener_perfil_apostador(df_p_all[df_p_all['Usuario']==row['Usuario']])
-            
             st.markdown(f'<div class="panini-card">', unsafe_allow_html=True)
             c1, c2, c3, c4 = st.columns([0.6, 1.2, 3.5, 1.5])
             with c1: st.markdown(f'<br><span class="pos-badge">{pos}</span>', unsafe_allow_html=True)
@@ -468,7 +448,6 @@ else:
             with c3:
                 st.markdown(f"### {row['Usuario']}")
                 st.markdown(f'<div class="quote-text">"{f_t[0]}"<br><small>— {f_t[1]}</small></div>', unsafe_allow_html=True)
-                st.progress(min(r_v, 1.0)); st.caption(f"{n} | {d}")
             with c4:
                 st.markdown(f'<br><span style="font-size: 2em; font-weight: bold; color: #2baf2b;">{row["Puntos"]:.2f}</span><br>Pts', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -484,7 +463,6 @@ else:
                 if not prev.empty: 
                     rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
                     t, hor = prev.iloc[0]['Tipo'], prev.iloc[0]['Hora_Inicio']
-                
                 c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
                 with c1: st.write(m_id)
                 nt = c2.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}")
@@ -492,9 +470,8 @@ else:
                 nrv = c4.number_input("V", 0, 9, rv, key=f"arv_{i}")
                 nfi = c5.checkbox("Fin", fin, key=f"afi_{i}")
                 r_env.append({"Jornada": j_sel, "Partido": m_id, "Tipo": nt, "R_L": nrl, "R_V": nrv, "Hora_Inicio": hor, "Finalizado": "SI" if nfi else "NO"})
-            
             if st.button("Actualizar Resultados"):
                 otros = df_r_all[df_r_all['Jornada'] != j_sel]
                 conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                 st.cache_data.clear()
-                st.success("Resultados actualizados y caché limpia.")
+                st.success("Resultados actualizados.")
