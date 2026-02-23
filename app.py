@@ -340,15 +340,27 @@ else:
 
     st.markdown("""
         <style>
-        .stApp { background-color: #0e1117; color: #ffffff; }
+        /* Fondo blanco y texto oscuro estándar */
+        .stApp { background-color: #ffffff; color: #31333F; }
+        
+        /* Tarjetas con fondo gris muy claro para que resalten sobre el blanco */
         .panini-card {
-            background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px;
-            border: 1px solid rgba(43, 175, 43, 0.3); margin-bottom: 20px; transition: 0.3s;
+            background: #f8f9fb; border-radius: 15px; padding: 20px;
+            border: 1px solid #e0e0e0; margin-bottom: 20px; transition: 0.3s;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
         }
-        .panini-card:hover { border-color: #ffd700; background: rgba(255, 255, 255, 0.08); }
-        .quote-text { color: #bdc3c7; font-style: italic; border-left: 3px solid #2baf2b; padding-left: 10px; margin: 10px 0; }
+        .panini-card:hover { border-color: #2baf2b; background: #f1f3f6; }
+        
+        /* Texto de citas en gris oscuro */
+        .quote-text { color: #4f4f4f; font-style: italic; border-left: 3px solid #2baf2b; padding-left: 10px; margin: 10px 0; }
+        
+        /* Badge de posición y cajas de partidos */
         .pos-badge { background-color: #2baf2b; color: white; padding: 5px 15px; border-radius: 50%; font-weight: bold; }
-        .match-box { background: rgba(255, 255, 255, 0.03); border-radius: 10px; padding: 15px; border-left: 5px solid #2baf2b; margin-bottom: 10px; }
+        .match-box { 
+            background: #ffffff; border-radius: 10px; padding: 15px; 
+            border: 1px solid #eee; border-left: 5px solid #2baf2b; 
+            margin-bottom: 10px; box-shadow: 1px 1px 4px rgba(0,0,0,0.03); 
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -475,3 +487,4 @@ else:
                 conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                 st.cache_data.clear()
                 st.success("Resultados actualizados.")
+
