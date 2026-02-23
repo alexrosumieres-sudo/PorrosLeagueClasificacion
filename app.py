@@ -350,6 +350,19 @@ else:
     foto_dict = df_perfiles.set_index('Usuario')['ImagenPath'].to_dict() if not df_perfiles.empty else {}
     admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist() if not df_u_all.empty else []
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in admins]
+    st.markdown("""
+        <style>
+        .stApp { background-color: #0e1117; color: #ffffff; }
+        .panini-card {
+            background: linear-gradient(135.2deg, rgba(30,33,48,1) 17.7%, rgba(42,47,66,1) 90.3%);
+            border-radius: 15px; padding: 20px; border: 2px solid #2baf2b;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.5); margin-bottom: 20px;
+        }
+        .quote-text { color: #d1d1d1; font-style: italic; border-left: 3px solid #2baf2b; padding-left: 10px; }
+        .pos-badge { background-color: #2baf2b; padding: 5px 12px; border-radius: 50%; font-weight: bold; }
+        .pts-bold { color: #2baf2b; font-size: 1.5em; font-weight: bold; }
+        </style>
+    """, unsafe_allow_html=True)
     c_h1, c_h2, c_h3 = st.columns([1, 5, 1])
     with c_h1:
         mi_f = foto_dict.get(st.session_state.user)
@@ -364,13 +377,25 @@ else:
             st.session_state.autenticado = False
             st.rerun()
 
-    j_global = st.selectbox("📅 Jornada:", list(JORNADAS.keys()), key="global_j")
+    with c_h3: 
+        if st.button("Salir"): 
+            st.session_state.autenticado = False
+            st.rerun()
+
+    # --- SUSTITUYE EL SELECTOR POR ESTE SIDEBAR ---
+    with st.sidebar:
+        st.title("🏆 Menú Liga")
+        j_global = st.selectbox("📅 Jornada:", list(JORNADAS.keys()), key="sidebar_j")
+        st.divider()
+        if 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3:
+            st.warning("🔮 El Oráculo está activo")
     p_pend = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]
     usa_oraculo = 1 <= len(p_pend) <= 3
     
     st.divider()
     tabs_labels = ["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador"]
     if usa_oraculo: tabs_labels.append("🎲 Escenarios")
+        
     tabs_labels.append("⚙️ Admin")
     tabs = st.tabs(tabs_labels)
 
@@ -451,6 +476,30 @@ else:
         # Ordenar ranking
         df_rank = pd.DataFrame(pts_list).sort_values("Puntos", ascending=False)
         df_rank['Posicion'] = range(1, len(df_rank)+1)
+        for _, row in df_rank.iterrows():
+            pos = row['Posicion']
+            key_pos = pos if pos in FRASES_POR_PUESTO else 7
+            f_t = random.choice(FRASES_POR_PUESTO[key_pos])
+            
+            l_u = calcular_logros_u(row['Usuario'], df_p_all, df_r_all, j_global, df_rank)
+            icons = "".join([LOGROS_DATA[lid]['icon'] for lid in l_u])
+            n, d, r_v = obtener_perfil_apostador(df_p_all[df_p_all['Usuario']==row['Usuario']])
+            
+            st.markdown(f'<div class="panini-card">', unsafe_allow_html=True)
+            c1, c2, c3, c4 = st.columns([0.6, 1.2, 3.5, 1.5])
+            with c1: 
+                st.markdown(f'<br><span class="pos-badge">{pos}</span>', unsafe_allow_html=True)
+            with c2:
+                fp = foto_dict.get(row['Usuario'])
+                if fp and os.path.exists(str(fp)): st.image(fp, width=90)
+                else: st.markdown("### 👤")
+            with c3:
+                st.markdown(f"### {row['Usuario']} {icons}")
+                st.markdown(f'<div class="quote-text">"{f_t[0]}"<br><small>— {f_t[1]}</small></div>', unsafe_allow_html=True)
+                st.progress(min(r_v, 1.0))
+            with c4:
+                st.markdown(f'<br><span class="pts-bold">{row["Puntos"]:.2f}</span><br>Puntos', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         # Renderizado de la tabla
         for _, row in df_rank.iterrows():
@@ -577,6 +626,7 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
 
 
