@@ -431,24 +431,98 @@ else:
                     if v > 0: st.write(f"**{u}**: {v:.1f}%"); st.progress(v/100)
         else: st.info("Se activa con 1-3 partidos restantes.")
 
-    with tabs[7]: # ADMIN
+    with tabs[7]: # PESTAÑA ADMIN
         if st.session_state.rol == "admin":
-            r_env = []
-            for i, (l, v) in enumerate(JORNADAS[j_global]):
-                m_id = f"{l}-{v}"
-                prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
-                rl, rv, fin, t, hor = 0, 0, False, "Normal", "2026-02-23 21:00:00"
-                if not prev.empty: 
-                    rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
-                    t, hor = prev.iloc[0]['Tipo'], prev.iloc[0]['Hora_Inicio']
-                c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
-                with c1: st.write(m_id)
-                nt = c2.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}")
-                nrl, nrv, nfi = c3.number_input("L", 0, 9, rl, key=f"arl_{i}"), c4.number_input("V", 0, 9, rv, key=f"arv_{i}"), c5.checkbox("Fin", fin, key=f"afi_{i}")
-                r_env.append({"Jornada": j_global, "Partido": m_id, "Tipo": nt, "R_L": nrl, "R_V": nrv, "Hora_Inicio": hor, "Finalizado": "SI" if nfi else "NO"})
-            if st.button("Actualizar"):
-                otros = df_r_all[df_r_all['Jornada'] != j_global]
-                conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)); st.cache_data.clear(); st.rerun()
+            st.header("⚙️ Panel de Control de Administrador")
+            
+            # Sub-pestañas internas para organizar el trabajo del admin
+            tab_bases, tab_fotos, tab_resultados = st.tabs(["⭐ Gestión de Bases", "📸 Gestión de Fotos", "⚽ Resultados Jornada"])
 
+            with tab_bases:
+                st.subheader("Puntos Base (Ventaja o Correcciones)")
+                upd_b = []
+                for u in u_jugadores:
+                    # Buscamos si el usuario ya tiene puntos base en el Excel
+                    pb_row = df_base[df_base['Usuario'] == u]
+                    pts_actuales = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
+                    
+                    c1, c2 = st.columns([2, 1])
+                    c1.write(f"Usuario: **{u}**")
+                    val = c2.number_input(f"Puntos para {u}", value=pts_actuales, step=0.25, key=f"adm_base_{u}", label_visibility="collapsed")
+                    upd_b.append({"Usuario": u, "Puntos": val})
+                
+                if st.button("💾 Guardar todos los Puntos Base"):
+                    conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
+                    st.cache_data.clear() # Limpiamos caché para que el ranking se actualice
+                    st.success("✅ Puntos base actualizados con éxito.")
 
+            with tab_fotos:
+                st.subheader("Asociar Fotos de Perfil")
+                # Listar archivos en la carpeta perfiles/
+                if os.path.exists(PERFILES_DIR):
+                    archivos_fotos = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png'))])
+                    upd_f = []
+                    
+                    for u in u_jugadores:
+                        # Obtener foto actual del usuario
+                        foto_actual_path = foto_dict.get(u, "")
+                        foto_actual_nombre = os.path.basename(foto_actual_path) if foto_actual_path else "Ninguna"
+                        
+                        # Si por algún error el archivo ya no existe, volvemos a Ninguna
+                        index_foto = archivos_fotos.index(foto_actual_nombre) if foto_actual_nombre in archivos_fotos else 0
+                        
+                        c1, c2 = st.columns([2, 1])
+                        c1.write(f"Foto de **{u}**")
+                        seleccion = c2.selectbox(f"Archivo para {u}", archivos_fotos, index=index_foto, key=f"adm_foto_{u}", label_visibility="collapsed")
+                        
+                        path_final = f"{PERFILES_DIR}{seleccion}" if seleccion != "Ninguna" else ""
+                        upd_f.append({"Usuario": u, "ImagenPath": path_final})
+                    
+                    if st.button("🖼️ Actualizar todas las Fotos"):
+                        conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(upd_f))
+                        st.cache_data.clear() # Limpiamos caché para que el dashboard cambie la foto
+                        st.success("✅ Fotos de perfil actualizadas.")
+                else:
+                    st.error(f"⚠️ No se encuentra la carpeta '{PERFILES_DIR}'. Crea la carpeta y sube las fotos por FTP/GitHub.")
 
+            with tab_resultados:
+                st.subheader(f"Resultados de la {j_sel}")
+                r_env = []
+                # Opciones de horas (puedes ajustarlas)
+                h_ops = [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
+                
+                for i, (l, v) in enumerate(JORNADAS[j_sel]):
+                    m_id = f"{l}-{v}"
+                    prev = df_r_all[(df_r_all['Jornada']==j_sel) & (df_r_all['Partido']==m_id)]
+                    
+                    # Valores por defecto
+                    rl, rv, fin, t, hor = 0, 0, False, "Normal", "21:00"
+                    if not prev.empty: 
+                        rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
+                        t = prev.iloc[0]['Tipo']
+                        try:
+                            # Intentamos extraer solo la hora del campo Hora_Inicio
+                            dt_obj = datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                            hor = dt_obj.strftime("%H:%M")
+                        except: pass
+
+                    st.markdown(f"**⚽ {m_id}**")
+                    c1, c2, c3, c4, c5 = st.columns([1.5, 1, 1, 1, 1.2])
+                    nt = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}")
+                    nrl = c2.number_input("L", 0, 9, rl, key=f"arl_{i}")
+                    nrv = c3.number_input("V", 0, 9, rv, key=f"arv_{i}")
+                    nfi = c4.checkbox("Fin", fin, key=f"afi_{i}")
+                    nho = c5.selectbox("Hora", h_ops, index=h_ops.index(hor) if hor in h_ops else 0, key=f"aho_{i}")
+                    
+                    # Generamos la fecha completa (asumiendo hoy como base para la fecha, o manteniendo la que había)
+                    fecha_str = f"2026-02-23 {nho}:00" # Aquí puedes ajustar la lógica de fecha si es necesario
+                    
+                    r_env.append({"Jornada": j_sel, "Partido": m_id, "Tipo": nt, "R_L": nrl, "R_V": nrv, "Hora_Inicio": fecha_str, "Finalizado": "SI" if nfi else "NO"})
+                
+                if st.button("🏟️ Guardar Resultados Jornada"):
+                    otros = df_r_all[df_r_all['Jornada'] != j_sel]
+                    conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
+                    st.cache_data.clear()
+                    st.success("✅ Resultados actualizados y puntos recalculados.")
+        else:
+            st.warning("⛔ Acceso denegado. Solo los administradores pueden ver esta pestaña.")
