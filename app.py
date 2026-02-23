@@ -205,132 +205,67 @@ LOGROS_DATA = {
     "pleno": {"icon": "💯", "name": "Pleno", "desc": "Puntuar en los 10 partidos."}
 }
 
-# --- 2. FUNCIONES DE APOYO (VERSION PRO) ---
-
-@st.cache_data(ttl=60)
-def cache_leer_datos(nombre):
-    return leer_datos(nombre)
-
-
+# --- 2. FUNCIONES DE APOYO ---
 def safe_float(valor):
     try:
-        if pd.isna(valor) or str(valor).strip() == "":
-            return 0.0
-        return float(str(valor).replace(",", "."))
-    except:
-        return 0.0
-        
+        if pd.isna(valor) or str(valor).strip() == "": return 0.0
+        return float(str(valor).replace(',', '.'))
+    except: return 0.0
+
 def get_logo(equipo):
     path = LOGOS.get(equipo)
-    if path and os.path.exists(path):
-        return path
+    if path and os.path.exists(path): return path
     return None
-    
-# ⚡ VERSION PRO ULTRA ROBUSTA
+
 def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
     try:
-        p_l = float(p_l)
-        p_v = float(p_v)
-        r_l = float(r_l)
-        r_v = float(r_v)
+        # Esto convierte cualquier texto o vacío en número real. 
+        # Si falla (porque hay texto de verdad), devuelve 0 puntos y no rompe la app.
+        p_l, p_v, r_l, r_v = float(p_l), float(p_v), float(r_l), float(r_v)
+        
+        p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
+        
+        if p_l == r_l and p_v == r_v: return p_exacto
+        
+        signo_p = (p_l > p_v) - (p_l < p_v)
+        signo_r = (r_l > r_v) - (r_l < r_v)
+        
+        if signo_p == signo_r:
+            return p_diff if (p_l - p_v) == (r_l - r_v) else p_ganador
+        return 0.0
     except:
         return 0.0
-    p_ganador, p_diff, p_exacto = SCORING.get(tipo, SCORING["Normal"])
-    # pleno exacto
-    if p_l == r_l and p_v == r_v:
-        return p_exacto
-    signo_p = (p_l > p_v) - (p_l < p_v)
-    signo_r = (r_l > r_v) - (r_l < r_v)
-    if signo_p == signo_r:
-        if (p_l - p_v) == (r_l - r_v):
-            return p_diff
-        return p_ganador
-    return 0.0
 
-# ⚡ PRO: ranking ultrarapido
-def calcular_ranking_pro(df_p_all, df_r_all, df_base, usuarios, jornada=None):
-    puntos = {u: safe_float(df_base[df_base.Usuario == u].Puntos.iloc[0]) if jornada is None else 0.0 for u in usuarios}
-    df_finalizados = df_r_all[df_r_all.Finalizado == "SI"]
-    if jornada:
-        df_finalizados = df_finalizados[df_finalizados.Jornada == jornada]
-    merged = df_p_all.merge(
-        df_finalizados,
-        on=["Jornada", "Partido"],
-        how="inner"
-    )
-    for row in merged.itertuples():
-        if row.Usuario in puntos:
-            puntos[row.Usuario] += calcular_puntos(
-                row.P_L,
-                row.P_V,
-                row.R_L,
-                row.R_V,
-                row.Tipo
-            )
-    df_rank = pd.DataFrame(
-        [(u, pts) for u, pts in puntos.items()],
-        columns=["Usuario", "Puntos"]
-    )
-    df_rank = df_rank.sort_values("Puntos", ascending=False)
-    df_rank["Posicion"] = range(1, len(df_rank)+1)
-    return df_rank
-    
 def obtener_perfil_apostador(df_u):
-    if df_u.empty:
-        return "Novato 🐣", "Sin datos.", 0.0
-    avg = (df_u.P_L + df_u.P_V).mean()
-    riesgo = min(avg/5, 1)
-    if avg > 3.5:
-        return "BUSCADOR DE PLENOS 🤪", "Ataque total.", riesgo
+    if df_u is None or df_u.empty: return "Novato 🐣", "Sin datos.", 0.0
+    avg_g = (df_u['P_L'] + df_u['P_V']).mean()
+    riesgo = min(avg_g / 5.0, 1.0)
+    if avg_g > 3.4: return "BUSCADOR DE PLENOS 🤪", "Ataque total.", riesgo
+    if avg_g < 2.1: return "CONSERVADOR / AMARRETE 🛡️", "Fiel al 1-0.", riesgo
+    return "ESTRATEGA ⚖️", "Apuestas equilibradas.", riesgo
 
-
-    elif avg < 2:
-        return "AMARRATEGUI 🧱", "Resultado corto.", riesgo
-    else:
-        return "ESTRATEGA ⚖️", "Equilibrado.", riesgo
-        
 def calcular_logros_u(usuario, df_p_all, df_r_all, jornada_sel, ranking):
     logros = []
-    if ranking.iloc[0].Usuario == usuario:
-        logros.append("cima")
-    df_u = df_p_all[
-        (df_p_all.Usuario == usuario)
-        &
-        (df_p_all.Jornada == jornada_sel)
-    ]
-    df_r = df_r_all[
-        (df_r_all.Jornada == jornada_sel)
-        &
-        (df_r_all.Finalizado == "SI")
-    ]
-    exactos = 0
-    amarre = 0
-    puntuados = 0
-    for row in df_u.itertuples():
-        res = df_r[df_r.Partido == row.Partido]
-        if res.empty:
-            continue
-        res = res.iloc[0]
-        pts = calcular_puntos(
-            row.P_L,
-            row.P_V,
-            res.R_L,
-            res.R_V,
-            res.Tipo
-        )
-        if pts > 0:
-            puntuados += 1
-        if pts == SCORING[res.Tipo][2]:
-            exactos += 1
-        if sorted([row.P_L, row.P_V]) in [[0,0],[1,0],[0,1]]:
-            amarre += 1
-    if puntuados == 10:
-        logros.append("pleno")
-    if exactos >= 3:
-        logros.append("hattrick")
-    if amarre >= 5:
-        logros.append("amarrategui")
-    return logros
+    if not ranking.empty and ranking.iloc[0]['Usuario'] == usuario: logros.append("cima")
+    u_p = df_p_all[(df_p_all['Usuario'] == usuario) & (df_p_all['Jornada'] == jornada_sel)]
+    res_j = df_r_all[(df_r_all['Jornada'] == jornada_sel) & (df_r_all['Finalizado'] == "SI")]
+    if u_p.empty or res_j.empty: return logros
+    pts_j, exactos, amarra = [], 0, 0
+    for row in u_p.itertuples():
+        m = res_j[res_j['Partido'] == row.Partido]
+        if not m.empty:
+            inf = m.iloc[0]
+            pts = calcular_puntos(row.P_L, row.P_V, inf['R_L'], inf['R_V'], inf['Tipo'])
+            pts_j.append(pts)
+            if pts == SCORING.get(inf['Tipo'])[2]:
+                exactos += 1
+                if inf['Tipo'] == "Esquizo": logros.append("guru")
+            if pts > 0 and sorted([row.P_L, row.P_V]) in [[0,0], [0,1]]: amarra += 1
+    if len(pts_j) == 10:
+        if all(p > 0 for p in pts_j): logros.append("pleno")
+        if exactos >= 3: logros.append("hattrick")
+        if amarra >= 5: logros.append("amarrategui")
+    return list(set(logros))
 
 def analizar_adn_pro(usuario, df_p, df_r):
     df_m = pd.merge(df_p[df_p['Usuario'] == usuario], df_r[df_r['Finalizado'] == "SI"], on=['Jornada', 'Partido'])
@@ -482,11 +417,7 @@ else:
 
     with tabs[2]: # CLASIFICACIÓN
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True)
-        df_rank = calcular_ranking_pro(df_p_all,
-                                       df_r_all,
-                                       df_base,
-                                       u_jugadores,
-                                       None if tipo_r=="General" else j_global)
+        pts_list = []
         
         for u in u_jugadores:
             # Puntos base iniciales
@@ -646,4 +577,3 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
-
