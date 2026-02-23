@@ -281,7 +281,7 @@ else:
                 if not prox_p.empty:
                     diff = datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
                     h = max(0, int(diff.total_seconds() // 3600))
-                    st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre del siguiente partido</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
             with c4:
                 pts_h = 0.0
@@ -424,3 +424,4 @@ else:
             if st.button("Actualizar"):
                 otros = df_r_all[df_r_all['Jornada'] != j_global]
                 conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)); st.cache_data.clear(); st.rerun()
+
