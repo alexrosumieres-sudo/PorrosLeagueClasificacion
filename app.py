@@ -344,12 +344,14 @@ if not st.session_state.autenticado:
             conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
             st.success("✅ Registro completado")
 else:
-    # CARGA CENTRAL
+    # 1. CARGA DE DATOS
     df_perfiles = leer_datos("ImagenesPerfil")
     df_r_all, df_p_all, df_u_all, df_base = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase")
     foto_dict = df_perfiles.set_index('Usuario')['ImagenPath'].to_dict() if not df_perfiles.empty else {}
     admins = df_u_all[df_u_all['Rol'] == 'admin']['Usuario'].tolist() if not df_u_all.empty else []
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in admins]
+
+    # 2. INYECCIÓN DE CSS
     st.markdown("""
         <style>
         .stApp { background-color: #0e1117; color: #ffffff; }
@@ -357,45 +359,43 @@ else:
             background: linear-gradient(135.2deg, rgba(30,33,48,1) 17.7%, rgba(42,47,66,1) 90.3%);
             border-radius: 15px; padding: 20px; border: 2px solid #2baf2b;
             box-shadow: 5px 5px 15px rgba(0,0,0,0.5); margin-bottom: 20px;
+            transition: transform 0.3s;
         }
-        .quote-text { color: #d1d1d1; font-style: italic; border-left: 3px solid #2baf2b; padding-left: 10px; }
-        .pos-badge { background-color: #2baf2b; padding: 5px 12px; border-radius: 50%; font-weight: bold; }
-        .pts-bold { color: #2baf2b; font-size: 1.5em; font-weight: bold; }
+        .panini-card:hover { transform: scale(1.01); border-color: #ffd700; }
+        .quote-text { color: #d1d1d1; font-style: italic; border-left: 3px solid #2baf2b; padding-left: 10px; margin: 10px 0; }
+        .pos-badge { background-color: #2baf2b; color: white; padding: 5px 15px; border-radius: 50%; font-weight: bold; font-size: 1.2em; }
+        .pts-bold { color: #2baf2b; font-size: 1.8em; font-weight: bold; }
         </style>
     """, unsafe_allow_html=True)
-    c_h1, c_h2, c_h3 = st.columns([1, 5, 1])
+
+    # 3. ENCABEZADO
+    c_h1, c_h2, c_h3 = st.columns([1, 5, 1.5])
     with c_h1:
         mi_f = foto_dict.get(st.session_state.user)
-        if mi_f and pd.notna(mi_f) and os.path.exists(str(mi_f)): 
-            st.image(str(mi_f), width=75)
-        else: 
-            st.subheader("👤")
-    with c_h2: 
-        st.title(f"Hola, {st.session_state.user} 👋")
+        if mi_f and pd.notna(mi_f) and os.path.exists(str(mi_f)): st.image(str(mi_f), width=75)
+        else: st.subheader("👤")
+    with c_h2: st.title(f"Hola, {st.session_state.user} 👋")
     with c_h3: 
-        if st.button("Salir"): 
+        if st.button("Cerrar Sesión"): 
             st.session_state.autenticado = False
             st.rerun()
 
-    with c_h3: 
-        if st.button("Salir"): 
-            st.session_state.autenticado = False
-            st.rerun()
-
-    # --- SUSTITUYE EL SELECTOR POR ESTE SIDEBAR ---
+    # 4. SIDEBAR (NUEVO)
     with st.sidebar:
         st.title("🏆 Menú Liga")
         j_global = st.selectbox("📅 Jornada:", list(JORNADAS.keys()), key="sidebar_j")
         st.divider()
-        if 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3:
-            st.warning("🔮 El Oráculo está activo")
-    p_pend = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]
+        p_pend = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]
+        if 1 <= len(p_pend) <= 3:
+            st.warning(f"🔮 Oráculo Activo: Quedan {len(p_pend)} partidos")
+        else:
+            st.success("⚽ Jornada gestionada")
+
     usa_oraculo = 1 <= len(p_pend) <= 3
     
-    st.divider()
+    # 5. TABS
     tabs_labels = ["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador"]
     if usa_oraculo: tabs_labels.append("🎲 Escenarios")
-        
     tabs_labels.append("⚙️ Admin")
     tabs = st.tabs(tabs_labels)
 
@@ -440,55 +440,34 @@ else:
             if u != st.session_state.user:
                 with st.expander(f"Apuestas de {u}"): st.table(p_pub[p_pub['Usuario'] == u][['Partido', 'P_L', 'P_V']])
 
-    with tabs[2]: # CLASIFICACIÓN
+    with tabs[2]: # CLASIFICACIÓN (DISEÑO PANINI ÚNICO)
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True)
         pts_list = []
-        
         for u in u_jugadores:
-            # Puntos base iniciales
-            p_base = safe_float(df_base[df_base['Usuario']==u].iloc[0]['Puntos']) if tipo_r == "General" else 0.0
-            
-            # Filtramos las predicciones de este usuario para esta jornada
+            pb = safe_float(df_base[df_base['Usuario']==u].iloc[0]['Puntos']) if tipo_r == "General" else 0.0
             u_p = df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)]
-            
-            p_acumulado = p_base
-
-            # LÓGICA DE VALIDACIÓN:
-            # Si u_p está vacío, el usuario no ha guardado nada. No entra al bucle de puntos.
+            p_ac = pb
             if not u_p.empty:
                 for r in u_p.itertuples():
-                    # Buscamos si el partido de la predicción ya está finalizado
-                    m_finalizado = df_r_all[(df_r_all['Jornada']==r.Jornada) & 
-                                           (df_r_all['Partido']==r.Partido) & 
-                                           (df_r_all['Finalizado']=="SI")]
-                    
-                    if not m_finalizado.empty:
-                        # Solo sumamos si existe la predicción real
-                        p_acumulado += calcular_puntos(
-                            r.P_L, r.P_V, 
-                            m_finalizado.iloc[0]['R_L'], 
-                            m_finalizado.iloc[0]['R_V'], 
-                            m_finalizado.iloc[0]['Tipo']
-                        )
-            
-            pts_list.append({"Usuario": u, "Puntos": p_acumulado})
+                    m_k = df_r_all[(df_r_all['Jornada']==r.Jornada)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
+                    if not m_k.empty: p_ac += calcular_puntos(r.P_L, r.P_V, m_k.iloc[0]['R_L'], m_k.iloc[0]['R_V'], m_k.iloc[0]['Tipo'])
+            pts_list.append({"Usuario": u, "Puntos": p_ac})
         
-        # Ordenar ranking
         df_rank = pd.DataFrame(pts_list).sort_values("Puntos", ascending=False)
         df_rank['Posicion'] = range(1, len(df_rank)+1)
+
         for _, row in df_rank.iterrows():
             pos = row['Posicion']
             key_pos = pos if pos in FRASES_POR_PUESTO else 7
             f_t = random.choice(FRASES_POR_PUESTO[key_pos])
-            
             l_u = calcular_logros_u(row['Usuario'], df_p_all, df_r_all, j_global, df_rank)
             icons = "".join([LOGROS_DATA[lid]['icon'] for lid in l_u])
             n, d, r_v = obtener_perfil_apostador(df_p_all[df_p_all['Usuario']==row['Usuario']])
             
+            # CROMO PANINI
             st.markdown(f'<div class="panini-card">', unsafe_allow_html=True)
             c1, c2, c3, c4 = st.columns([0.6, 1.2, 3.5, 1.5])
-            with c1: 
-                st.markdown(f'<br><span class="pos-badge">{pos}</span>', unsafe_allow_html=True)
+            with c1: st.markdown(f'<br><span class="pos-badge">{pos}</span>', unsafe_allow_html=True)
             with c2:
                 fp = foto_dict.get(row['Usuario'])
                 if fp and os.path.exists(str(fp)): st.image(fp, width=90)
@@ -497,36 +476,10 @@ else:
                 st.markdown(f"### {row['Usuario']} {icons}")
                 st.markdown(f'<div class="quote-text">"{f_t[0]}"<br><small>— {f_t[1]}</small></div>', unsafe_allow_html=True)
                 st.progress(min(r_v, 1.0))
+                st.caption(f"{n} | {d}")
             with c4:
                 st.markdown(f'<br><span class="pts-bold">{row["Puntos"]:.2f}</span><br>Puntos', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Renderizado de la tabla
-        for _, row in df_rank.iterrows():
-            pos = row['Posicion']
-            key_pos = pos if pos in FRASES_POR_PUESTO else 7
-            f_t = random.choice(FRASES_POR_PUESTO[key_pos])
-            
-            l_u = calcular_logros_u(row['Usuario'], df_p_all, df_r_all, j_global, df_rank)
-            icons = "".join([LOGROS_DATA[lid]['icon'] for lid in l_u])
-            n, d, r_v = obtener_perfil_apostador(df_p_all[df_p_all['Usuario']==row['Usuario']])
-            
-            c1, c2, c3, c4 = st.columns([0.5, 1.2, 4, 1.5])
-            with c1: 
-                st.markdown(f"### #{pos}")
-            with c2:
-                fp = foto_dict.get(row['Usuario'])
-                if fp and os.path.exists(str(fp)): st.image(fp, width=80)
-                else: st.subheader("👤")
-            with c3:
-                # Nombre limpio, sin etiquetas de texto extra
-                st.markdown(f"**{row['Usuario']}** {icons}")
-                st.info(f"_{f_t[0]}_ \n\n **— {f_t[1]}**")
-                st.progress(min(r_v, 1.0))
-                st.caption(f"{n} | {d}")
-            with c4: 
-                st.markdown(f"#### {row['Puntos']:.2f} pts")
-            st.divider()
 
     with tabs[3]: # STATS PRO
         st.header("📊 ADN del Apostador")
@@ -626,15 +579,3 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
-
-
-
-
-
-
-
-
-
-
-
-
