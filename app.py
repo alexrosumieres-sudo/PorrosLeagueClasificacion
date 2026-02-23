@@ -12,9 +12,9 @@ PERFILES_DIR = "perfiles/"
 LOGOS_DIR = "logos/"
 
 NIVEL_EQUIPOS = {"Real Madrid": 1, "Barcelona": 1, "Villarreal": 1, "Atlético": 1,
-    "Betis": 2, "Espanyol": 2, "Celta": 2, "R. Sociedad": 2, "Athletic": 2,
-    "Osasuna": 3, "Getafe": 3, "Girona": 3, "Sevilla": 3, "Alavés": 3, "Valencia": 3, "Elche": 3, "Rayo": 3,
-    "Mallorca": 4, "Levante": 4, "Oviedo": 4
+                 "Betis": 2, "Espanyol": 2, "Celta": 2, "R. Sociedad": 2, "Athletic": 2,
+                 "Osasuna": 3, "Getafe": 3, "Girona": 3, "Sevilla": 3, "Alavés": 3, "Valencia": 3, 
+                 "Elche": 3, "Rayo": 3,"Mallorca": 4, "Levante": 4, "Oviedo": 4
 }
 
 # Datos oficiales tras la Jornada 24
@@ -576,4 +576,5 @@ else:
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.success("Resultados actualizados")
+
 
