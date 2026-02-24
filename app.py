@@ -488,42 +488,61 @@ else:
             with tab_resultados:
                 st.subheader(f"Resultados de la {j_global}")
                 r_env = []
-                # Opciones de horas (puedes ajustarlas)
+                # Opciones de horas
                 h_ops = [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
                 
                 for i, (l, v) in enumerate(JORNADAS[j_global]):
                     m_id = f"{l}-{v}"
                     prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                     
-                    # Valores por defecto
-                    rl, rv, fin, t, hor = 0, 0, False, "Normal", "21:00"
+                    # Valores por defecto si no hay datos previos
+                    rl, rv, fin, t = 0, 0, False, "Normal"
+                    fecha_val = datetime(2026, 2, 23).date() # Fecha base por defecto
+                    hora_val = "21:00"
+
                     if not prev.empty: 
                         rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
                         t = prev.iloc[0]['Tipo']
                         try:
-                            # Intentamos extraer solo la hora del campo Hora_Inicio
+                            # Intentamos extraer fecha y hora guardadas en el Google Sheet
                             dt_obj = datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
-                            hor = dt_obj.strftime("%H:%M")
+                            fecha_val = dt_obj.date()
+                            hora_val = dt_obj.strftime("%H:%M")
                         except: pass
 
                     st.markdown(f"**⚽ {m_id}**")
-                    c1, c2, c3, c4, c5 = st.columns([1.5, 1, 1, 1, 1.2])
+                    # Creamos 6 columnas para que quepa todo: Tipo, Fecha, Hora, L, V, Fin
+                    c1, c2, c3, c4, c5, c6 = st.columns([1.2, 1.2, 1, 0.7, 0.7, 0.6])
+                    
                     nt = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}")
-                    nrl = c2.number_input("L", 0, 9, rl, key=f"arl_{i}")
-                    nrv = c3.number_input("V", 0, 9, rv, key=f"arv_{i}")
-                    nfi = c4.checkbox("Fin", fin, key=f"afi_{i}")
-                    nho = c5.selectbox("Hora", h_ops, index=h_ops.index(hor) if hor in h_ops else 0, key=f"aho_{i}")
                     
-                    # Generamos la fecha completa (asumiendo hoy como base para la fecha, o manteniendo la que había)
-                    fecha_str = f"2026-02-23 {nho}:00" # Aquí puedes ajustar la lógica de fecha si es necesario
+                    # --- NUEVO: SELECTOR DE FECHA ---
+                    n_fecha = c2.date_input("Día", value=fecha_val, key=f"adate_{i}")
                     
-                    r_env.append({"Jornada": j_global, "Partido": m_id, "Tipo": nt, "R_L": nrl, "R_V": nrv, "Hora_Inicio": fecha_str, "Finalizado": "SI" if nfi else "NO"})
+                    nho = c3.selectbox("Hora", h_ops, index=h_ops.index(hora_val) if hora_val in h_ops else 0, key=f"aho_{i}")
+                    nrl = c4.number_input("L", 0, 9, rl, key=f"arl_{i}")
+                    nrv = c5.number_input("V", 0, 9, rv, key=f"arv_{i}")
+                    nfi = c6.checkbox("Fin", fin, key=f"afi_{i}")
+                    
+                    # Combinamos la fecha seleccionada con la hora seleccionada
+                    fecha_str = f"{n_fecha} {nho}:00" 
+                    
+                    r_env.append({
+                        "Jornada": j_global, 
+                        "Partido": m_id, 
+                        "Tipo": nt, 
+                        "R_L": nrl, 
+                        "R_V": nrv, 
+                        "Hora_Inicio": fecha_str, 
+                        "Finalizado": "SI" if nfi else "NO"
+                    })
                 
                 if st.button("🏟️ Guardar Resultados Jornada"):
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.cache_data.clear()
-                    st.success("✅ Resultados actualizados y puntos recalculados.")
+                    st.success(f"✅ Resultados y fechas de la {j_global} actualizados.")
         else:
             st.warning("⛔ Acceso denegado. Solo los administradores pueden ver esta pestaña.")
+
 
