@@ -182,7 +182,7 @@ def simular_oraculo(usuarios, df_p_all, df_r_all, jornada_sel):
     return {u: (v/len(combos))*100 for u, v in victorias.items()}
 
 # --- 3. APP ---
-st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
+st.set_page_config(page_title="Porros League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
@@ -190,7 +190,7 @@ if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("🏆 Porra League 2026")
+        st.title("🏆 Porros League 2026")
         u_in, p_in = st.text_input("Usuario"), st.text_input("Contraseña", type="password")
         c1, c2 = st.columns(2)
         if c1.button("Entrar"):
@@ -486,14 +486,14 @@ else:
                     st.error(f"⚠️ No se encuentra la carpeta '{PERFILES_DIR}'. Crea la carpeta y sube las fotos por FTP/GitHub.")
 
             with tab_resultados:
-                st.subheader(f"Resultados de la {j_sel}")
+                st.subheader(f"Resultados de la {j_global}")
                 r_env = []
                 # Opciones de horas (puedes ajustarlas)
                 h_ops = [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
                 
-                for i, (l, v) in enumerate(JORNADAS[j_sel]):
+                for i, (l, v) in enumerate(JORNADAS[j_global]):
                     m_id = f"{l}-{v}"
-                    prev = df_r_all[(df_r_all['Jornada']==j_sel) & (df_r_all['Partido']==m_id)]
+                    prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                     
                     # Valores por defecto
                     rl, rv, fin, t, hor = 0, 0, False, "Normal", "21:00"
@@ -517,12 +517,13 @@ else:
                     # Generamos la fecha completa (asumiendo hoy como base para la fecha, o manteniendo la que había)
                     fecha_str = f"2026-02-23 {nho}:00" # Aquí puedes ajustar la lógica de fecha si es necesario
                     
-                    r_env.append({"Jornada": j_sel, "Partido": m_id, "Tipo": nt, "R_L": nrl, "R_V": nrv, "Hora_Inicio": fecha_str, "Finalizado": "SI" if nfi else "NO"})
+                    r_env.append({"Jornada": j_global, "Partido": m_id, "Tipo": nt, "R_L": nrl, "R_V": nrv, "Hora_Inicio": fecha_str, "Finalizado": "SI" if nfi else "NO"})
                 
                 if st.button("🏟️ Guardar Resultados Jornada"):
-                    otros = df_r_all[df_r_all['Jornada'] != j_sel]
+                    otros = df_r_all[df_r_all['Jornada'] != j_global]
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.cache_data.clear()
                     st.success("✅ Resultados actualizados y puntos recalculados.")
         else:
             st.warning("⛔ Acceso denegado. Solo los administradores pueden ver esta pestaña.")
+
