@@ -287,40 +287,51 @@ else:
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin"])
 
-    with tabs[0]: # PESTAÑA APUESTAS (MEJORA: PERSISTENCIA)
-        u_p_s = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
-        env = []
-        for i, (loc, vis) in enumerate(JORNADAS[j_global]):
-            m_id = f"{loc}-{vis}"
+    with tabs[0]: # --- PESTAÑA APUESTAS ---
+        if es_admin:
+            st.warning("🛡️ Acceso restringido: Los administradores no participan en las porras.")
+            st.info("Tu función es supervisar la liga y actualizar los resultados desde la pestaña **⚙️ Admin**.")
+            st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
+        else:
+            # --- Lógica de persistencia para usuarios normales ---
+            u_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
+            env = []
+            for i, (loc, vis) in enumerate(JORNADAS[j_global]):
+                m_id = f"{loc}-{vis}"
+                
+                # Valores por defecto: Recuperar lo que el usuario ya guardó
+                dl, dv, dp = 0, 0, "NO"
+                if not u_preds.empty:
+                    match_data = u_preds[u_preds['Partido'] == m_id]
+                    if not match_data.empty:
+                        dl, dv, dp = int(match_data.iloc[0]['P_L']), int(match_data.iloc[0]['P_V']), match_data.iloc[0]['Publica']
+                
+                res_info = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
+                lock = False
+                if not res_info.empty:
+                    # Bloqueo por fecha/hora
+                    lock = datetime.now() > datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                
+                st.markdown(f'<div class="match-box">', unsafe_allow_html=True)
+                c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
+                with c1: 
+                    log = get_logo(loc)
+                    if log: st.image(log, width=45)
+                with c2: pl = st.number_input(f"{loc}", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock)
+                with c4: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock)
+                with c5: 
+                    logv = get_logo(vis)
+                    if logv: st.image(logv, width=45)
+                with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
+                st.markdown('</div>', unsafe_allow_html=True)
+                env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
             
-            # VALORES POR DEFECTO: Buscamos si el usuario ya guardó algo antes
-            dl, dv, dp = 0, 0, "NO"
-            if not u_p_s.empty:
-                r_p = u_p_s[u_p_s['Partido'] == m_id]
-                if not r_p.empty:
-                    dl, dv, dp = int(r_p.iloc[0]['P_L']), int(r_p.iloc[0]['P_V']), r_p.iloc[0]['Publica']
-            
-            res_r = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
-            lock = datetime.now() > datetime.strptime(str(res_r.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") if not res_r.empty else False
-            
-            st.markdown(f'<div class="match-box">', unsafe_allow_html=True)
-            c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
-            with c1: 
-                lg = get_logo(loc)
-                if lg: st.image(lg, width=45)
-            with c2: pl = st.number_input(f"{loc}", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock)
-            with c4: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock)
-            with c5:
-                lv = get_logo(vis)
-                if lv: st.image(lv, width=45)
-            with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
-            st.markdown('</div>', unsafe_allow_html=True)
-            env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
-        
-        if st.button("💾 Guardar Todo"):
-            old = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
-            conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(env)], ignore_index=True))
-            st.cache_data.clear(); st.success("✅ Guardado. Tus datos aparecerán aquí la próxima vez que entres.")
+            if st.button("💾 Guardar Mis Predicciones", use_container_width=True):
+                otras = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
+                conn.update(worksheet="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
+                st.cache_data.clear()
+                st.success("✅ Predicciones guardadas con éxito.")
+                st.rerun()
 
     with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL FINALIZAR) ---
         st.header("👀 Qué han puesto los demás")
@@ -566,6 +577,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
