@@ -402,43 +402,117 @@ else:
                     if v > 0: st.write(f"**{u}**: {v:.1f}%"); st.progress(v/100)
         else: st.info("El Oráculo se activa cuando quedan 1-3 partidos.")
 
-    with tabs[7]: # ADMIN
-        if es_admin:
-            st.header("⚙️ Panel de Control")
-            t1, t2, t3 = st.tabs(["⭐ Bases", "📸 Fotos", "⚽ Resultados"])
-            with t1:
+    with tabs[7]: # --- PESTAÑA ADMIN COMPLETA ---
+        if st.session_state.rol == "admin":
+            st.header("⚙️ Panel de Control de Administrador")
+            
+            # Sub-pestañas para organizar el trabajo
+            t_bases, t_fotos, t_resultados = st.tabs(["⭐ Puntos Base", "📸 Fotos de Perfil", "⚽ Resultados y Horarios"])
+
+            with t_bases:
+                st.subheader("Configurar Puntos Iniciales")
+                st.info("Usa esto para dar ventaja a nuevos jugadores o corregir errores manuales.")
                 upd_b = []
                 for u in u_jugadores:
-                    val = st.number_input(f"Base {u}", value=safe_float(df_base[df_base['Usuario']==u]['Puntos'].values[0]) if not df_base[df_base['Usuario']==u].empty else 0.0, key=f"b_{u}")
-                    upd_b.append({"Usuario": u, "Puntos": val})
-                if st.button("Guardar Bases"): conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b)); st.cache_data.clear(); st.rerun()
-            with t2:
-                fs = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png'))])
-                updf = []
-                for u in u_jugadores:
-                    act = os.path.basename(foto_dict.get(u, "")) or "Ninguna"
-                    sel = st.selectbox(f"Foto {u}", fs, index=fs.index(act) if act in fs else 0, key=f"f_{u}")
-                    updf.append({"Usuario": u, "ImagenPath": f"{PERFILES_DIR}{sel}" if sel != "Ninguna" else ""})
-                if st.button("Guardar Fotos"): conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(updf)); st.cache_data.clear(); st.rerun()
-            with t3:
-                st.subheader(f"Gestión {j_global}")
-                res_env, h_ops = [], [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
-                for i, (l, v) in enumerate(JORNADAS[j_global]):
-                    m_id = f"{l}-{v}"
+                    # Buscamos puntos actuales en el dataframe de base
+                    pb_row = df_base[df_base['Usuario'] == u]
+                    pts_actuales = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
+                    
+                    col_u, col_p = st.columns([2, 1])
+                    col_u.markdown(f"**{u}**")
+                    nuevo_val = col_p.number_input(f"Pts base {u}", value=pts_actuales, step=0.5, key=f"adm_b_{u}", label_visibility="collapsed")
+                    upd_b.append({"Usuario": u, "Puntos": nuevo_val})
+                
+                if st.button("💾 Guardar Todos los Puntos Base", use_container_width=True):
+                    conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
+                    st.cache_data.clear()
+                    st.success("✅ Puntos base actualizados. El ranking general ha cambiado.")
+                    st.rerun()
+
+            with t_fotos:
+                st.subheader("Asignar Imágenes a Usuarios")
+                if os.path.exists(PERFILES_DIR):
+                    archivos = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png'))])
+                    upd_f = []
+                    for u in u_jugadores:
+                        # Limpieza de datos para evitar el error de basename
+                        path_en_db = foto_dict.get(u, "")
+                        if pd.isna(path_en_db) or not isinstance(path_en_db, str):
+                            path_en_db = ""
+                        
+                        nombre_foto_actual = os.path.basename(path_en_db) if path_en_db != "" else "Ninguna"
+                        
+                        col_u2, col_f = st.columns([2, 1])
+                        col_u2.write(f"Usuario: **{u}**")
+                        # Si la foto que está en el Excel no existe en la carpeta, ponemos "Ninguna" por defecto
+                        idx_foto = archivos.index(nombre_foto_actual) if nombre_foto_actual in archivos else 0
+                        
+                        foto_sel = col_f.selectbox(f"Foto {u}", archivos, index=idx_foto, key=f"adm_f_{u}", label_visibility="collapsed")
+                        
+                        path_final = f"{PERFILES_DIR}{foto_sel}" if foto_sel != "Ninguna" else ""
+                        upd_f.append({"Usuario": u, "ImagenPath": path_final})
+                    
+                    if st.button("🖼️ Actualizar Todas las Fotos", use_container_width=True):
+                        conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(upd_f))
+                        st.cache_data.clear()
+                        st.success("✅ Fotos actualizadas correctamente.")
+                        st.rerun()
+                else:
+                    st.error(f"⚠️ La carpeta '{PERFILES_DIR}' no existe.")
+
+            with t_resultados:
+                st.subheader(f"Gestión de la {j_global}")
+                st.write("Configura el tipo de partido, la fecha/hora de bloqueo y los resultados.")
+                
+                r_env = []
+                h_ops = [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
+                
+                for i, (loc, vis) in enumerate(JORNADAS[j_global]):
+                    m_id = f"{loc}-{vis}"
                     prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
-                    rl, rv, fin, t, f_v, h_v = 0, 0, False, "Normal", datetime(2026,2,23).date(), "21:00"
-                    if not prev.empty:
+                    
+                    # Valores por defecto (si el partido es nuevo)
+                    rl, rv, fin, t = 0, 0, False, "Normal"
+                    fecha_v = datetime(2026, 2, 23).date()
+                    hora_v = "21:00"
+
+                    if not prev.empty: 
                         rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
                         t = prev.iloc[0]['Tipo']
-                        try: dt = datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S"); f_v, h_v = dt.date(), dt.strftime("%H:%M")
+                        try:
+                            dt_obj = datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                            fecha_v = dt_obj.date()
+                            hora_v = dt_obj.strftime("%H:%M")
                         except: pass
-                    st.write(f"**⚽ {m_id}**")
-                    c1, c2, c3, c4, c5, c6 = st.columns([1, 1.2, 1, 0.7, 0.7, 0.6])
-                    nt, nf = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}"), c2.date_input("Día", f_v, key=f"ad_{i}")
-                    nh, nrl = c3.selectbox("Hora", h_ops, index=h_ops.index(h_v) if h_v in h_ops else 0, key=f"ah_{i}"), c4.number_input("L", 0, 9, rl, key=f"al_{i}")
-                    nrv, nfi = c5.number_input("V", 0, 9, rv, key=f"av_{i}"), c6.checkbox("Fin", fin, key=f"af_{i}")
-                    res_env.append({"Jornada": j_global, "Partido": m_id, "Tipo": nt, "R_L": nrl, "R_V": nrv, "Hora_Inicio": f"{nf} {nh}:00", "Finalizado": "SI" if nfi else "NO"})
-                if st.button("🏟️ Guardar Resultados"):
+
+                    st.markdown(f"---")
+                    st.markdown(f"**⚽ {m_id}**")
+                    c1, c2, c3, c4, c5, c6 = st.columns([1.2, 1.2, 1, 0.7, 0.7, 0.6])
+                    
+                    nt = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}")
+                    nf = c2.date_input("Día", value=fecha_v, key=f"adate_{i}")
+                    nh = c3.selectbox("Hora", h_ops, index=h_ops.index(hora_v) if hora_v in h_ops else 0, key=f"aho_{i}")
+                    nrl = c4.number_input("L", 0, 9, rl, key=f"arl_{i}")
+                    nrv = c5.number_input("V", 0, 9, rv, key=f"arv_{i}")
+                    nfi = c6.checkbox("Fin", fin, key=f"afi_{i}")
+                    
+                    r_env.append({
+                        "Jornada": j_global, "Partido": m_id, "Tipo": nt, 
+                        "R_L": nrl, "R_V": nrv, "Hora_Inicio": f"{nf} {nh}:00", 
+                        "Finalizado": "SI" if nfi else "NO"
+                    })
+                
+                st.divider()
+                if st.button("🏟️ GUARDAR RESULTADOS JORNADA", use_container_width=True):
+                    # Mantener los resultados de las otras jornadas
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
-                    conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(res_env)], ignore_index=True))
-                    st.cache_data.clear(); st.success("OK"); st.rerun()
+                    conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
+                    st.cache_data.clear()
+                    st.success(f"✅ Datos de la {j_global} guardados.")
+                    st.rerun()
+        else:
+            # Mensaje por si alguien intenta cotillear sin ser admin
+            st.warning("⛔ Acceso restringido.")
+            st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
+            st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
