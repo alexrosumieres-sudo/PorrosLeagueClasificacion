@@ -322,13 +322,64 @@ else:
             conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(env)], ignore_index=True))
             st.cache_data.clear(); st.success("✅ Guardado. Tus datos aparecerán aquí la próxima vez que entres.")
 
-    with tabs[1]: # OTROS
-        p_p_j = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI")]
-        if p_p_j.empty: st.info("Sin apuestas públicas.")
+    with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL FINALIZAR) ---
+        st.header("👀 Qué han puesto los demás")
+        
+        # Obtenemos los partidos de esta jornada que ya están finalizados
+        partidos_fin = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
+        
+        # 1. SECCIÓN DE PARTIDOS FINALIZADOS (REVELACIÓN TOTAL)
+        if not partidos_fin.empty:
+            st.markdown("### ✅ Resultados y Apuestas Reveladas")
+            st.caption("Al finalizar el partido, las apuestas de todos los jugadores se hacen visibles.")
+            
+            for _, match in partidos_fin.iterrows():
+                m_id = match['Partido']
+                res_real = f"{int(match['R_L'])}-{int(match['R_V'])}"
+                tipo_p = match['Tipo']
+                
+                with st.expander(f"📊 {m_id}  —  Resultado Real: {res_real} ({tipo_p})"):
+                    # Buscamos todas las predicciones para este partido específico
+                    preds_match = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Partido'] == m_id)]
+                    
+                    if not preds_match.empty:
+                        resumen_partido = []
+                        for _, p in preds_match.iterrows():
+                            # Calculamos puntos de cada uno para mostrar en la tabla
+                            pts = calcular_puntos(p['P_L'], p['P_V'], match['R_L'], match['R_V'], tipo_p)
+                            resumen_partido.append({
+                                "Jugador": p['Usuario'],
+                                "Apostó": f"{int(p['P_L'])}-{int(p['P_V'])}",
+                                "Puntos": pts
+                            })
+                        
+                        # Creamos un DataFrame y lo ordenamos por puntos (quien más ganó, arriba)
+                        df_resumen = pd.DataFrame(resumen_partido).sort_values("Puntos", ascending=False)
+                        st.table(df_resumen)
+                    else:
+                        st.write("Nadie hizo predicciones para este partido.")
+            st.divider()
+
+        # 2. SECCIÓN DE PARTIDOS NO FINALIZADOS (SOLO PÚBLICAS)
+        st.markdown("### 🔒 Próximos Partidos / En Juego")
+        st.caption("Solo puedes ver las apuestas de quienes las han marcado como 'Públicas'.")
+        
+        # Filtramos predicciones públicas de otros usuarios
+        p_pub = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI") & (df_p_all['Usuario'] != st.session_state.user)]
+        
+        # Quitamos de aquí las que ya se muestran arriba por estar finalizadas
+        if not partidos_fin.empty:
+            p_pub = p_pub[~p_pub['Partido'].isin(partidos_fin['Partido'])]
+
+        if p_pub.empty:
+            st.info("No hay apuestas públicas visibles para los partidos restantes.")
         else:
-            for u in p_p_j['Usuario'].unique():
-                if u != st.session_state.user:
-                    with st.expander(f"Apuestas de {u}"): st.table(p_p_j[p_p_j['Usuario'] == u][['Partido', 'P_L', 'P_V']])
+            usuarios_pub = p_pub['Usuario'].unique()
+            for u in usuarios_pub:
+                with st.expander(f"👤 Apuestas de {u}"):
+                    # Mostramos solo los partidos que aún no han sido revelados arriba
+                    df_u_pub = p_pub[p_pub['Usuario'] == u][['Partido', 'P_L', 'P_V']]
+                    st.table(df_u_pub)
 
     with tabs[2]: # CLASIFICACIÓN
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True)
@@ -515,5 +566,6 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
