@@ -284,54 +284,66 @@ else:
                 st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
-    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin"])
+    jornadas_terminadas = []
+    for j_name in list(JORNADAS.keys()):
+        if not df_r_all[(df_r_all['Jornada'] == j_name) & (df_r_all['Finalizado'] == "SI")].empty:
+            jornadas_terminadas.append(j_name)
 
-    with tabs[0]: # --- PESTAÑA APUESTAS ---
+    datos_evolucion = []
+    for j_t in jornadas_terminadas:
+        ranking_momento = []
+        for u in u_jugadores:
+            # Puntos base
+            pb = df_base[df_base['Usuario'] == u]
+            pts = safe_float(pb['Puntos'].values[0]) if not pb.empty else 0.0
+            # Puntos hasta esta jornada inclusive
+            preds_hasta_hoy = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] <= j_t)]
+            for r in preds_hasta_hoy.itertuples():
+                m = df_r_all[(df_r_all['Jornada']==r.Jornada)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
+                if not m.empty: pts += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+            ranking_momento.append({"Usuario": u, "Puntos": pts})
+        
+        # Ordenamos y sacamos puesto
+        df_m = pd.DataFrame(ranking_momento).sort_values("Puntos", ascending=False).reset_index(drop=True)
+        df_m['Puesto'] = range(1, len(df_m) + 1)
+        for _, row in df_m.iterrows():
+            datos_evolucion.append({"Jornada": j_t, "Usuario": row['Usuario'], "Puesto": row['Puesto']})
+
+    df_ev_plot = pd.DataFrame(datos_evolucion)
+    
+    usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
+    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Evolución", "📊 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "📜 Auditoría", "⚙️ Admin"])
+
+    with tabs[0]: # --- PESTAÑA APUESTAS (BLOQUEADA PARA ADMIN) ---
         if es_admin:
-            st.warning("🛡️ Acceso restringido: Los administradores no participan en las porras.")
-            st.info("Tu función es supervisar la liga y actualizar los resultados desde la pestaña **⚙️ Admin**.")
+            st.warning("🛡️ Los administradores no participan en las porras.")
+            st.info("Usa la pestaña **⚙️ Admin** para gestionar la liga.")
             st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
         else:
-            # --- Lógica de persistencia para usuarios normales ---
             u_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
             env = []
             for i, (loc, vis) in enumerate(JORNADAS[j_global]):
                 m_id = f"{loc}-{vis}"
-                
-                # Valores por defecto: Recuperar lo que el usuario ya guardó
                 dl, dv, dp = 0, 0, "NO"
                 if not u_preds.empty:
-                    match_data = u_preds[u_preds['Partido'] == m_id]
-                    if not match_data.empty:
-                        dl, dv, dp = int(match_data.iloc[0]['P_L']), int(match_data.iloc[0]['P_V']), match_data.iloc[0]['Publica']
+                    dat = u_preds[u_preds['Partido'] == m_id]
+                    if not dat.empty: dl, dv, dp = int(dat.iloc[0]['P_L']), int(dat.iloc[0]['P_V']), dat.iloc[0]['Publica']
                 
-                res_info = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
-                lock = False
-                if not res_info.empty:
-                    # Bloqueo por fecha/hora
-                    lock = datetime.now() > datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                res_r = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
+                lock = datetime.now() > datetime.strptime(str(res_r.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") if not res_r.empty else False
                 
                 st.markdown(f'<div class="match-box">', unsafe_allow_html=True)
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
-                with c1: 
-                    log = get_logo(loc)
-                    if log: st.image(log, width=45)
-                with c2: pl = st.number_input(f"{loc}", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock)
-                with c4: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock)
-                with c5: 
-                    logv = get_logo(vis)
-                    if logv: st.image(logv, width=45)
-                with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
+                with c1: lg = get_logo(loc); st.image(lg, width=45) if lg else st.write("⚽")
+                with c2: pl = st.number_input(f"{loc}", 0, 9, dl, key=f"pl_{i}", disabled=lock)
+                with c4: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}", disabled=lock)
+                with c5: lv = get_logo(vis); st.image(lv, width=45) if lv else st.write("⚽")
+                with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}", disabled=lock)
                 st.markdown('</div>', unsafe_allow_html=True)
                 env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
-            
             if st.button("💾 Guardar Mis Predicciones", use_container_width=True):
                 otras = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
                 conn.update(worksheet="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
-                st.cache_data.clear()
-                st.success("✅ Predicciones guardadas con éxito.")
-                st.rerun()
 
     with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL FINALIZAR) ---
         st.header("👀 Qué han puesto los demás")
@@ -578,6 +590,44 @@ else:
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
 
+    with tabs[8]: # --- PESTAÑA AUDITORÍA ---
+        st.header("📜 Auditoría de Cambios")
+        st.caption("Historial de acciones del administrador para garantizar la limpieza de la liga.")
+        df_logs = leer_datos("LogsAdmin")
+        if not df_logs.empty:
+            # Mostramos los últimos cambios primero
+            st.table(df_logs.sort_values("Fecha", ascending=False).head(20))
+        else:
+            st.write("No hay registros de actividad todavía.")
+
+    with tabs[9]: # --- PESTAÑA ADMIN (CON LOGS) ---
+        if es_admin:
+            t1, t2, t3 = st.tabs(["⭐ Bases", "📸 Fotos", "⚽ Resultados"])
+            # ... [Aquí iría tu código de Bases y Fotos] ...
+            
+            with t3: # RESULTADOS CON SISTEMA DE LOGS
+                st.subheader(f"Gestión {j_global}")
+                res_env = []
+                h_ops = [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
+                for i, (l, v) in enumerate(JORNADAS[j_global]):
+                    # ... [Toda tu lógica actual de inputs de resultados que ya funciona] ...
+                    # (Asegúrate de mantener el bloque de inputs que te pasé antes)
+                
+                if st.button("🏟️ Guardar Resultados Jornada", use_container_width=True):
+                    # 1. Guardar resultados
+                    otros = df_r_all[df_r_all['Jornada'] != j_global]
+                    conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(res_env)], ignore_index=True))
+                    
+                    # 2. REGISTRAR EN LA AUDITORÍA
+                    nuevo_log = pd.DataFrame([{
+                        "Fecha": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                        "Usuario": st.session_state.user,
+                        "Accion": f"Actualizó resultados de la {j_global}"
+                    }])
+                    df_logs_old = leer_datos("LogsAdmin")
+                    conn.update(worksheet="LogsAdmin", data=pd.concat([df_logs_old, nuevo_log], ignore_index=True))
+                    
+                    st.cache_data.clear(); st.success("✅ Resultados guardados y acción registrada."); st.rerun()
 
 
 
