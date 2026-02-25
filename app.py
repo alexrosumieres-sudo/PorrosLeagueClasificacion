@@ -90,7 +90,7 @@ LOGROS_DATA = {
 }
 
 # --- 2. FUNCIONES DE APOYO ---
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=10) # TTL bajo para que los cambios del admin se vean rápido
 def leer_datos(pestaña):
     try:
         sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
@@ -121,28 +121,6 @@ def calcular_puntos(p_l, p_v, r_l, r_v, tipo="Normal"):
         return 0.0
     except: return 0.0
 
-def obtener_perfil_apostador(df_u):
-    if df_u is None or df_u.empty: return "Novato 🐣", "Sin datos.", 0.0
-    avg_g = (df_u['P_L'] + df_u['P_V']).mean()
-    riesgo = min(avg_g / 5.0, 1.0)
-    if avg_g > 3.4: return "BUSCADOR DE PLENOS 🤪", "Ataque total.", riesgo
-    if avg_g < 2.1: return "CONSERVADOR 🛡️", "Fiel al 1-0.", riesgo
-    return "ESTRATEGA ⚖️", "Equilibrado.", riesgo
-
-def calcular_logros_u(usuario, df_p_all, df_r_all, jornada_sel, ranking):
-    logros = []
-    if not ranking.empty and ranking.iloc[0]['Usuario'] == usuario: logros.append("cima")
-    u_p = df_p_all[(df_p_all['Usuario'] == usuario) & (df_p_all['Jornada'] == jornada_sel)]
-    res_j = df_r_all[(df_r_all['Jornada'] == jornada_sel) & (df_r_all['Finalizado'] == "SI")]
-    if u_p.empty or res_j.empty: return logros
-    pts_j = []
-    for row in u_p.itertuples():
-        m = res_j[res_j['Partido'] == row.Partido]
-        if not m.empty:
-            pts_j.append(calcular_puntos(row.P_L, row.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo']))
-    if len(pts_j) == 10 and all(p > 0 for p in pts_j): logros.append("pleno")
-    return list(set(logros))
-
 def analizar_adn_pro(usuario, df_p, df_r):
     df_m = pd.merge(df_p[df_p['Usuario'] == usuario], df_r[df_r['Finalizado'] == "SI"], on=['Jornada', 'Partido'])
     if df_m.empty: return None
@@ -162,7 +140,7 @@ def analizar_adn_pro(usuario, df_p, df_r):
     }
 
 def simular_oraculo(usuarios, df_p_all, df_r_all, jornada_sel):
-    res_sim = [(0,0), (1,0), (0,1), (1,1), (2,1), (1,2), (2,2), (3,1), (0,2)]
+    res_sim = [(0,0), (1,0), (0,1), (1,1), (2,1), (1,2), (2,2), (2,0), (0,2)]
     pend = df_r_all[(df_r_all['Jornada'] == jornada_sel) & (df_r_all['Finalizado'] == "NO")]
     if pend.empty or len(pend) > 3: return None
     p_id, t_id = pend['Partido'].tolist(), pend['Tipo'].tolist()
@@ -182,7 +160,7 @@ def simular_oraculo(usuarios, df_p_all, df_r_all, jornada_sel):
     return {u: (v/len(combos))*100 for u, v in victorias.items()}
 
 # --- 3. APP ---
-st.set_page_config(page_title="Porros League 2026", page_icon="⚽", layout="wide")
+st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
@@ -190,16 +168,16 @@ if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("🏆 Porros League 2026")
+        st.title("🏆 Porra League 2026")
         u_in, p_in = st.text_input("Usuario"), st.text_input("Contraseña", type="password")
         c1, c2 = st.columns(2)
-        if c1.button("Entrar"):
+        if c1.button("Entrar", use_container_width=True):
             df_u = leer_datos("Usuarios")
             user = df_u[(df_u['Usuario'].astype(str) == u_in) & (df_u['Password'].astype(str) == p_in)]
             if not user.empty:
                 st.session_state.autenticado, st.session_state.user, st.session_state.rol = True, u_in, user.iloc[0]['Rol']; st.rerun()
             else: st.error("❌ Credenciales incorrectas")
-        if c2.button("Registrarse"):
+        if c2.button("Registrarse", use_container_width=True):
             df_u = leer_datos("Usuarios")
             if u_in in df_u['Usuario'].values: st.error("❌ Usuario ya existe")
             else:
@@ -231,51 +209,45 @@ else:
 
     with st.sidebar:
         st.title("⚽ Menú Liga")
-        j_global = st.selectbox("📅 Jornada:", list(JORNADAS.keys()), key="side_j")
+        
+        # --- MEJORA: SALTO AUTOMÁTICO DE JORNADA ---
+        lista_jornadas = list(JORNADAS.keys())
+        indice_defecto = 0
+        for i, nombre_j in enumerate(lista_jornadas):
+            pendientes = df_r_all[(df_r_all['Jornada'] == nombre_j) & (df_r_all['Finalizado'] == "NO")]
+            if not pendientes.empty:
+                indice_defecto = i
+                break
+        
+        j_global = st.selectbox("📅 Seleccionar Jornada:", lista_jornadas, index=indice_defecto, key="side_j")
         st.divider()
-        # BOTÓN DE SALIR RESTAURADO
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
-            st.session_state.autenticado = False
-            st.rerun()
+            st.session_state.autenticado = False; st.rerun()
 
-    # --- CÁLCULO DE DASHBOARD HERO (LÍDER VS USUARIO) ---
+    # --- CÁLCULO DE DASHBOARD HERO ---
     stats_hero = []
     for u in u_jugadores:
-        # Puntos base (con seguridad para evitar IndexErrors)
         pb_row = df_base[df_base['Usuario'] == u]
         p_base = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
-        
-        # Puntos acumulados históricos
         u_p_hist = df_p_all[df_p_all['Usuario'] == u]
         p_acum = p_base
         for r in u_p_hist.itertuples():
             m = df_r_all[(df_r_all['Jornada'] == r.Jornada) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
             if not m.empty:
                 p_acum += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-        
         stats_hero.append({"Usuario": u, "Puntos": p_acum})
     
     df_hero = pd.DataFrame(stats_hero).sort_values("Puntos", ascending=False).reset_index(drop=True)
     df_hero['Posicion'] = range(1, len(df_hero) + 1)
-    
-    # 1. Identificar al Líder
-    if not df_hero.empty:
-        lider = df_hero.iloc[0]
-    else:
-        lider = {"Usuario": "Nadie", "Puntos": 0.0}
+    lider = df_hero.iloc[0] if not df_hero.empty else {"Usuario": "Nadie", "Puntos": 0.0}
 
-    # 2. Identificar el Puesto (Manejo de Admin vs Jugador)
     es_admin = st.session_state.rol == "admin"
-    
     if es_admin:
         mi_pos = "ADMIN"
-        mi_puntos_hoy = 0.00 # El admin normalmente no puntúa
+        mi_puntos_hoy = 0.00
     else:
-        # Si es jugador, buscamos su puesto real
         mi_pos_query = df_hero[df_hero['Usuario'] == st.session_state.user]['Posicion']
         mi_pos = f"#{int(mi_pos_query.values[0])}" if not mi_pos_query.empty else "-"
-        
-        # Puntos del jugador en la jornada seleccionada
         u_p_hoy = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
         mi_puntos_hoy = 0.0
         for r in u_p_hoy.itertuples():
@@ -283,27 +255,23 @@ else:
             if not m.empty:
                 mi_puntos_hoy += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
 
-    # 3. Tiempo para el cierre
     prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
+
+    st.title(f"Hola, {st.session_state.user} 👋")
 
     # --- RENDER DASHBOARD HERO ---
     with st.container():
         st.markdown('<div class="hero-bg">', unsafe_allow_html=True)
         col_lider, col_sep, col_datos = st.columns([1.5, 0.2, 3.5])
-        
-        with col_lider: # FOTO Y NOMBRE DEL LÍDER
-            st.markdown('<span class="section-tag">LÍDER DE LA LIGA 🏆</span>', unsafe_allow_html=True)
-            st.markdown('<div style="position: relative; text-align: center;">', unsafe_allow_html=True)
-            st.markdown('<span class="crown">👑</span>', unsafe_allow_html=True)
+        with col_lider:
+            st.markdown('<span class="section-tag">LÍDER ACTUAL</span>', unsafe_allow_html=True)
+            st.markdown('<div style="position: relative; text-align: center;"><span class="crown">👑</span>', unsafe_allow_html=True)
             f_l = foto_dict.get(lider['Usuario'])
             if f_l and os.path.exists(str(f_l)): st.image(f_l, width=90)
             else: st.markdown("<h2 style='margin:0;'>👤</h2>", unsafe_allow_html=True)
-            st.markdown(f"**{lider['Usuario']}**<br><span style='color:#daa520; font-weight:bold;'>{lider['Puntos']:.2f} Pts</span>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with col_datos: # ESTADÍSTICAS DEL QUE ESTÁ LOGUEADO
-            tag_usuario = "TU PANEL DE CONTROL" if es_admin else "TUS ESTADÍSTICAS"
-            st.markdown(f'<span class="section-tag">{tag_usuario}</span>', unsafe_allow_html=True)
+            st.markdown(f"**{lider['Usuario']}**<br><span style='color:#daa520; font-weight:bold;'>{lider['Puntos']:.2f} Pts</span></div>", unsafe_allow_html=True)
+        with col_datos:
+            st.markdown(f'<span class="section-tag">{"PANEL CONTROL" if es_admin else "TUS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
             c2, c3, c4 = st.columns(3)
             with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
             with c3:
@@ -313,43 +281,46 @@ else:
                     st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
             with c4:
-                color_pts = "#6c757d" if es_admin else "#007bff"
-                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:{color_pts};">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin"])
 
-    with tabs[0]: # APUESTAS
+    with tabs[0]: # PESTAÑA APUESTAS (MEJORA: PERSISTENCIA)
         u_p_s = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
         env = []
         for i, (loc, vis) in enumerate(JORNADAS[j_global]):
-            m_id, dl, dv, dp, lock, t = f"{loc}-{vis}", 0, 0, "NO", False, "Normal"
+            m_id = f"{loc}-{vis}"
+            
+            # VALORES POR DEFECTO: Buscamos si el usuario ya guardó algo antes
+            dl, dv, dp = 0, 0, "NO"
             if not u_p_s.empty:
                 r_p = u_p_s[u_p_s['Partido'] == m_id]
-                if not r_p.empty: dl, dv, dp = int(r_p.iloc[0]['P_L']), int(r_p.iloc[0]['P_V']), r_p.iloc[0]['Publica']
+                if not r_p.empty:
+                    dl, dv, dp = int(r_p.iloc[0]['P_L']), int(r_p.iloc[0]['P_V']), r_p.iloc[0]['Publica']
+            
             res_r = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
-            if not res_r.empty:
-                t = res_r.iloc[0]['Tipo']
-                lock = datetime.now() > datetime.strptime(str(res_r.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+            lock = datetime.now() > datetime.strptime(str(res_r.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") if not res_r.empty else False
+            
             st.markdown(f'<div class="match-box">', unsafe_allow_html=True)
             c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
-            with c1:
+            with c1: 
                 lg = get_logo(loc)
                 if lg: st.image(lg, width=45)
-                else: st.write("⚽")
-            with c2: pl = st.number_input(f"{loc}", 0, 9, dl, key=f"pl_{i}", disabled=lock)
-            with c4: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}", disabled=lock)
+            with c2: pl = st.number_input(f"{loc}", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock)
+            with c4: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock)
             with c5:
                 lv = get_logo(vis)
                 if lv: st.image(lv, width=45)
-                else: st.write("⚽")
-            with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}", disabled=lock)
+            with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
             st.markdown('</div>', unsafe_allow_html=True)
             env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
+        
         if st.button("💾 Guardar Todo"):
             old = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
-            conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(env)], ignore_index=True)); st.cache_data.clear(); st.success("OK")
+            conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(env)], ignore_index=True))
+            st.cache_data.clear(); st.success("✅ Guardado. Tus datos aparecerán aquí la próxima vez que entres.")
 
     with tabs[1]: # OTROS
         p_p_j = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI")]
@@ -393,7 +364,7 @@ else:
         u_sel = st.selectbox("Analizar:", u_jugadores)
         adn = analizar_adn_pro(u_sel, df_p_all, df_r_all)
         if adn:
-            c1, c2, c3 = st.columns(3); c1.metric("⭐ Amuleto", adn['amuleto']); c2.metric("💀 Bestia", adn['bestia']); c3.metric("🎯 %", f"{(adn['signos']+adn['exactos'])/(adn['exactos']+adn['signos']+adn['fallos'])*100:.1f}%")
+            c1, c2, c3 = st.columns(3); c1.metric("⭐ Amuleto", adn['amuleto']); c2.metric("💀 Bestia", adn['bestia']); c3.metric("🎯 %", f"{(adn['signos']+adn['exactos'])/(adn['exactos']+adn['signos']+adn['fallos']+0.001)*100:.1f}%")
             st.plotly_chart(px.pie(values=[adn['exactos'], adn['signos'], adn['fallos']], names=['Plenos', 'Signos', 'Fallos'], color_discrete_sequence=['#2baf2b', '#ffd700', '#ff4b4b']), use_container_width=True)
 
     with tabs[4]: # DETALLES
@@ -405,14 +376,14 @@ else:
                 for u in u_jugadores:
                     up = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global) & (df_p_all['Partido'] == p)]
                     m_p.at[p, u] = calcular_puntos(up.iloc[0]['P_L'], up.iloc[0]['P_V'], inf['R_L'], inf['R_V'], inf['Tipo']) if not up.empty else 0.0
-            st.dataframe(m_p.astype(float))
+            st.dataframe(m_p.astype(float), use_container_width=True)
         else: st.info("Sin partidos finalizados.")
 
     with tabs[5]: # SIMULADOR
-        usr_s = st.selectbox("Basar en:", u_jugadores)
-        if st.button("Simular Liga"):
+        usr_sim = st.selectbox("Simular LaLiga según apuestas de:", u_jugadores)
+        if st.button("Generar Clasificación Simulada"):
             sim = {k: v.copy() for k, v in STATS_LALIGA_BASE.items()}
-            for p in df_p_all[df_p_all['Usuario']==usr_s].itertuples():
+            for p in df_p_all[df_p_all['Usuario']==usr_sim].itertuples():
                 try:
                     tl, tv = p.Partido.split('-')
                     if tl in sim and tv in sim:
@@ -421,128 +392,53 @@ else:
                         elif p.P_V > p.P_L: sim[tv]["Pts"]+=3; sim[tv]["V"]+=1; sim[tl]["D"]+=1
                         else: sim[tl]["Pts"]+=1; sim[tv]["Pts"]+=1; sim[tl]["E"]+=1; sim[tv]["E"]+=1
                 except: continue
-            st.dataframe(pd.DataFrame.from_dict(sim, orient='index').sort_values("Pts", ascending=False))
+            st.dataframe(pd.DataFrame.from_dict(sim, orient='index').sort_values("Pts", ascending=False), use_container_width=True)
 
     with tabs[6]: # ORÁCULO
         if usa_oraculo:
-            probs = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
-            if probs:
-                for u, v in sorted(probs.items(), key=lambda x: x[1], reverse=True):
+            prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
+            if prob:
+                for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
                     if v > 0: st.write(f"**{u}**: {v:.1f}%"); st.progress(v/100)
-        else: st.info("Se activa con 1-3 partidos restantes.")
+        else: st.info("El Oráculo se activa cuando quedan 1-3 partidos.")
 
-    with tabs[7]: # PESTAÑA ADMIN
-        if st.session_state.rol == "admin":
-            st.header("⚙️ Panel de Control de Administrador")
-            
-            # Sub-pestañas internas para organizar el trabajo del admin
-            tab_bases, tab_fotos, tab_resultados = st.tabs(["⭐ Gestión de Bases", "📸 Gestión de Fotos", "⚽ Resultados Jornada"])
-
-            with tab_bases:
-                st.subheader("Puntos Base (Ventaja o Correcciones)")
+    with tabs[7]: # ADMIN
+        if es_admin:
+            st.header("⚙️ Panel de Control")
+            t1, t2, t3 = st.tabs(["⭐ Bases", "📸 Fotos", "⚽ Resultados"])
+            with t1:
                 upd_b = []
                 for u in u_jugadores:
-                    # Buscamos si el usuario ya tiene puntos base en el Excel
-                    pb_row = df_base[df_base['Usuario'] == u]
-                    pts_actuales = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
-                    
-                    c1, c2 = st.columns([2, 1])
-                    c1.write(f"Usuario: **{u}**")
-                    val = c2.number_input(f"Puntos para {u}", value=pts_actuales, step=0.25, key=f"adm_base_{u}", label_visibility="collapsed")
+                    val = st.number_input(f"Base {u}", value=safe_float(df_base[df_base['Usuario']==u]['Puntos'].values[0]) if not df_base[df_base['Usuario']==u].empty else 0.0, key=f"b_{u}")
                     upd_b.append({"Usuario": u, "Puntos": val})
-                
-                if st.button("💾 Guardar todos los Puntos Base"):
-                    conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
-                    st.cache_data.clear() # Limpiamos caché para que el ranking se actualice
-                    st.success("✅ Puntos base actualizados con éxito.")
-
-            with tab_fotos:
-                st.subheader("Asociar Fotos de Perfil")
-                # Listar archivos en la carpeta perfiles/
-                if os.path.exists(PERFILES_DIR):
-                    archivos_fotos = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png'))])
-                    upd_f = []
-                    
-                    for u in u_jugadores:
-                        # Obtener foto actual del usuario
-                        foto_actual_path = foto_dict.get(u, "")
-                        foto_actual_nombre = os.path.basename(foto_actual_path) if foto_actual_path else "Ninguna"
-                        
-                        # Si por algún error el archivo ya no existe, volvemos a Ninguna
-                        index_foto = archivos_fotos.index(foto_actual_nombre) if foto_actual_nombre in archivos_fotos else 0
-                        
-                        c1, c2 = st.columns([2, 1])
-                        c1.write(f"Foto de **{u}**")
-                        seleccion = c2.selectbox(f"Archivo para {u}", archivos_fotos, index=index_foto, key=f"adm_foto_{u}", label_visibility="collapsed")
-                        
-                        path_final = f"{PERFILES_DIR}{seleccion}" if seleccion != "Ninguna" else ""
-                        upd_f.append({"Usuario": u, "ImagenPath": path_final})
-                    
-                    if st.button("🖼️ Actualizar todas las Fotos"):
-                        conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(upd_f))
-                        st.cache_data.clear() # Limpiamos caché para que el dashboard cambie la foto
-                        st.success("✅ Fotos de perfil actualizadas.")
-                else:
-                    st.error(f"⚠️ No se encuentra la carpeta '{PERFILES_DIR}'. Crea la carpeta y sube las fotos por FTP/GitHub.")
-
-            with tab_resultados:
-                st.subheader(f"Resultados de la {j_global}")
-                r_env = []
-                # Opciones de horas
-                h_ops = [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
-                
+                if st.button("Guardar Bases"): conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b)); st.cache_data.clear(); st.rerun()
+            with t2:
+                fs = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png'))])
+                updf = []
+                for u in u_jugadores:
+                    act = os.path.basename(foto_dict.get(u, "")) or "Ninguna"
+                    sel = st.selectbox(f"Foto {u}", fs, index=fs.index(act) if act in fs else 0, key=f"f_{u}")
+                    updf.append({"Usuario": u, "ImagenPath": f"{PERFILES_DIR}{sel}" if sel != "Ninguna" else ""})
+                if st.button("Guardar Fotos"): conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(updf)); st.cache_data.clear(); st.rerun()
+            with t3:
+                st.subheader(f"Gestión {j_global}")
+                res_env, h_ops = [], [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
                 for i, (l, v) in enumerate(JORNADAS[j_global]):
                     m_id = f"{l}-{v}"
                     prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
-                    
-                    # Valores por defecto si no hay datos previos
-                    rl, rv, fin, t = 0, 0, False, "Normal"
-                    fecha_val = datetime(2026, 2, 23).date() # Fecha base por defecto
-                    hora_val = "21:00"
-
-                    if not prev.empty: 
+                    rl, rv, fin, t, f_v, h_v = 0, 0, False, "Normal", datetime(2026,2,23).date(), "21:00"
+                    if not prev.empty:
                         rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
                         t = prev.iloc[0]['Tipo']
-                        try:
-                            # Intentamos extraer fecha y hora guardadas en el Google Sheet
-                            dt_obj = datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
-                            fecha_val = dt_obj.date()
-                            hora_val = dt_obj.strftime("%H:%M")
+                        try: dt = datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S"); f_v, h_v = dt.date(), dt.strftime("%H:%M")
                         except: pass
-
-                    st.markdown(f"**⚽ {m_id}**")
-                    # Creamos 6 columnas para que quepa todo: Tipo, Fecha, Hora, L, V, Fin
-                    c1, c2, c3, c4, c5, c6 = st.columns([1.2, 1.2, 1, 0.7, 0.7, 0.6])
-                    
-                    nt = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}")
-                    
-                    # --- NUEVO: SELECTOR DE FECHA ---
-                    n_fecha = c2.date_input("Día", value=fecha_val, key=f"adate_{i}")
-                    
-                    nho = c3.selectbox("Hora", h_ops, index=h_ops.index(hora_val) if hora_val in h_ops else 0, key=f"aho_{i}")
-                    nrl = c4.number_input("L", 0, 9, rl, key=f"arl_{i}")
-                    nrv = c5.number_input("V", 0, 9, rv, key=f"arv_{i}")
-                    nfi = c6.checkbox("Fin", fin, key=f"afi_{i}")
-                    
-                    # Combinamos la fecha seleccionada con la hora seleccionada
-                    fecha_str = f"{n_fecha} {nho}:00" 
-                    
-                    r_env.append({
-                        "Jornada": j_global, 
-                        "Partido": m_id, 
-                        "Tipo": nt, 
-                        "R_L": nrl, 
-                        "R_V": nrv, 
-                        "Hora_Inicio": fecha_str, 
-                        "Finalizado": "SI" if nfi else "NO"
-                    })
-                
-                if st.button("🏟️ Guardar Resultados Jornada"):
+                    st.write(f"**⚽ {m_id}**")
+                    c1, c2, c3, c4, c5, c6 = st.columns([1, 1.2, 1, 0.7, 0.7, 0.6])
+                    nt, nf = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}"), c2.date_input("Día", f_v, key=f"ad_{i}")
+                    nh, nrl = c3.selectbox("Hora", h_ops, index=h_ops.index(h_v) if h_v in h_ops else 0, key=f"ah_{i}"), c4.number_input("L", 0, 9, rl, key=f"al_{i}")
+                    nrv, nfi = c5.number_input("V", 0, 9, rv, key=f"av_{i}"), c6.checkbox("Fin", fin, key=f"af_{i}")
+                    res_env.append({"Jornada": j_global, "Partido": m_id, "Tipo": nt, "R_L": nrl, "R_V": nrv, "Hora_Inicio": f"{nf} {nh}:00", "Finalizado": "SI" if nfi else "NO"})
+                if st.button("🏟️ Guardar Resultados"):
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
-                    conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
-                    st.cache_data.clear()
-                    st.success(f"✅ Resultados y fechas de la {j_global} actualizados.")
-        else:
-            st.warning("⛔ Acceso denegado. Solo los administradores pueden ver esta pestaña.")
-
-
+                    conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(res_env)], ignore_index=True))
+                    st.cache_data.clear(); st.success("OK"); st.rerun()
