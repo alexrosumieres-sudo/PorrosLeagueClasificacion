@@ -432,7 +432,7 @@ else:
             with t_fotos:
                 st.subheader("Asignar Imágenes a Usuarios")
                 if os.path.exists(PERFILES_DIR):
-                    archivos = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png'))])
+                    archivos = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png', '.webp'))])
                     upd_f = []
                     for u in u_jugadores:
                         # Limpieza de datos para evitar el error de basename
@@ -515,4 +515,5 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
