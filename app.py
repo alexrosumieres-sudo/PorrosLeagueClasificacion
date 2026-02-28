@@ -324,7 +324,16 @@ else:
                     if logv: st.image(logv, width=45)
                 with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
                 st.markdown('</div>', unsafe_allow_html=True)
-                env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
+                ya_existia = not u_preds[u_preds['Partido'] == m_id].empty
+                if not lock or ya_existia:
+                    env.append({
+                        "Usuario": st.session_state.user,
+                        "Jornada": j_global,
+                        "Partido": m_id,
+                        "P_L": pl,
+                        "P_V": pv,
+                        "Publica": "SI" if pub else "NO"
+                    })
             
             if st.button("💾 Guardar Mis Predicciones", use_container_width=True):
                 otras = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
@@ -577,6 +586,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
