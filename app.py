@@ -319,30 +319,30 @@ else:
                     if lg_l: st.image(lg_l, width=45)
                     else: st.write("⚽")
                 with cb: # O c3, según el nombre de tu columna en esa parte
-                px_p = df_r_all[(df_r_all['Jornada']==j_global)&(df_r_all['Finalizado']=="NO")].sort_values("Hora_Inicio").head(1)
-                if not px_p.empty:
-                    # Calculamos la diferencia total
-                    diff = datetime.strptime(str(px_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
-                    total_segundos = int(diff.total_seconds())
-                    
-                    if total_segundos > 0:
-                        # Extraemos horas y minutos exactos
-                        horas_exactas = total_segundos // 3600
-                        minutos_exactos = (total_segundos % 3600) // 60
+                    px_p = df_r_all[(df_r_all['Jornada']==j_global)&(df_r_all['Finalizado']=="NO")].sort_values("Hora_Inicio").head(1)
+                    if not px_p.empty:
+                        # Calculamos la diferencia total
+                        diff = datetime.strptime(str(px_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
+                        total_segundos = int(diff.total_seconds())
                         
-                        # Color: Rojo si queda menos de 24h, verde si queda más
-                        color_tiempo = "#ff4b4b" if horas_exactas < 24 else "#2baf2b"
-                        
-                        st.markdown(f'''
-                            <div class="kpi-box">
-                                <span class="kpi-label">Cierre en</span>
-                                <span class="kpi-value" style="color:{color_tiempo};">{horas_exactas}h {minutos_exactos}m</span>
-                            </div>
-                        ''', unsafe_allow_html=True)
+                        if total_segundos > 0:
+                            # Extraemos horas y minutos exactos
+                            horas_exactas = total_segundos // 3600
+                            minutos_exactos = (total_segundos % 3600) // 60
+                            
+                            # Color: Rojo si queda menos de 24h, verde si queda más
+                            color_tiempo = "#ff4b4b" if horas_exactas < 24 else "#2baf2b"
+                            
+                            st.markdown(f'''
+                                <div class="kpi-box">
+                                    <span class="kpi-label">Cierre en</span>
+                                    <span class="kpi-value" style="color:{color_tiempo};">{horas_exactas}h {minutos_exactos}m</span>
+                                </div>
+                            ''', unsafe_allow_html=True)
+                        else:
+                            st.markdown('<div class="kpi-box"><span class="kpi-label">Estado</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
                     else:
                         st.markdown('<div class="kpi-box"><span class="kpi-label">Estado</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="kpi-box"><span class="kpi-label">Estado</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
                 with cd: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}", disabled=lock)
                 with ce: 
                     lg_v = get_logo(vis)
@@ -617,6 +617,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
