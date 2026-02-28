@@ -184,17 +184,13 @@ if not st.session_state.autenticado:
                 nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
                 conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True)); st.success("✅ Hecho")
 else:
-    # 1. CARGA DE DATOS CENTRALIZADA
+    # 1. CARGA DE DATOS
     df_perf = leer_datos("ImagenesPerfil")
-    df_r_all = leer_datos("Resultados")
-    df_p_all = leer_datos("Predicciones")
-    df_u_all = leer_datos("Usuarios")
-    df_base = leer_datos("PuntosBase")
-    
+    df_r_all, df_p_all, df_u_all, df_base = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase")
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
-    # --- CSS PERSONALIZADO ---
+    # --- CSS ---
     st.markdown("""
         <style>
         .stApp { background-color: #ffffff; color: #31333F; }
@@ -214,7 +210,7 @@ else:
     with st.sidebar:
         st.title("⚽ Menú Liga")
         
-        # --- LÓGICA DE SALTO AUTOMÁTICO DE JORNADA ---
+        # --- MEJORA: SALTO AUTOMÁTICO DE JORNADA ---
         lista_jornadas = list(JORNADAS.keys())
         indice_defecto = 0
         for i, nombre_j in enumerate(lista_jornadas):
@@ -226,10 +222,9 @@ else:
         j_global = st.selectbox("📅 Seleccionar Jornada:", lista_jornadas, index=indice_defecto, key="side_j")
         st.divider()
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
-            st.session_state.autenticado = False
-            st.rerun()
+            st.session_state.autenticado = False; st.rerun()
 
-    # --- CÁLCULO DE DASHBOARD HERO (LÍDER VS USUARIO) ---
+    # --- CÁLCULO DE DASHBOARD HERO ---
     stats_hero = []
     for u in u_jugadores:
         pb_row = df_base[df_base['Usuario'] == u]
@@ -260,125 +255,82 @@ else:
             if not m.empty:
                 mi_puntos_hoy += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
 
+    prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
+
+    st.title(f"Hola, {st.session_state.user} 👋")
+
     # --- RENDER DASHBOARD HERO ---
     with st.container():
         st.markdown('<div class="hero-bg">', unsafe_allow_html=True)
         col_lider, col_sep, col_datos = st.columns([1.5, 0.2, 3.5])
-        
         with col_lider:
             st.markdown('<span class="section-tag">LÍDER ACTUAL</span>', unsafe_allow_html=True)
-            st.markdown('<div style="position: relative; text-align: center;">', unsafe_allow_html=True)
-            st.markdown('<span class="crown">👑</span>', unsafe_allow_html=True)
+            st.markdown('<div style="position: relative; text-align: center;"><span class="crown">👑</span>', unsafe_allow_html=True)
             f_l = foto_dict.get(lider['Usuario'])
             if f_l and os.path.exists(str(f_l)): st.image(f_l, width=90)
             else: st.markdown("<h2 style='margin:0;'>👤</h2>", unsafe_allow_html=True)
-            st.markdown(f"**{lider['Usuario']}**<br><span style='color:#daa520; font-weight:bold;'>{lider['Puntos']:.2f} Pts</span>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
+            st.markdown(f"**{lider['Usuario']}**<br><span style='color:#daa520; font-weight:bold;'>{lider['Puntos']:.2f} Pts</span></div>", unsafe_allow_html=True)
         with col_datos:
-            tag_usuario = "TU PANEL DE CONTROL" if es_admin else "TUS ESTADÍSTICAS"
-            st.markdown(f'<span class="section-tag">{tag_usuario}</span>', unsafe_allow_html=True)
+            st.markdown(f'<span class="section-tag">{"PANEL CONTROL" if es_admin else "TUS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
             c2, c3, c4 = st.columns(3)
             with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
             with c3:
-                prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
                 if not prox_p.empty:
                     diff = datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
                     h = max(0, int(diff.total_seconds() // 3600))
                     st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
             with c4:
-                color_pts = "#6c757d" if es_admin else "#007bff"
-                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:{color_pts};">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin"])
 
-    with tabs[0]: # PESTAÑA APUESTAS
+    with tabs[0]: # --- PESTAÑA APUESTAS ---
         if es_admin:
-            st.warning("🛡️ Los administradores no participan en las porras.")
+            st.warning("🛡️ Acceso restringido: Los administradores no participan en las porras.")
+            st.info("Tu función es supervisar la liga y actualizar los resultados desde la pestaña **⚙️ Admin**.")
+            st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
         else:
-            u_p_s = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
+            # --- Lógica de persistencia para usuarios normales ---
+            u_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
             env = []
             for i, (loc, vis) in enumerate(JORNADAS[j_global]):
                 m_id = f"{loc}-{vis}"
                 
-                # 1. Comprobamos si YA existe una apuesta en el Excel para este partido
-                bet_previa = u_p_s[u_p_s['Partido'] == m_id]
-                existia = not bet_previa.empty
+                # Valores por defecto: Recuperar lo que el usuario ya guardó
+                dl, dv, dp = 0, 0, "NO"
+                if not u_preds.empty:
+                    match_data = u_preds[u_preds['Partido'] == m_id]
+                    if not match_data.empty:
+                        dl, dv, dp = int(match_data.iloc[0]['P_L']), int(match_data.iloc[0]['P_V']), match_data.iloc[0]['Publica']
                 
-                # Valores por defecto para los inputs
-                dl = int(bet_previa.iloc[0]['P_L']) if existia else 0
-                dv = int(bet_previa.iloc[0]['P_V']) if existia else 0
-                dp = bet_previa.iloc[0]['Publica'] if existia else "NO"
-                
-                # 2. Lógica de bloqueo por tiempo
-                ri = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
+                res_info = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                 lock = False
-                if not ri.empty:
-                    lock = datetime.now() > datetime.strptime(str(ri.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                if not res_info.empty:
+                    # Bloqueo por fecha/hora
+                    lock = datetime.now() > datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                 
-                # --- UI de los partidos ---
                 st.markdown(f'<div class="match-box">', unsafe_allow_html=True)
-                ca, cb, cc, cd, ce, cf = st.columns([1, 2, 0.5, 2, 1, 2])
-                with ca: 
-                    lg_l = get_logo(loc)
-                    if lg_l: st.image(lg_l, width=45)
-                    else: st.write("⚽")
-                with cb: # O c3, según el nombre de tu columna en esa parte
-                    px_p = df_r_all[(df_r_all['Jornada']==j_global)&(df_r_all['Finalizado']=="NO")].sort_values("Hora_Inicio").head(1)
-                    if not px_p.empty:
-                        # Calculamos la diferencia total
-                        diff = datetime.strptime(str(px_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
-                        total_segundos = int(diff.total_seconds())
-                        
-                        if total_segundos > 0:
-                            # Extraemos horas y minutos exactos
-                            horas_exactas = total_segundos // 3600
-                            minutos_exactos = (total_segundos % 3600) // 60
-                            
-                            # Color: Rojo si queda menos de 24h, verde si queda más
-                            color_tiempo = "#ff4b4b" if horas_exactas < 24 else "#2baf2b"
-                            
-                            st.markdown(f'''
-                                <div class="kpi-box">
-                                    <span class="kpi-label">Cierre en</span>
-                                    <span class="kpi-value" style="color:{color_tiempo};">{horas_exactas}h {minutos_exactos}m</span>
-                                </div>
-                            ''', unsafe_allow_html=True)
-                        else:
-                            st.markdown('<div class="kpi-box"><span class="kpi-label">Estado</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="kpi-box"><span class="kpi-label">Estado</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
-                with cd: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}", disabled=lock)
-                with ce: 
-                    lg_v = get_logo(vis)
-                    if lg_v: st.image(lg_v, width=45)
-                    else: st.write("⚽")
-                with cf: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}", disabled=lock)
+                c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
+                with c1: 
+                    log = get_logo(loc)
+                    if log: st.image(log, width=45)
+                with c2: pl = st.number_input(f"{loc}", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock)
+                with c4: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock)
+                with c5: 
+                    logv = get_logo(vis)
+                    if logv: st.image(logv, width=45)
+                with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
                 st.markdown('</div>', unsafe_allow_html=True)
-
-                # --- EL FILTRO CRÍTICO ---
-                # Solo añadimos al envío si:
-                # El partido NO está bloqueado (puede apostar) 
-                # O si YA existía algo (está editando una apuesta que puso a tiempo)
-                if not lock or existia:
-                    env.append({
-                        "Usuario": st.session_state.user, 
-                        "Jornada": j_global, 
-                        "Partido": m_id, 
-                        "P_L": pl, 
-                        "P_V": pv, 
-                        "Publica": "SI" if pub else "NO"
-                    })
+                env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
             
             if st.button("💾 Guardar Mis Predicciones", use_container_width=True):
-                # Filtramos las viejas del usuario para esta jornada y pegamos las nuevas filtradas
-                old = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
-                conn.update(worksheet="Predicciones", data=pd.concat([old, pd.DataFrame(env)], ignore_index=True))
+                otras = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
+                conn.update(worksheet="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
                 st.cache_data.clear()
-                st.success("✅ Guardado (se han ignorado los partidos empezados sin apuesta previa).")
+                st.success("✅ Predicciones guardadas con éxito.")
                 st.rerun()
 
     with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL FINALIZAR) ---
@@ -625,3 +577,6 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
+
+
