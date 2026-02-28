@@ -275,10 +275,19 @@ else:
             c2, c3, c4 = st.columns(3)
             with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
             with c3:
-                if not prox_p.empty:
-                    diff = datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
-                    h = max(0, int(diff.total_seconds() // 3600))
-                    st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<span class="section-tag">{"PANEL ADMIN" if es_admin else "MIS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
+            ca, cb, cc = st.columns(3)
+            with ca: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
+            with cb:
+                px_p = df_r_all[(df_r_all['Jornada']==j_global)&(df_r_all['Finalizado']=="NO")].sort_values("Hora_Inicio").head(1)
+                if not px_p.empty:
+                    diff = datetime.strptime(str(px_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
+                    t_seg = int(diff.total_seconds())
+                    if t_seg > 0:
+                        h_ex, m_ex = t_seg // 3600, (t_seg % 3600) // 60
+                        col_t = "#ff4b4b" if h_ex < 24 else "#2baf2b"
+                        st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{col_t};">{h_ex}h {m_ex}m</span></div>', unsafe_allow_html=True)
+                    else: st.markdown('<div class="kpi-box"><span class="kpi-label">Estado</span><span class="kpi-value">Cerrado</span></div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
             with c4:
                 st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
@@ -617,6 +626,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
