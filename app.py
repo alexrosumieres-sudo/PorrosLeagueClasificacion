@@ -184,13 +184,17 @@ if not st.session_state.autenticado:
                 nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
                 conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True)); st.success("✅ Hecho")
 else:
-    # 1. CARGA DE DATOS
+    # 1. CARGA DE DATOS CENTRALIZADA
     df_perf = leer_datos("ImagenesPerfil")
-    df_r_all, df_p_all, df_u_all, df_base = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase")
+    df_r_all = leer_datos("Resultados")
+    df_p_all = leer_datos("Predicciones")
+    df_u_all = leer_datos("Usuarios")
+    df_base = leer_datos("PuntosBase")
+    
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
-    # --- CSS ---
+    # --- CSS PERSONALIZADO ---
     st.markdown("""
         <style>
         .stApp { background-color: #ffffff; color: #31333F; }
@@ -210,7 +214,7 @@ else:
     with st.sidebar:
         st.title("⚽ Menú Liga")
         
-        # --- MEJORA: SALTO AUTOMÁTICO DE JORNADA ---
+        # --- LÓGICA DE SALTO AUTOMÁTICO DE JORNADA ---
         lista_jornadas = list(JORNADAS.keys())
         indice_defecto = 0
         for i, nombre_j in enumerate(lista_jornadas):
@@ -222,9 +226,10 @@ else:
         j_global = st.selectbox("📅 Seleccionar Jornada:", lista_jornadas, index=indice_defecto, key="side_j")
         st.divider()
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
-            st.session_state.autenticado = False; st.rerun()
+            st.session_state.autenticado = False
+            st.rerun()
 
-    # --- CÁLCULO DE DASHBOARD HERO ---
+    # --- CÁLCULO DE DASHBOARD HERO (LÍDER VS USUARIO) ---
     stats_hero = []
     for u in u_jugadores:
         pb_row = df_base[df_base['Usuario'] == u]
@@ -255,42 +260,36 @@ else:
             if not m.empty:
                 mi_puntos_hoy += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
 
-    prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
-
-    st.title(f"Hola, {st.session_state.user} 👋")
-
     # --- RENDER DASHBOARD HERO ---
     with st.container():
         st.markdown('<div class="hero-bg">', unsafe_allow_html=True)
         col_lider, col_sep, col_datos = st.columns([1.5, 0.2, 3.5])
+        
         with col_lider:
             st.markdown('<span class="section-tag">LÍDER ACTUAL</span>', unsafe_allow_html=True)
-            st.markdown('<div style="position: relative; text-align: center;"><span class="crown">👑</span>', unsafe_allow_html=True)
+            st.markdown('<div style="position: relative; text-align: center;">', unsafe_allow_html=True)
+            st.markdown('<span class="crown">👑</span>', unsafe_allow_html=True)
             f_l = foto_dict.get(lider['Usuario'])
             if f_l and os.path.exists(str(f_l)): st.image(f_l, width=90)
             else: st.markdown("<h2 style='margin:0;'>👤</h2>", unsafe_allow_html=True)
-            st.markdown(f"**{lider['Usuario']}**<br><span style='color:#daa520; font-weight:bold;'>{lider['Puntos']:.2f} Pts</span></div>", unsafe_allow_html=True)
+            st.markdown(f"**{lider['Usuario']}**<br><span style='color:#daa520; font-weight:bold;'>{lider['Puntos']:.2f} Pts</span>", unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
         with col_datos:
-            st.markdown(f'<span class="section-tag">{"PANEL CONTROL" if es_admin else "TUS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
+            tag_usuario = "TU PANEL DE CONTROL" if es_admin else "TUS ESTADÍSTICAS"
+            st.markdown(f'<span class="section-tag">{tag_usuario}</span>', unsafe_allow_html=True)
             c2, c3, c4 = st.columns(3)
             with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
             with c3:
-            st.markdown(f'<span class="section-tag">{"PANEL ADMIN" if es_admin else "MIS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
-            ca, cb, cc = st.columns(3)
-            with ca: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
-            with cb:
-                px_p = df_r_all[(df_r_all['Jornada']==j_global)&(df_r_all['Finalizado']=="NO")].sort_values("Hora_Inicio").head(1)
-                if not px_p.empty:
-                    diff = datetime.strptime(str(px_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
-                    t_seg = int(diff.total_seconds())
-                    if t_seg > 0:
-                        h_ex, m_ex = t_seg // 3600, (t_seg % 3600) // 60
-                        col_t = "#ff4b4b" if h_ex < 24 else "#2baf2b"
-                        st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{col_t};">{h_ex}h {m_ex}m</span></div>', unsafe_allow_html=True)
-                    else: st.markdown('<div class="kpi-box"><span class="kpi-label">Estado</span><span class="kpi-value">Cerrado</span></div>', unsafe_allow_html=True)
+                prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
+                if not prox_p.empty:
+                    diff = datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
+                    h = max(0, int(diff.total_seconds() // 3600))
+                    st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
                 else: st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
             with c4:
-                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
+                color_pts = "#6c757d" if es_admin else "#007bff"
+                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:{color_pts};">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
@@ -626,11 +625,3 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
-
-
-
-
-
-
-
-
