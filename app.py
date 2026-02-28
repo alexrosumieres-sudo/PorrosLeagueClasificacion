@@ -324,8 +324,21 @@ else:
                     if logv: st.image(logv, width=45)
                 with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
                 st.markdown('</div>', unsafe_allow_html=True)
+                res_info = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
+                lock = False
+                finalizado = False
+                if not res_info.empty:
+                    # Bloqueo por fecha/hora
+                    lock = datetime.now() > datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                    # Comprobamos si el partido ya se jugó
+                    finalizado = res_info.iloc[0]['Finalizado'] == "SI"
+                
                 ya_existia = not u_preds[u_preds['Partido'] == m_id].empty
-                if not lock or ya_existia:
+                
+                # Solo guardamos si:
+                # - El partido no está finalizado
+                # - O el usuario ya tenía apuesta previa
+                if not finalizado or ya_existia:
                     env.append({
                         "Usuario": st.session_state.user,
                         "Jornada": j_global,
@@ -586,6 +599,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
