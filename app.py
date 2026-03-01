@@ -161,7 +161,7 @@ def simular_oraculo(usuarios, df_p_all, df_r_all, jornada_sel):
     return {u: (v/len(combos))*100 for u, v in victorias.items()}
 
 # --- 3. APP ---
-st.set_page_config(page_title="Porra League 2026", page_icon="⚽", layout="wide")
+st.set_page_config(page_title="Porros League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
@@ -169,7 +169,7 @@ if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("🏆 Porra League 2026")
+        st.title("🏆 Porros League 2026")
         u_in, p_in = st.text_input("Usuario"), st.text_input("Contraseña", type="password")
         c1, c2 = st.columns(2)
         if c1.button("Entrar", use_container_width=True):
@@ -767,6 +767,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
