@@ -303,6 +303,7 @@ def analizar_adn_pro(usuario, df_p, df_r):
         "avg_g": (df_m['P_L']+df_m['P_V']).mean(), "real_g": (df_m['R_L']+df_m['R_V']).mean()
     }
 
+@st.cache_data(ttl=60)
 def simular_oraculo(usuarios, df_p_all, df_r_all, jornada_sel):
     res_sim = [(0,0), (1,0), (0,1), (1,1), (2,1), (1,2), (2,2), (2,0), (0,2)]
     pend = df_r_all[(df_r_all['Jornada'] == jornada_sel) & (df_r_all['Finalizado'] == "NO")]
@@ -774,7 +775,8 @@ else:
 
     with tabs[6]: # ORÁCULO
         if usa_oraculo:
-            prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
+            with st.spinner("🔮 El Oráculo está analizando miles de futuros posibles..."):
+                prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
             if prob:
                 # --- CONFETI SI HAY GANADOR ---
                 if any(v >= 90 for v in prob.values()):
@@ -1008,6 +1010,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
