@@ -776,6 +776,7 @@ else:
     with tabs[6]: # ORÁCULO
         if usa_oraculo:
             with st.spinner("🔮 El Oráculo está analizando miles de futuros posibles..."):
+                st.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmNrNjVlaW0xZzM0MWxubDQyZGhla3V4eXVnMHU5eHcwN3NxamRtMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Jap1tdjahS0rm/giphy.gif", width=300)
                 prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
             if prob:
                 # --- CONFETI SI HAY GANADOR ---
@@ -1010,6 +1011,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
