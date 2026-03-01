@@ -776,41 +776,55 @@ else:
         if usa_oraculo:
             prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
             if prob:
+                # --- CONFETI SI HAY GANADOR ---
                 if any(v >= 90 for v in prob.values()):
+                    ganador_v = max(prob, key=prob.get)
                     st.balloons()
-                    st.success("¡Tenemos un virtual ganador de la jornada! 🏆")
+                    st.info(f"✨ **{ganador_v}** tiene la victoria casi asegurada ({prob[ganador_v]:.1f}%)")
+
                 st.subheader("🔮 Probabilidades de Victoria en la Jornada")
                 
-                # Gráfico de Evolución
+                # --- GRÁFICO DE EVOLUCIÓN CON PROTECCIÓN ---
                 df_hist = leer_datos("HistoricoOraculo")
-                df_hist = df_hist[df_hist['Jornada'] == j_global]
                 
-                if not df_hist.empty:
-                    fig_evo = px.line(
-                        df_hist, x="Fecha", y="Probabilidad", color="Usuario",
-                        title="Evolución en Tiempo Real",
-                        markers=True, line_shape="spline",
-                        color_discrete_sequence=px.colors.qualitative.Prism
-                    )
-                    fig_evo.update_layout(yaxis_range=[0, 100], hovermode="x unified")
-                    st.plotly_chart(fig_evo, use_container_width=True)
+                # Verificamos que el DataFrame no esté vacío y tenga la columna 'Jornada'
+                if not df_hist.empty and 'Jornada' in df_hist.columns:
+                    df_hist_j = df_hist[df_hist['Jornada'] == j_global]
+                    
+                    if not df_hist_j.empty:
+                        fig_evo = px.line(
+                            df_hist_j, x="Fecha", y="Probabilidad", color="Usuario",
+                            title="Evolución en Tiempo Real",
+                            markers=True, line_shape="spline",
+                            color_discrete_sequence=px.colors.qualitative.Prism
+                        )
+                        fig_evo.update_layout(yaxis_range=[0, 100], hovermode="x unified")
+                        st.plotly_chart(fig_evo, use_container_width=True)
+                    else:
+                        st.info("Aún no hay puntos grabados en la evolución de esta jornada.")
+                else:
+                    st.info("Esperando a que el Admin guarde los primeros goles para generar la gráfica.")
                 
-                # Barras actuales con Delta
+                # --- BARRAS ACTUALES CON DELTA ---
                 st.markdown("---")
                 for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
                     if v > 0:
-                        # Buscamos la prob anterior para el "pique"
-                        u_hist = df_hist[df_hist['Usuario'] == u]
                         delta = None
-                        if len(u_hist) > 1:
-                            delta = v - u_hist.iloc[-2]['Probabilidad']
+                        # Solo calculamos delta si tenemos historial previo válido
+                        if not df_hist.empty and 'Usuario' in df_hist.columns and 'Jornada' in df_hist.columns:
+                            u_hist = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
+                            if len(u_hist) > 1:
+                                delta = v - u_hist.iloc[-2]['Probabilidad']
                         
                         col_n, col_b = st.columns([1, 4])
                         col_n.markdown(f"**{u}**")
                         col_b.progress(v/100)
-                        st.write(f"Probabilidad actual: **{v:.1f}%**" + (f" ({delta:+.1f}%)" if delta else ""))
+                        
+                        color_delta = "green" if (delta and delta > 0) else "red"
+                        delta_str = f":{color_delta}[({delta:+.1f}%)]" if delta else ""
+                        st.write(f"Probabilidad actual: **{v:.1f}%** {delta_str}")
         else: 
-            st.info("El Oráculo se activa cuando quedan 1-3 partidos.")
+            st.info("El Oráculo se activa cuando quedan 1-3 partidos por finalizar en esta jornada.")
 
     with tabs[7]: # --- PESTAÑA ADMIN COMPLETA ---
         if st.session_state.rol == "admin":
@@ -994,6 +1008,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
