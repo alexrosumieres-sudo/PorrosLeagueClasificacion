@@ -824,7 +824,6 @@ else:
                 st.info("Usa esto para dar ventaja a nuevos jugadores o corregir errores manuales.")
                 upd_b = []
                 for u in u_jugadores:
-                    # Buscamos puntos actuales en el dataframe de base
                     pb_row = df_base[df_base['Usuario'] == u]
                     pts_actuales = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
                     
@@ -834,22 +833,9 @@ else:
                     upd_b.append({"Usuario": u, "Puntos": nuevo_val})
                 
                 if st.button("💾 Guardar Todos los Puntos Base", use_container_width=True):
-                    # --- REGISTRO EN EL VAR (ADMIN) ---
-                    logs_adm = []
-                    for r in r_env:
-                        # Solo logueamos si el partido se marca como FINALIZADO ahora
-                        if r['Finalizado'] == "SI":
-                            logs_adm.append({
-                                "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "Usuario": "🛡️ ADMIN",
-                                "Accion": f"⚽ RESULTADO OFICIAL: {r['Partido']} ({r['R_L']}-{r['R_V']}) - Tipo: {r['Tipo']}"
-                            })
-                    if logs_adm:
-                        df_l_existente = leer_datos("Logs")
-                        conn.update(worksheet="Logs", data=pd.concat([df_l_existente, pd.DataFrame(logs_adm)], ignore_index=True))
                     conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
                     st.cache_data.clear()
-                    st.success("✅ Puntos base actualizados. El ranking general ha cambiado.")
+                    st.success("✅ Puntos base actualizados.")
                     st.rerun()
 
             with t_fotos:
@@ -858,18 +844,13 @@ else:
                     archivos = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png', '.webp'))])
                     upd_f = []
                     for u in u_jugadores:
-                        # Limpieza de datos para evitar el error de basename
                         path_en_db = foto_dict.get(u, "")
-                        if pd.isna(path_en_db) or not isinstance(path_en_db, str):
-                            path_en_db = ""
+                        if pd.isna(path_en_db) or not isinstance(path_en_db, str): path_en_db = ""
                         
                         nombre_foto_actual = os.path.basename(path_en_db) if path_en_db != "" else "Ninguna"
-                        
                         col_u2, col_f = st.columns([2, 1])
                         col_u2.write(f"Usuario: **{u}**")
-                        # Si la foto que está en el Excel no existe en la carpeta, ponemos "Ninguna" por defecto
                         idx_foto = archivos.index(nombre_foto_actual) if nombre_foto_actual in archivos else 0
-                        
                         foto_sel = col_f.selectbox(f"Foto {u}", archivos, index=idx_foto, key=f"adm_f_{u}", label_visibility="collapsed")
                         
                         path_final = f"{PERFILES_DIR}{foto_sel}" if foto_sel != "Ninguna" else ""
@@ -888,15 +869,15 @@ else:
                 st.write("Configura el tipo de partido, la fecha/hora de bloqueo y los resultados.")
                 
                 r_env = []
+                # Uso de datetime.time explícito para evitar conflictos de nombres
                 h_ops = [datetime.time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
                 
                 for i, (loc, vis) in enumerate(JORNADAS[j_global]):
                     m_id = f"{loc}-{vis}"
                     prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                     
-                    # Valores por defecto (si el partido es nuevo)
                     rl, rv, fin, t = 0, 0, False, "Normal"
-                    fecha_v = datetime(2026, 2, 23).date()
+                    fecha_v = datetime.datetime(2026, 2, 23).date()
                     hora_v = "21:00"
 
                     if not prev.empty: 
@@ -927,31 +908,42 @@ else:
                 
                 st.divider()
                 if st.button("🏟️ GUARDAR RESULTADOS JORNADA", use_container_width=True):
-                    # Mantener los resultados de las otras jornadas
+                    # 1. LOGS DEL VAR (Transparencia)
+                    logs_adm = []
+                    for r in r_env:
+                        if r['Finalizado'] == "SI":
+                            logs_adm.append({
+                                "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "Usuario": "🛡️ ADMIN",
+                                "Accion": f"⚽ RESULTADO OFICIAL: {r['Partido']} ({r['R_L']}-{r['R_V']}) - {r['Tipo']}"
+                            })
+                    if logs_adm:
+                        df_l_existente = leer_datos("Logs")
+                        conn.update(worksheet="Logs", data=pd.concat([df_l_existente, pd.DataFrame(logs_adm)], ignore_index=True))
+
+                    # 2. GUARDAR RESULTADOS
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
-                    conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
-                    st.cache_data.clear()
-                    st.success(f"✅ Datos de la {j_global} guardados.")
+                    df_resultados_new = pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)
+                    conn.update(worksheet="Resultados", data=df_resultados_new)
+                    
+                    # 3. ACTUALIZAR HISTÓRICO ORÁCULO (Para la gráfica de evolución)
                     if usa_oraculo:
-                        # Calculamos las probabilidades actuales
-                        probs_ahora = simular_oraculo(u_jugadores, df_p_all, pd.concat([otros, pd.DataFrame(r_env)]), j_global)
+                        probs_ahora = simular_oraculo(u_jugadores, df_p_all, df_resultados_new, j_global)
                         if probs_ahora:
-                            # Preparamos los datos para el histórico
                             ahora_str = datetime.datetime.now().strftime("%H:%M:%S")
                             df_hist_nuevo = pd.DataFrame([
                                 {"Jornada": j_global, "Fecha": ahora_str, "Usuario": u, "Probabilidad": round(p, 1)}
                                 for u, p in probs_ahora.items() if p > 0
                             ])
-                            # Leemos el histórico actual y concatenamos
                             df_h_existente = leer_datos("HistoricoOraculo")
-                            df_h_final = pd.concat([df_h_existente, df_hist_nuevo], ignore_index=True)
-                            conn.update(worksheet="HistoricoOraculo", data=df_h_final)
+                            conn.update(worksheet="HistoricoOraculo", data=pd.concat([df_h_existente, df_hist_nuevo], ignore_index=True))
+
+                    st.cache_data.clear()
+                    st.success(f"✅ Datos de la {j_global} guardados y VAR actualizado.")
                     st.rerun()
         else:
-            # Mensaje por si alguien intenta cotillear sin ser admin
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
-            st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
 
     with tabs[8]: # --- PESTAÑA VAR ---
         st.header("🏁 El VAR de la Porra")
@@ -978,4 +970,5 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
