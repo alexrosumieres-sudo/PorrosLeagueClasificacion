@@ -504,6 +504,9 @@ else:
         if usa_oraculo:
             prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
             if prob:
+                if any(v >= 90 for v in prob.values()):
+                    st.balloons()
+                    st.success("¡Tenemos un virtual ganador de la jornada! 🏆")
                 st.subheader("🔮 Probabilidades de Victoria en la Jornada")
                 
                 # Gráfico de Evolución
@@ -664,6 +667,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
