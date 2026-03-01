@@ -204,6 +204,8 @@ else:
         .match-box { background: #ffffff; border-radius: 10px; padding: 15px; border: 1px solid #eee; border-left: 5px solid #2baf2b; margin-bottom: 10px; }
         .crown { font-size: 2em; position: absolute; top: -35px; left: 35px; transform: rotate(-15deg); z-index: 10; }
         .section-tag { font-size: 0.7em; background: #31333F; color: white; padding: 2px 8px; border-radius: 5px; margin-bottom: 5px; display: inline-block; }
+        .match-box-locked { background: #e9ecef !important; opacity: 0.8; border-left: 5px solid #6c757d !important; filter: grayscale(0.5); }
+        .lock-icon { font-size: 1.2em; cursor: help; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -293,13 +295,12 @@ else:
             st.info("Tu función es supervisar la liga y actualizar los resultados desde la pestaña **⚙️ Admin**.")
             st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
         else:
-            # --- Lógica de persistencia para usuarios normales ---
             u_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
             env = []
             for i, (loc, vis) in enumerate(JORNADAS[j_global]):
                 m_id = f"{loc}-{vis}"
                 
-                # Valores por defecto: Recuperar lo que el usuario ya guardó
+                # 1. Lógica de bloqueo
                 dl, dv, dp = 0, 0, "NO"
                 if not u_preds.empty:
                     match_data = u_preds[u_preds['Partido'] == m_id]
@@ -308,21 +309,38 @@ else:
                 
                 res_info = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                 lock = False
+                msg_lock = "" # Tooltip
                 if not res_info.empty:
-                    # Bloqueo por fecha/hora
                     lock = datetime.now() > datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                    if lock:
+                        msg_lock = f"Bloqueado: Comenzó el {res_info.iloc[0]['Hora_Inicio']}"
+    
+                # 2. Aplicar clase CSS dinámica
+                card_class = "match-box-locked" if lock else "match-box"
+                st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
                 
-                st.markdown(f'<div class="match-box">', unsafe_allow_html=True)
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
+                
                 with c1: 
                     log = get_logo(loc)
                     if log: st.image(log, width=45)
-                with c2: pl = st.number_input(f"{loc}", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock)
-                with c4: pv = st.number_input(f"{vis}", 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock)
+                
+                # 3. Añadir Tooltip (help) e icono 🔒
+                with c2: 
+                    label_l = f"{loc} 🔒" if lock else loc
+                    pl = st.number_input(label_l, 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock, help=msg_lock)
+                
+                with c4: 
+                    label_v = f"{vis} 🔒" if lock else vis
+                    pv = st.number_input(label_v, 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock, help=msg_lock)
+                
                 with c5: 
                     logv = get_logo(vis)
                     if logv: st.image(logv, width=45)
-                with c6: pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
+                
+                with c6: 
+                    pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
+                
                 st.markdown('</div>', unsafe_allow_html=True)
                 env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
             
@@ -577,6 +595,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
