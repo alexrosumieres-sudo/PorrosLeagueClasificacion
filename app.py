@@ -468,35 +468,35 @@ else:
         # 3. Datos de referencia para diferencias
         pts_lider = df_rk.iloc[0]['Puntos'] if not df_rk.empty else 0
         
-        # 4. Renderizado de las tarjetas de "Panini"
-        # 4. Renderizado de las tarjetas con PODIO ANIMADO
+        # 4. Renderizado de las tarjetas con TRIPLE MÉTRICA DE PRESIÓN
         for i, row in df_rk.iterrows():
             pos = row['Posicion']
             pts_actuales = row['Puntos']
             
-            # Lógica de Medallas y Estilos
-            style_class = ""
-            medal_html = f'<span class="pos-badge">#{pos}</span>'
-            
-            if pos == 1:
-                style_class = "podium-1"
-                medal_html = '<span class="medal-icon">🥇</span>'
-            elif pos == 2:
-                style_class = "podium-2"
-                medal_html = '<span class="medal-icon">🥈</span>'
-            elif pos == 3:
-                style_class = "podium-3"
-                medal_html = '<span class="medal-icon">🥉</span>'
-
-            # Diferencias (manteniendo tu lógica anterior)
+            # --- CÁLCULOS DE DISTANCIA ---
+            # 1. Al Líder (General o de jornada)
             diff_lider = pts_actuales - pts_lider
+            
+            # 2. Al siguiente (el que tienes justo encima)
+            gap_arriba = df_rk.iloc[i-1]['Puntos'] - pts_actuales if i > 0 else 0
+            
+            # 3. Al de abajo (tu colchón de seguridad)
             gap_abajo = pts_actuales - df_rk.iloc[i+1]['Puntos'] if i < len(df_rk) - 1 else 0
             
+            # Estilos de podio (mantenemos los anteriores)
+            style_class = ""
+            medal_html = f'<span class="pos-badge">#{pos}</span>'
+            if pos == 1:
+                style_class = "podium-1"; medal_html = '<span class="medal-icon">🥇</span>'
+            elif pos == 2:
+                style_class = "podium-2"; medal_html = '<span class="medal-icon">🥈</span>'
+            elif pos == 3:
+                style_class = "podium-3"; medal_html = '<span class="medal-icon">🥉</span>'
+
             f_t = random.choice(FRASES_POR_PUESTO.get(pos if pos <= 7 else 7))
             
-            # Renderizado de la tarjeta
             st.markdown(f'<div class="panini-card {style_class}">', unsafe_allow_html=True)
-            c1, c2, c3, c4 = st.columns([0.6, 1.2, 3.5, 1.5])
+            c1, c2, c3, c4 = st.columns([0.6, 1.2, 3.2, 1.8]) # Ajustamos anchos para las métricas
             
             with c1: 
                 st.markdown(f'<div style="text-align:center; padding-top:10px;">{medal_html}</div>', unsafe_allow_html=True)
@@ -507,19 +507,32 @@ else:
                 else: st.markdown("<h2 style='margin:10px 0;'>👤</h2>", unsafe_allow_html=True)
             
             with c3: 
-                # Si es el líder, le ponemos un brillo al nombre
                 name_style = "color: #b8860b; font-weight: 900;" if pos == 1 else ""
                 st.markdown(f'<h3 style="margin-bottom:0; {name_style}">{row["Usuario"]}</h3>', unsafe_allow_html=True)
                 st.markdown(f'<div class="quote-text">"{f_t[0]}"<br><small>— {f_t[1]}</small></div>', unsafe_allow_html=True)
             
             with c4: 
-                st.markdown(f'<div style="text-align: right;"><span style="font-size: 2em; font-weight: bold; color: #2baf2b;">{pts_actuales:.2f}</span><br>Pts</div>', unsafe_allow_html=True)
+                # Puntos principales
+                st.markdown(f'<div style="text-align: right;"><span style="font-size: 1.8em; font-weight: bold; color: #2baf2b;">{pts_actuales:.2f}</span><br><small>PUNTOS</small></div>', unsafe_allow_html=True)
                 
+                # --- BLOQUE DE TENSIÓN ---
+                st.markdown('<div style="text-align: right; margin-top: 5px; line-height: 1.2;">', unsafe_allow_html=True)
+                
+                # A cuánto estás del de arriba (Siguiente objetivo)
+                if gap_arriba > 0:
+                    st.markdown(f'<span style="color: #ff9800; font-size: 0.85em; font-weight: bold;">🎯 A {gap_arriba:.2f} del anterior</span><br>', unsafe_allow_html=True)
+                
+                # Distancia al líder (Solo si no eres el líder)
                 if diff_lider < 0:
-                    st.markdown(f'<div style="text-align: right; color: #ff4b4b; font-weight: bold; font-size: 0.9em;">{diff_lider:.2f} 🚩</div>', unsafe_allow_html=True)
+                    st.markdown(f'<span style="color: #ff4b4b; font-size: 0.85em; font-weight: bold;">🚩 Liderato a {abs(diff_lider):.2f}</span><br>', unsafe_allow_html=True)
+                elif pos == 1 and len(df_rk) > 1:
+                    st.markdown(f'<span style="color: #ffd700; font-size: 0.85em; font-weight: bold;">👑 LÍDER DE LA LIGA</span><br>', unsafe_allow_html=True)
                 
+                # Colchón con el de abajo
                 if gap_abajo > 0:
-                    st.markdown(f'<div style="text-align: right; color: #6c757d; font-size: 0.8em; margin-top: 5px;">+{gap_abajo:.2f} ventaja</div>', unsafe_allow_html=True)
+                    st.markdown(f'<span style="color: #6c757d; font-size: 0.85em;">🛡️ Colchón: +{gap_abajo:.2f}</span>', unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -754,6 +767,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
