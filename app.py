@@ -436,34 +436,76 @@ else:
                     df_u_pub = p_pub[p_pub['Usuario'] == u][['Partido', 'P_L', 'P_V']]
                     st.table(df_u_pub)
 
-    with tabs[2]: # CLASIFICACIÓN
+    with tabs[2]: # --- PESTAÑA CLASIFICACIÓN ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True)
         pts_l = []
+        
+        # 1. Cálculo de puntos según el tipo de ranking
         for u in u_jugadores:
             if tipo_r == "General":
                 pb_r = df_base[df_base['Usuario'] == u]
                 p_b = safe_float(pb_r['Puntos'].values[0]) if not pb_r.empty else 0.0
                 u_p_h = df_p_all[df_p_all['Usuario'] == u]
-            else: p_b, u_p_h = 0.0, df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)]
+            else: 
+                p_b, u_p_h = 0.0, df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)]
+            
             p_a = p_b
             for r in u_p_h.itertuples():
                 m = df_r_all[(df_r_all['Jornada']==r.Jornada)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
-                if not m.empty: p_a += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                if not m.empty: 
+                    p_a += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
             pts_l.append({"Usuario": u, "Puntos": p_a})
-        df_rk = pd.DataFrame(pts_l).sort_values("Puntos", ascending=False)
+        
+        # 2. Ordenar y preparar DataFrame
+        df_rk = pd.DataFrame(pts_l).sort_values("Puntos", ascending=False).reset_index(drop=True)
         df_rk['Posicion'] = range(1, len(df_rk)+1)
-        for _, row in df_rk.iterrows():
+        
+        # 3. Datos de referencia para diferencias
+        pts_lider = df_rk.iloc[0]['Puntos'] if not df_rk.empty else 0
+        
+        # 4. Renderizado de las tarjetas de "Panini"
+        for i, row in df_rk.iterrows():
             pos = row['Posicion']
+            pts_actuales = row['Puntos']
+            
+            # Cálculo de distancias
+            diff_lider = pts_actuales - pts_lider
+            gap_abajo = pts_actuales - df_rk.iloc[i+1]['Puntos'] if i < len(df_rk) - 1 else 0
+            
+            # Frase aleatoria según posición
             f_t = random.choice(FRASES_POR_PUESTO.get(pos if pos <= 7 else 7))
+            
             st.markdown(f'<div class="panini-card">', unsafe_allow_html=True)
             c1, c2, c3, c4 = st.columns([0.6, 1.2, 3.5, 1.5])
-            with c1: st.markdown(f'<br><span class="pos-badge">#{pos}</span>', unsafe_allow_html=True)
-            with c2:
+            
+            with c1: # Badge de posición
+                st.markdown(f'<br><span class="pos-badge">#{pos}</span>', unsafe_allow_html=True)
+            
+            with c2: # Foto de perfil
                 img = foto_dict.get(row['Usuario'])
-                if img and os.path.exists(str(img)): st.image(img, width=80)
-                else: st.markdown("### 👤")
-            with c3: st.markdown(f"### {row['Usuario']}"); st.markdown(f'<div class="quote-text">"{f_t[0]}"<br><small>— {f_t[1]}</small></div>', unsafe_allow_html=True)
-            with c4: st.markdown(f'<br><span style="font-size: 2em; font-weight: bold; color: #2baf2b;">{row["Puntos"]:.2f}</span><br>Pts', unsafe_allow_html=True)
+                if img and os.path.exists(str(img)): 
+                    st.image(img, width=80)
+                else: 
+                    st.markdown("<h2 style='margin-top:10px;'>👤</h2>", unsafe_allow_html=True)
+            
+            with c3: # Nombre y Frase
+                st.markdown(f"### {row['Usuario']}")
+                st.markdown(f'<div class="quote-text">"{f_t[0]}"<br><small>— {f_t[1]}</small></div>', unsafe_allow_html=True)
+            
+            with c4: # Puntos y Tensión Competitiva
+                # Puntos totales
+                st.markdown(f'<div style="text-align: right;"><span style="font-size: 2em; font-weight: bold; color: #2baf2b;">{pts_actuales:.2f}</span><br>Pts</div>', unsafe_allow_html=True)
+                
+                # Diferencia con el primero
+                if diff_lider < 0:
+                    st.markdown(f'<div style="text-align: right; color: #ff4b4b; font-weight: bold; font-size: 0.9em;">{diff_lider:.2f} 🚩</div>', unsafe_allow_html=True)
+                elif diff_lider == 0 and len(df_rk) > 1:
+                    st.markdown(f'<div style="text-align: right; color: #ffd700; font-weight: bold; font-size: 0.8em;">LÍDER ⭐</div>', unsafe_allow_html=True)
+                
+                # Ventaja sobre el siguiente
+                if gap_abajo > 0:
+                    st.markdown(f'<div style="text-align: right; color: #6c757d; font-size: 0.8em; margin-top: 5px;">+{gap_abajo:.2f} ventaja</div>', unsafe_allow_html=True)
+            
             st.markdown('</div>', unsafe_allow_html=True)
 
     with tabs[3]: # STATS PRO
@@ -697,6 +739,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
