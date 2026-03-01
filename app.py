@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
-from datetime import datetime, time
+import datetime
 import os
 import plotly.express as px
 import random
@@ -448,7 +448,7 @@ else:
             with c3:
                 if not prox_p.empty:
                     # Calculamos la diferencia total
-                    diff = datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
+                    diff = datetime.datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.datetime.now()
                     ts = int(diff.total_seconds())
                     
                     if ts > 0:
@@ -506,7 +506,7 @@ else:
                 lock = False
                 msg_lock = "" # Tooltip
                 if not res_info.empty:
-                    lock = datetime.now() > datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                    lock = datetime.datetime.now() > datetime.datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                     if lock:
                         msg_lock = f"Bloqueado: Comenzó el {res_info.iloc[0]['Hora_Inicio']}"
     
@@ -546,7 +546,7 @@ else:
                 st.success("✅ Predicciones guardadas con éxito.")
                 # --- REGISTRO EN EL VAR (PREDICCIONES) ---
                 log_p = pd.DataFrame([{
-                    "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "Usuario": st.session_state.user,
                     "Accion": f"📝 Actualizó sus predicciones (Jornada: {j_global})"
                 }])
@@ -840,7 +840,7 @@ else:
                         # Solo logueamos si el partido se marca como FINALIZADO ahora
                         if r['Finalizado'] == "SI":
                             logs_adm.append({
-                                "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Usuario": "🛡️ ADMIN",
                                 "Accion": f"⚽ RESULTADO OFICIAL: {r['Partido']} ({r['R_L']}-{r['R_V']}) - Tipo: {r['Tipo']}"
                             })
@@ -888,7 +888,7 @@ else:
                 st.write("Configura el tipo de partido, la fecha/hora de bloqueo y los resultados.")
                 
                 r_env = []
-                h_ops = [time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
+                h_ops = [datetime.time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
                 
                 for i, (loc, vis) in enumerate(JORNADAS[j_global]):
                     m_id = f"{loc}-{vis}"
@@ -903,7 +903,7 @@ else:
                         rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
                         t = prev.iloc[0]['Tipo']
                         try:
-                            dt_obj = datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                            dt_obj = datetime.datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                             fecha_v = dt_obj.date()
                             hora_v = dt_obj.strftime("%H:%M")
                         except: pass
@@ -937,7 +937,7 @@ else:
                         probs_ahora = simular_oraculo(u_jugadores, df_p_all, pd.concat([otros, pd.DataFrame(r_env)]), j_global)
                         if probs_ahora:
                             # Preparamos los datos para el histórico
-                            ahora_str = datetime.now().strftime("%H:%M:%S")
+                            ahora_str = datetime.datetime.now().strftime("%H:%M:%S")
                             df_hist_nuevo = pd.DataFrame([
                                 {"Jornada": j_global, "Fecha": ahora_str, "Usuario": u, "Probabilidad": round(p, 1)}
                                 for u, p in probs_ahora.items() if p > 0
@@ -978,3 +978,4 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
