@@ -7,6 +7,7 @@ import plotly.express as px
 import random
 import itertools
 import numpy as np
+import time
 
 # --- 1. CONFIGURACIONES GENERALES ---
 PERFILES_DIR = "perfiles/"
@@ -278,10 +279,35 @@ else:
             with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
             with c3:
                 if not prox_p.empty:
+                    # Calculamos la diferencia total
                     diff = datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.now()
-                    h = max(0, int(diff.total_seconds() // 3600))
-                    st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{"#ff4b4b" if h<24 else "#2baf2b"}">{h}h</span></div>', unsafe_allow_html=True)
-                else: st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
+                    ts = int(diff.total_seconds())
+                    
+                    if ts > 0:
+                        # Desglose de tiempo
+                        dias = ts // 86400
+                        horas = (ts % 86400) // 3600
+                        minutos = (ts % 3600) // 60
+                        segundos = ts % 60
+                        
+                        # Lógica de colores dinámica
+                        # Rojo: < 2h | Naranja: < 24h | Verde: > 24h
+                        color = "#ff4b4b" if ts < 7200 else ("#ffa500" if ts < 86400 else "#2baf2b")
+                        
+                        # Formato de texto
+                        t_str = f"{horas:02d}h {minutos:02d}m {segundos:02d}s"
+                        if dias > 0: t_str = f"{dias}d {horas:02d}h" # Si faltan días, priorizamos días/horas
+                        
+                        st.markdown(f'''
+                            <div class="kpi-box">
+                                <span class="kpi-label">Cierre en</span>
+                                <span class="kpi-value" style="color:{color}; font-size: 1.3em;">{t_str}</span>
+                            </div>
+                        ''', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="kpi-box"><span class="kpi-label">Mercado</span><span class="kpi-value" style="color:#6c757d;">Cerrado</span></div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
             with c4:
                 st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -595,6 +621,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
