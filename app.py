@@ -472,6 +472,36 @@ else:
         if adn:
             c1, c2, c3 = st.columns(3); c1.metric("⭐ Amuleto", adn['amuleto']); c2.metric("💀 Bestia", adn['bestia']); c3.metric("🎯 %", f"{(adn['signos']+adn['exactos'])/(adn['exactos']+adn['signos']+adn['fallos']+0.001)*100:.1f}%")
             st.plotly_chart(px.pie(values=[adn['exactos'], adn['signos'], adn['fallos']], names=['Plenos', 'Signos', 'Fallos'], color_discrete_sequence=['#2baf2b', '#ffd700', '#ff4b4b']), use_container_width=True)
+        # --- NUEVO: HEATMAP DE TENDENCIAS ---
+        st.markdown("---")
+        st.subheader(f"🎯 Mapa de Calor de Resultados: {u_sel}")
+        st.caption("Eje X: Goles Local | Eje Y: Goles Visitante. Los colores más claros indican tus resultados más repetidos.")
+        
+        u_p_stats = df_p_all[df_p_all['Usuario'] == u_sel]
+        if not u_p_stats.empty:
+            # Creamos el heatmap usando Plotly
+            fig_heat = px.density_heatmap(
+                u_p_stats, 
+                x="P_L", 
+                y="P_V",
+                labels={'P_L': 'Goles Local', 'P_V': 'Goles Visitante'},
+                color_continuous_scale="Viridis",
+                text_auto=True, # Muestra el número de veces que se repite el marcador
+                nbinsx=6, # Limitamos a marcadores de 0 a 5 goles
+                nbinsy=6
+            )
+            
+            fig_heat.update_layout(
+                xaxis = dict(tickmode = 'linear', tick0 = 0, dtick = 1),
+                yaxis = dict(tickmode = 'linear', tick0 = 0, dtick = 1),
+                height=450
+            )
+            
+            st.plotly_chart(fig_heat, use_container_width=True)
+            
+            # Un pequeño insight extra
+            marcador_top = u_p_stats.groupby(['P_L', 'P_V']).size().idxmax()
+            st.info(f"💡 Tu resultado fetiche es el **{int(marcador_top[0])}-{int(marcador_top[1])}**")
 
     with tabs[4]: # DETALLES
         df_rf = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
@@ -667,6 +697,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
