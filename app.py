@@ -207,6 +207,11 @@ else:
         .section-tag { font-size: 0.7em; background: #31333F; color: white; padding: 2px 8px; border-radius: 5px; margin-bottom: 5px; display: inline-block; }
         .match-box-locked { background: #e9ecef !important; opacity: 0.8; border-left: 5px solid #6c757d !important; filter: grayscale(0.5); }
         .lock-icon { font-size: 1.2em; cursor: help; }
+        /* Estilos para el Podio */
+        .podium-1 { background: linear-gradient(135deg, #fffdf0 0%, #fff9c4 100%) !important; border: 2px solid #ffd700 !important; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2); transform: scale(1.02); }
+        .podium-2 { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important; border: 2px solid #c0c0c0 !important; }
+        .podium-3 { background: linear-gradient(135deg, #fff5f0 0%, #ffe0cc 100%) !important; border: 2px solid #cd7f32 !important; }
+        .medal-icon { font-size: 1.8em; margin-bottom: 5px; display: block; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -464,45 +469,55 @@ else:
         pts_lider = df_rk.iloc[0]['Puntos'] if not df_rk.empty else 0
         
         # 4. Renderizado de las tarjetas de "Panini"
+        # 4. Renderizado de las tarjetas con PODIO ANIMADO
         for i, row in df_rk.iterrows():
             pos = row['Posicion']
             pts_actuales = row['Puntos']
             
-            # Cálculo de distancias
+            # Lógica de Medallas y Estilos
+            style_class = ""
+            medal_html = f'<span class="pos-badge">#{pos}</span>'
+            
+            if pos == 1:
+                style_class = "podium-1"
+                medal_html = '<span class="medal-icon">🥇</span>'
+            elif pos == 2:
+                style_class = "podium-2"
+                medal_html = '<span class="medal-icon">🥈</span>'
+            elif pos == 3:
+                style_class = "podium-3"
+                medal_html = '<span class="medal-icon">🥉</span>'
+
+            # Diferencias (manteniendo tu lógica anterior)
             diff_lider = pts_actuales - pts_lider
             gap_abajo = pts_actuales - df_rk.iloc[i+1]['Puntos'] if i < len(df_rk) - 1 else 0
             
-            # Frase aleatoria según posición
             f_t = random.choice(FRASES_POR_PUESTO.get(pos if pos <= 7 else 7))
             
-            st.markdown(f'<div class="panini-card">', unsafe_allow_html=True)
+            # Renderizado de la tarjeta
+            st.markdown(f'<div class="panini-card {style_class}">', unsafe_allow_html=True)
             c1, c2, c3, c4 = st.columns([0.6, 1.2, 3.5, 1.5])
             
-            with c1: # Badge de posición
-                st.markdown(f'<br><span class="pos-badge">#{pos}</span>', unsafe_allow_html=True)
+            with c1: 
+                st.markdown(f'<div style="text-align:center; padding-top:10px;">{medal_html}</div>', unsafe_allow_html=True)
             
-            with c2: # Foto de perfil
+            with c2: 
                 img = foto_dict.get(row['Usuario'])
-                if img and os.path.exists(str(img)): 
-                    st.image(img, width=80)
-                else: 
-                    st.markdown("<h2 style='margin-top:10px;'>👤</h2>", unsafe_allow_html=True)
+                if img and os.path.exists(str(img)): st.image(img, width=85)
+                else: st.markdown("<h2 style='margin:10px 0;'>👤</h2>", unsafe_allow_html=True)
             
-            with c3: # Nombre y Frase
-                st.markdown(f"### {row['Usuario']}")
+            with c3: 
+                # Si es el líder, le ponemos un brillo al nombre
+                name_style = "color: #b8860b; font-weight: 900;" if pos == 1 else ""
+                st.markdown(f'<h3 style="margin-bottom:0; {name_style}">{row["Usuario"]}</h3>', unsafe_allow_html=True)
                 st.markdown(f'<div class="quote-text">"{f_t[0]}"<br><small>— {f_t[1]}</small></div>', unsafe_allow_html=True)
             
-            with c4: # Puntos y Tensión Competitiva
-                # Puntos totales
+            with c4: 
                 st.markdown(f'<div style="text-align: right;"><span style="font-size: 2em; font-weight: bold; color: #2baf2b;">{pts_actuales:.2f}</span><br>Pts</div>', unsafe_allow_html=True)
                 
-                # Diferencia con el primero
                 if diff_lider < 0:
                     st.markdown(f'<div style="text-align: right; color: #ff4b4b; font-weight: bold; font-size: 0.9em;">{diff_lider:.2f} 🚩</div>', unsafe_allow_html=True)
-                elif diff_lider == 0 and len(df_rk) > 1:
-                    st.markdown(f'<div style="text-align: right; color: #ffd700; font-weight: bold; font-size: 0.8em;">LÍDER ⭐</div>', unsafe_allow_html=True)
                 
-                # Ventaja sobre el siguiente
                 if gap_abajo > 0:
                     st.markdown(f'<div style="text-align: right; color: #6c757d; font-size: 0.8em; margin-top: 5px;">+{gap_abajo:.2f} ventaja</div>', unsafe_allow_html=True)
             
@@ -739,6 +754,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
