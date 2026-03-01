@@ -481,7 +481,8 @@ else:
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
-    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin"])
+    # Busca esta línea y añade "📜 VAR" al final
+    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
 
     with tabs[0]: # --- PESTAÑA APUESTAS ---
         if es_admin:
@@ -543,6 +544,14 @@ else:
                 conn.update(worksheet="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
                 st.cache_data.clear()
                 st.success("✅ Predicciones guardadas con éxito.")
+                # --- REGISTRO EN EL VAR (PREDICCIONES) ---
+                log_p = pd.DataFrame([{
+                    "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Usuario": st.session_state.user,
+                    "Accion": f"📝 Actualizó sus predicciones (Jornada: {j_global})"
+                }])
+                df_l_existente = leer_datos("Logs")
+                conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_p], ignore_index=True))
                 st.rerun()
 
     with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL FINALIZAR) ---
@@ -825,6 +834,19 @@ else:
                     upd_b.append({"Usuario": u, "Puntos": nuevo_val})
                 
                 if st.button("💾 Guardar Todos los Puntos Base", use_container_width=True):
+                    # --- REGISTRO EN EL VAR (ADMIN) ---
+                    logs_adm = []
+                    for r in r_env:
+                        # Solo logueamos si el partido se marca como FINALIZADO ahora
+                        if r['Finalizado'] == "SI":
+                            logs_adm.append({
+                                "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "Usuario": "🛡️ ADMIN",
+                                "Accion": f"⚽ RESULTADO OFICIAL: {r['Partido']} ({r['R_L']}-{r['R_V']}) - Tipo: {r['Tipo']}"
+                            })
+                    if logs_adm:
+                        df_l_existente = leer_datos("Logs")
+                        conn.update(worksheet="Logs", data=pd.concat([df_l_existente, pd.DataFrame(logs_adm)], ignore_index=True))
                     conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
                     st.cache_data.clear()
                     st.success("✅ Puntos base actualizados. El ranking general ha cambiado.")
@@ -930,3 +952,29 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
+    with tabs[8]: # --- PESTAÑA VAR ---
+        st.header("🏁 El VAR de la Porra")
+        st.caption("Transparencia total: aquí se registra cada movimiento clave de la liga.")
+        
+        df_logs = leer_datos("Logs")
+        if not df_logs.empty:
+            # Ordenamos para que lo más nuevo salga arriba
+            df_logs = df_logs.sort_values("Fecha", ascending=False)
+            
+            for _, fila in df_logs.head(30).iterrows():
+                # Estilo diferente si es el Admin o un Usuario
+                es_admin_log = "ADMIN" in str(fila['Usuario'])
+                
+                with st.container():
+                    c_time, c_user, c_act = st.columns([1, 1, 3])
+                    c_time.caption(f"🕒 {fila['Fecha']}")
+                    c_user.markdown(f"**{fila['Usuario']}**")
+                    
+                    if es_admin_log:
+                        c_act.info(fila['Accion'])
+                    else:
+                        c_act.write(fila['Accion'])
+                    st.divider()
+        else:
+            st.info("El historial está vacío. ¡Que empiece el juego!")
