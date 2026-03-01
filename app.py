@@ -504,9 +504,38 @@ else:
         if usa_oraculo:
             prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
             if prob:
+                st.subheader("🔮 Probabilidades de Victoria en la Jornada")
+                
+                # Gráfico de Evolución
+                df_hist = leer_datos("HistoricoOraculo")
+                df_hist = df_hist[df_hist['Jornada'] == j_global]
+                
+                if not df_hist.empty:
+                    fig_evo = px.line(
+                        df_hist, x="Fecha", y="Probabilidad", color="Usuario",
+                        title="Evolución en Tiempo Real",
+                        markers=True, line_shape="spline",
+                        color_discrete_sequence=px.colors.qualitative.Prism
+                    )
+                    fig_evo.update_layout(yaxis_range=[0, 100], hovermode="x unified")
+                    st.plotly_chart(fig_evo, use_container_width=True)
+                
+                # Barras actuales con Delta
+                st.markdown("---")
                 for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
-                    if v > 0: st.write(f"**{u}**: {v:.1f}%"); st.progress(v/100)
-        else: st.info("El Oráculo se activa cuando quedan 1-3 partidos.")
+                    if v > 0:
+                        # Buscamos la prob anterior para el "pique"
+                        u_hist = df_hist[df_hist['Usuario'] == u]
+                        delta = None
+                        if len(u_hist) > 1:
+                            delta = v - u_hist.iloc[-2]['Probabilidad']
+                        
+                        col_n, col_b = st.columns([1, 4])
+                        col_n.markdown(f"**{u}**")
+                        col_b.progress(v/100)
+                        st.write(f"Probabilidad actual: **{v:.1f}%**" + (f" ({delta:+.1f}%)" if delta else ""))
+        else: 
+            st.info("El Oráculo se activa cuando quedan 1-3 partidos.")
 
     with tabs[7]: # --- PESTAÑA ADMIN COMPLETA ---
         if st.session_state.rol == "admin":
@@ -615,12 +644,27 @@ else:
                     conn.update(worksheet="Resultados", data=pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True))
                     st.cache_data.clear()
                     st.success(f"✅ Datos de la {j_global} guardados.")
+                    if usa_oraculo:
+                        # Calculamos las probabilidades actuales
+                        probs_ahora = simular_oraculo(u_jugadores, df_p_all, pd.concat([otros, pd.DataFrame(r_env)]), j_global)
+                        if probs_ahora:
+                            # Preparamos los datos para el histórico
+                            ahora_str = datetime.now().strftime("%H:%M:%S")
+                            df_hist_nuevo = pd.DataFrame([
+                                {"Jornada": j_global, "Fecha": ahora_str, "Usuario": u, "Probabilidad": round(p, 1)}
+                                for u, p in probs_ahora.items() if p > 0
+                            ])
+                            # Leemos el histórico actual y concatenamos
+                            df_h_existente = leer_datos("HistoricoOraculo")
+                            df_h_final = pd.concat([df_h_existente, df_hist_nuevo], ignore_index=True)
+                            conn.update(worksheet="HistoricoOraculo", data=df_h_final)
                     st.rerun()
         else:
             # Mensaje por si alguien intenta cotillear sin ser admin
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
             st.info("Si deberías ser admin, pide que cambien tu rol en la base de datos a 'admin'.")
+
 
 
 
