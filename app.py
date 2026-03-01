@@ -908,23 +908,47 @@ else:
                 
                 st.divider()
                 if st.button("🏟️ GUARDAR RESULTADOS JORNADA", use_container_width=True):
-                    # 1. LOGS DEL VAR (Transparencia)
+                    # --- 1. LOGS DEL VAR INTELIGENTES (Detección de cambios) ---
                     logs_adm = []
                     for r in r_env:
-                        if r['Finalizado'] == "SI":
+                        # Buscamos cómo estaba el partido antes en la base de datos (df_r_all)
+                        match_previo = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r['Partido'])]
+                        
+                        registrar = False
+                        prefijo = "OFICIAL"
+
+                        if not match_previo.empty:
+                            was_fin = match_previo.iloc[0]['Finalizado'] == "SI"
+                            old_rl = int(match_previo.iloc[0]['R_L'])
+                            old_rv = int(match_previo.iloc[0]['R_V'])
+
+                            # Caso A: Se acaba de marcar como finalizado ahora
+                            if r['Finalizado'] == "SI" and not was_fin:
+                                registrar = True
+                            
+                            # Caso B: Ya estaba finalizado pero el admin ha corregido el marcador
+                            elif r['Finalizado'] == "SI" and was_fin:
+                                if int(r['R_L']) != old_rl or int(r['R_V']) != old_rv:
+                                    registrar = True
+                                    prefijo = "CORRECCIÓN"
+                        
+                        if registrar:
                             logs_adm.append({
                                 "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Usuario": "🛡️ ADMIN",
-                                "Accion": f"⚽ RESULTADO OFICIAL: {r['Partido']} ({r['R_L']}-{r['R_V']}) - {r['Tipo']}"
+                                "Accion": f"⚽ {prefijo}: {r['Partido']} ({r['R_L']}-{r['R_V']}) - {r['Tipo']}"
                             })
+
                     if logs_adm:
                         df_l_existente = leer_datos("Logs")
                         conn.update(worksheet="Logs", data=pd.concat([df_l_existente, pd.DataFrame(logs_adm)], ignore_index=True))
 
-                    # 2. GUARDAR RESULTADOS
+                    # --- 2. EL RESTO DEL GUARDADO (Sigue igual) ---
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     df_resultados_new = pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)
                     conn.update(worksheet="Resultados", data=df_resultados_new)
+                    
+                    # ... (aquí sigue el código del Oráculo y el rerun)
                     
                     # 3. ACTUALIZAR HISTÓRICO ORÁCULO (Para la gráfica de evolución)
                     if usa_oraculo:
@@ -970,5 +994,6 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
