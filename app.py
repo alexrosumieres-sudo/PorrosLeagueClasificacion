@@ -828,6 +828,7 @@ else:
                         st.write(f"Probabilidad actual: **{v:.1f}%** {delta_str}")
         else: 
             st.info("El Oráculo se activa cuando quedan 1-3 partidos por finalizar en esta jornada.")
+            st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
 
     with tabs[7]: # --- PESTAÑA ADMIN COMPLETA ---
         if st.session_state.rol == "admin":
@@ -1011,6 +1012,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
