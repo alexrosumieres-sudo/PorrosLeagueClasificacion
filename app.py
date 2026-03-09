@@ -69,7 +69,22 @@ LOGOS = {
     "Girona": f"{LOGOS_DIR}girona.jpeg", "Osasuna": f"{LOGOS_DIR}osasuna.jpeg", "Getafe": f"{LOGOS_DIR}getafe.jpeg",
     "Celta": f"{LOGOS_DIR}celta.jpeg", "Mallorca": f"{LOGOS_DIR}mallorca.jpeg", "Villarreal": f"{LOGOS_DIR}villarreal.jpeg",
     "Alavés": f"{LOGOS_DIR}alaves.jpeg", "Espanyol": f"{LOGOS_DIR}espanyol.jpeg", "Betis": f"{LOGOS_DIR}betis.jpeg",
-    "Levante": f"{LOGOS_DIR}levante.jpeg", "Oviedo": f"{LOGOS_DIR}oviedo.jpeg"
+    "Levante": f"{LOGOS_DIR}levante.jpeg", "Oviedo": f"{LOGOS_DIR}oviedo.jpeg",
+    
+    # --- NUEVOS EQUIPOS CHAMPIONS ---
+    "Galatasaray": f"{LOGOS_DIR}Galatasaray.png",
+    "Liverpool": f"{LOGOS_DIR}Liverpool.png",
+    "Atalanta": f"{LOGOS_DIR}Atalanta.png",
+    "Bayern Múnich": f"{LOGOS_DIR}Bayernmunich.jpeg",
+    "Tottenham H.": f"{LOGOS_DIR}tottenham.jpeg",
+    "Newcastle United": f"{LOGOS_DIR}newcastle.png",
+    "Bayer Leverkusen": f"{LOGOS_DIR}leverkusen.png",
+    "Arsenal": f"{LOGOS_DIR}arsenal.jpeg",
+    "Bodø/Glimt": f"{LOGOS_DIR}bodo.png",
+    "Sp. Portugal": f"{LOGOS_DIR}sportingportugal.png",
+    "PSG": f"{LOGOS_DIR}psg.jpeg",
+    "Chelsea": f"{LOGOS_DIR}chelsea.png",
+    "M. City": f"{LOGOS_DIR}city.png"
 }
 
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
@@ -1026,6 +1041,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
