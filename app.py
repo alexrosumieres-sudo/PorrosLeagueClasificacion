@@ -797,77 +797,86 @@ else:
                 prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
             
             if prob:
-                st.subheader("🔮 Probabilidades de Victoria en la Jornada")
+                st.subheader("🔮 Estado Actual del Oráculo")
                 
-                # --- GRÁFICO DE EVOLUCIÓN ---
-                df_hist = leer_datos("HistoricoOraculo")
-                
-                if not df_hist.empty and 'Jornada' in df_hist.columns:
-                    df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
+                # --- PREPARACIÓN DE COLUMNAS (Gráfico Izquierda | Texto Derecha) ---
+                col_izq, col_der = st.columns([1.5, 1], gap="large")
+
+                with col_izq:
+                    # --- GRÁFICO DE EVOLUCIÓN (Eje X Compacto) ---
+                    df_hist = leer_datos("HistoricoOraculo")
                     
-                    if not df_hist_j.empty:
-                        # 1. LIMPIEZA DE DECIMALES (Cambiamos ',' por '.')
-                        df_hist_j['Probabilidad'] = df_hist_j['Probabilidad'].astype(str).str.replace(',', '.')
-                        df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
+                    if not df_hist.empty and 'Jornada' in df_hist.columns:
+                        df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
                         
-                        # 2. CONVERTIMOS FECHA A DATETIME
-                        df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M:%S', errors='coerce')
-                        if df_hist_j['Fecha_DT'].isna().all():
-                            df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M', errors='coerce')
-                        
-                        df_hist_j = df_hist_j.sort_values('Fecha_DT')
+                        if not df_hist_j.empty:
+                            # Limpieza de decimales y fechas
+                            df_hist_j['Probabilidad'] = df_hist_j['Probabilidad'].astype(str).str.replace(',', '.')
+                            df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
+                            df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M:%S', errors='coerce')
+                            if df_hist_j['Fecha_DT'].isna().all():
+                                df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M', errors='coerce')
+                            
+                            df_hist_j = df_hist_j.sort_values('Fecha_DT')
 
-                        # 3. RENDERIZADO DEL GRÁFICO (Tamaño Aumentado)
-                        fig_evo = px.line(
-                            df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
-                            title="Evolución en Tiempo Real",
-                            markers=True, line_shape="spline"
-                        )
-                        fig_evo.update_layout(
-                            yaxis_range=[-2, 102], 
-                            hovermode="x unified", 
-                            xaxis_title="Hora",
-                            yaxis_title="Prob %",
-                            height=450,  # <--- Altura aumentada (de 250 a 450)
-                            margin=dict(l=10, r=10, t=50, b=10),
-                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-                        )
-                        
-                        # Usamos columnas muy estrechas a los lados para que el gráfico sea ANCHO (90%)
-                        c_izq, c_mid, c_der = st.columns([0.05, 0.9, 0.05])
-                        with c_mid:
+                            fig_evo = px.line(
+                                df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
+                                markers=True, line_shape="spline"
+                            )
+                            fig_evo.update_layout(
+                                yaxis_range=[-2, 102], 
+                                hovermode="x unified", 
+                                xaxis_title="Evolución (Hora)",
+                                yaxis_title="Prob %",
+                                height=450, # Gráfico grande/alto
+                                margin=dict(l=0, r=0, t=10, b=0),
+                                legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5) # Leyenda abajo
+                            )
                             st.plotly_chart(fig_evo, use_container_width=True)
-                    else:
-                        st.info("Aún no hay historial para esta jornada.")
-                else:
-                    st.info("Esperando datos para generar la gráfica.")
-
-                # --- BARRAS ACTUALES CON DELTA ---
-                st.markdown("---")
-                for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
-                    if v > 0:
-                        delta = None
-                        if not df_hist.empty:
-                            u_hist = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
-                            if len(u_hist) > 1:
-                                try:
-                                    val_actual = float(v)
-                                    # Limpiamos también el valor previo del historial por si tiene comas
-                                    val_previo_raw = str(u_hist.iloc[-2]['Probabilidad']).replace(',', '.')
-                                    val_previo = float(val_previo_raw)
-                                    delta = val_actual - val_previo
-                                except:
-                                    delta = 0.0
-                        
-                        col_n, col_b = st.columns([1, 4])
-                        col_n.markdown(f"**{u}**")
-                        col_b.progress(min(v/100, 1.0))
-                        
-                        if delta is not None:
-                            color_d = "green" if delta > 0 else ("red" if delta < 0 else "gray")
-                            st.write(f"Probabilidad: **{v:.1f}%** :{color_d}[({delta:+.1f}%)]")
                         else:
-                            st.write(f"Probabilidad: **{v:.1f}%**")
+                            st.info("Sin historial aún.")
+
+                with col_der:
+                    # --- LISTADO DE PROBABILIDADES A LA DERECHA ---
+                    st.markdown("#### 🎯 Probabilidades")
+                    
+                    for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
+                        if v > 0:
+                            # Cálculo del Delta
+                            delta = 0.0
+                            if not df_hist.empty:
+                                u_h = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
+                                if len(u_h) > 1:
+                                    try:
+                                        v_act = float(v)
+                                        v_pre = float(str(u_h.iloc[-2]['Probabilidad']).replace(',', '.'))
+                                        delta = v_act - v_pre
+                                    except: pass
+                            
+                            # Diseño de "Tarjeta" pequeña para cada usuario
+                            color_d = "green" if delta > 0 else ("red" if delta < 0 else "gray")
+                            delta_icon = "▲" if delta > 0 else ("▼" if delta < 0 else "•")
+                            
+                            st.markdown(f"""
+                                <div style="background:#f8f9fa; padding:10px; border-radius:10px; border-left:4px solid #2baf2b; margin-bottom:8px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-weight:bold; color:#31333F;">{u}</span>
+                                        <span style="font-size:1.2em; font-weight:800; color:#2baf2b;">{v:.1f}%</span>
+                                    </div>
+                                    <div style="text-align:right; font-size:0.8em; color:{color_d};">
+                                        {delta_icon} {abs(delta):.1f}% respecto al último cambio
+                                    </div>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Barra de progreso sutil debajo de cada tarjeta
+                            st.progress(min(v/100, 1.0))
+
+                # --- CONFETI SI HAY GANADOR (Al final de todo) ---
+                if any(v >= 90 for v in prob.values()):
+                    ganador_v = max(prob, key=prob.get)
+                    st.balloons()
+                    st.success(f"🏆 **{ganador_v}** acaricia la victoria con un {prob[ganador_v]:.1f}%")
         else:
             st.info("El Oráculo se activa cuando quedan de 1 a 3 partidos.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
@@ -1057,6 +1066,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
