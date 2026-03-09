@@ -71,6 +71,7 @@ LOGOS = {
     "Alavés": f"{LOGOS_DIR}alaves.jpeg", "Espanyol": f"{LOGOS_DIR}espanyol.jpeg", "Betis": f"{LOGOS_DIR}betis.jpeg",
     "Levante": f"{LOGOS_DIR}levante.jpeg", "Oviedo": f"{LOGOS_DIR}oviedo.jpeg",
     
+    # --- EQUIPOS CHAMPIONS
     "Galatasaray": f"{LOGOS_DIR}Galatasaray.png",
     "Liverpool": f"{LOGOS_DIR}Liverpool.png",
     "Atalanta": f"{LOGOS_DIR}Atalanta.png",
@@ -1040,6 +1041,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
