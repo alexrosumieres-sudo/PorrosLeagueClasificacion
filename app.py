@@ -790,75 +790,71 @@ else:
                 except: continue
             st.dataframe(pd.DataFrame.from_dict(sim, orient='index').sort_values("Pts", ascending=False), use_container_width=True)
 
-    with tabs[6]: # ORÁCULO
+    with tabs[6]: # --- 🎲 ORÁCULO ---
         if usa_oraculo:
-            with st.spinner("🔮 El Oráculo está analizando miles de futuros posibles..."):
+            with st.spinner("🔮 El Oráculo está analizando el futuro..."):
                 st.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmNrNjVlaW0xZzM0MWxubDQyZGhla3V4eXVnMHU5eHcwN3NxamRtMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Jap1tdjahS0rm/giphy.gif", width=300)
                 prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
             
             if prob:
-                # --- CONFETI SI HAY GANADOR ---
-                if any(v >= 90 for v in prob.values()):
-                    ganador_v = max(prob, key=prob.get)
-                    st.balloons()
-                    st.info(f"✨ **{ganador_v}** tiene la victoria casi asegurada ({prob[ganador_v]:.1f}%)")
-
                 st.subheader("🔮 Probabilidades de Victoria en la Jornada")
                 
-                # --- GRÁFICO DE EVOLUCIÓN CON PROTECCIÓN ---
+                # --- GRÁFICO DE EVOLUCIÓN (CORREGIDO) ---
                 df_hist = leer_datos("HistoricoOraculo")
                 
                 if not df_hist.empty and 'Jornada' in df_hist.columns:
-                    df_hist_j = df_hist[df_hist['Jornada'] == j_global]
+                    df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
                     
                     if not df_hist_j.empty:
-                        # Aseguramos que la columna Probabilidad sea numérica para el gráfico
-                        df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce')
+                        # 1. FORZAMOS LIMPIEZA DE DATOS (Vital para que se vea la gráfica)
+                        df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
+                        # 2. CONVERTIMOS FECHA A DATETIME para que el eje X sea una línea de tiempo real
+                        df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M:%S', errors='coerce')
+                        if df_hist_j['Fecha_DT'].isna().all(): # Reintento si el formato es solo H:M
+                            df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M', errors='coerce')
                         
+                        df_hist_j = df_hist_j.sort_values('Fecha_DT')
+
                         fig_evo = px.line(
-                            df_hist_j, x="Fecha", y="Probabilidad", color="Usuario",
+                            df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
                             title="Evolución en Tiempo Real",
-                            markers=True, line_shape="spline",
-                            color_discrete_sequence=px.colors.qualitative.Prism
+                            markers=True, line_shape="spline"
                         )
-                        fig_evo.update_layout(yaxis_range=[0, 100], hovermode="x unified")
+                        fig_evo.update_layout(yaxis_range=[-2, 102], hovermode="x unified", xaxis_title="Hora del cambio")
                         st.plotly_chart(fig_evo, use_container_width=True)
                     else:
-                        st.info("Aún no hay puntos grabados en la evolución de esta jornada.")
-                else:
-                    st.info("Esperando a que el Admin guarde los primeros goles para generar la gráfica.")
-                
-                # --- BARRAS ACTUALES CON DELTA (CORREGIDO PARA EVITAR TYPEERROR) ---
+                        st.info("Aún no hay historial para esta jornada.")
+
+                # --- BARRAS ACTUALES CON DELTA (EVITAR TYPEERROR) ---
                 st.markdown("---")
                 for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
                     if v > 0:
                         delta = None
-                        if not df_hist.empty and 'Usuario' in df_hist.columns and 'Probabilidad' in df_hist.columns:
+                        if not df_hist.empty:
                             u_hist = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
-                            
                             if len(u_hist) > 1:
                                 try:
-                                    # CONVERSIÓN FORZADA A FLOAT PARA EVITAR EL ERROR
+                                    # Convertimos a float explícitamente antes de restar
                                     val_actual = float(v)
-                                    val_anterior = float(u_hist.iloc[-2]['Probabilidad'])
-                                    delta = val_actual - val_anterior
-                                except (ValueError, TypeError):
-                                    delta = None # Si falla la conversión, ignoramos el delta pero no rompemos la app
+                                    val_previo = float(u_hist.iloc[-2]['Probabilidad'])
+                                    delta = val_actual - val_previo
+                                except:
+                                    delta = 0.0
                         
                         col_n, col_b = st.columns([1, 4])
                         col_n.markdown(f"**{u}**")
-                        col_b.progress(min(v/100, 1.0)) # Aseguramos que no pase de 1.0
+                        col_b.progress(min(v/100, 1.0))
                         
-                        # Mostrar el texto con el delta si existe
                         if delta is not None:
-                            color_delta = "green" if delta > 0 else "red"
-                            delta_str = f":{color_delta}[({delta:+.1f}%)]"
-                            st.write(f"Probabilidad actual: **{v:.1f}%** {delta_str}")
+                            color_d = "green" if delta > 0 else ("red" if delta < 0 else "gray")
+                            st.write(f"Probabilidad: **{v:.1f}%** :{color_d}[({delta:+.1f}%)]")
                         else:
-                            st.write(f"Probabilidad actual: **{v:.1f}%**")
-        else: 
-            st.info("El Oráculo se activa cuando quedan 1-3 partidos por finalizar en esta jornada.")
+                            st.write(f"Probabilidad: **{v:.1f}%**")
+        else:
+            st.info("El Oráculo se activa cuando quedan de 1 a 3 partidos.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
+
+    
     with tabs[7]: # --- PESTAÑA ADMIN COMPLETA ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
@@ -1042,6 +1038,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
