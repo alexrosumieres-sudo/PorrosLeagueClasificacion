@@ -828,9 +828,9 @@ else:
                                 hovermode="x unified", 
                                 xaxis_title="Evolución (Hora)",
                                 yaxis_title="Prob %",
-                                height=450, # Gráfico grande/alto
+                                height=450, 
                                 margin=dict(l=0, r=0, t=10, b=0),
-                                legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5) # Leyenda abajo
+                                legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5)
                             )
                             st.plotly_chart(fig_evo, use_container_width=True)
                         else:
@@ -840,39 +840,50 @@ else:
                     # --- LISTADO DE PROBABILIDADES A LA DERECHA ---
                     st.markdown("#### 🎯 Probabilidades")
                     
+                    # Ordenamos por probabilidad (de mayor a menor)
                     for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
-                        if v > 0:
-                            # Cálculo del Delta
-                            delta = 0.0
-                            if not df_hist.empty:
-                                u_h = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
-                                if len(u_h) > 1:
-                                    try:
-                                        v_act = float(v)
-                                        v_pre = float(str(u_h.iloc[-2]['Probabilidad']).replace(',', '.'))
-                                        delta = v_act - v_pre
-                                    except: pass
-                            
-                            # Diseño de "Tarjeta" pequeña para cada usuario
-                            color_d = "green" if delta > 0 else ("red" if delta < 0 else "gray")
-                            delta_icon = "▲" if delta > 0 else ("▼" if delta < 0 else "•")
-                            
-                            st.markdown(f"""
-                                <div style="background:#f8f9fa; padding:10px; border-radius:10px; border-left:4px solid #2baf2b; margin-bottom:8px;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-weight:bold; color:#31333F;">{u}</span>
-                                        <span style="font-size:1.2em; font-weight:800; color:#2baf2b;">{v:.1f}%</span>
-                                    </div>
-                                    <div style="text-align:right; font-size:0.8em; color:{color_d};">
-                                        {delta_icon} {abs(delta):.1f}% respecto al último cambio
-                                    </div>
+                        # Lógica de visualización para supervivientes y eliminados
+                        esta_vivo = v > 0
+                        card_bg = "#f8f9fa" if esta_vivo else "#fff5f5"
+                        card_border = "#2baf2b" if esta_vivo else "#ff4b4b"
+                        txt_color = "#31333F" if esta_vivo else "#999999"
+                        
+                        # Cálculo del Delta
+                        delta = 0.0
+                        if not df_hist.empty:
+                            u_h = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
+                            if len(u_h) > 1:
+                                try:
+                                    v_act = float(v)
+                                    v_pre = float(str(u_h.iloc[-2]['Probabilidad']).replace(',', '.'))
+                                    delta = v_act - v_pre
+                                except: pass
+                        
+                        # Iconos y colores según tendencia
+                        color_d = "green" if delta > 0 else ("red" if delta < 0 else "gray")
+                        delta_icon = "▲" if delta > 0 else ("▼" if delta < 0 else "•")
+                        status_icon = "🟢" if esta_vivo else "💀"
+                        
+                        # Tarjeta de Usuario
+                        st.markdown(f"""
+                            <div style="background:{card_bg}; padding:10px; border-radius:10px; border-left:4px solid {card_border}; margin-bottom:8px; opacity: {1.0 if esta_vivo else 0.6};">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-weight:bold; color:{txt_color};">{status_icon} {u}</span>
+                                    <span style="font-size:1.2em; font-weight:800; color:{card_border};">{v:.1f}%</span>
                                 </div>
-                            """, unsafe_allow_html=True)
-                            
-                            # Barra de progreso sutil debajo de cada tarjeta
+                                <div style="text-align:right; font-size:0.8em; color:{color_d if esta_vivo else '#999999'};">
+                                    {f'{delta_icon} {abs(delta):.1f}%' if esta_vivo and delta != 0 else ('Eliminado' if not esta_vivo else 'Sin cambios')}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Barra de progreso (solo para los que tienen opciones)
+                        if esta_vivo:
                             st.progress(min(v/100, 1.0))
+                        else:
+                            st.divider()
 
-                # --- CONFETI SI HAY GANADOR (Al final de todo) ---
+                # --- CONFETI SI HAY GANADOR ---
                 if any(v >= 90 for v in prob.values()):
                     ganador_v = max(prob, key=prob.get)
                     st.balloons()
@@ -880,7 +891,6 @@ else:
         else:
             st.info("El Oráculo se activa cuando quedan de 1 a 3 partidos.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
-    
     
     
     with tabs[7]: # --- PESTAÑA ADMIN COMPLETA ---
@@ -1066,6 +1076,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
