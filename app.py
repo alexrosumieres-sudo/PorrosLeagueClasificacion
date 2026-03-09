@@ -817,7 +817,7 @@ else:
                         
                         df_hist_j = df_hist_j.sort_values('Fecha_DT')
 
-                        # 3. RENDERIZADO DEL GRÁFICO
+                        # 3. RENDERIZADO DEL GRÁFICO (Tamaño reducido)
                         fig_evo = px.line(
                             df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
                             title="Evolución en Tiempo Real",
@@ -826,9 +826,16 @@ else:
                         fig_evo.update_layout(
                             yaxis_range=[-2, 102], 
                             hovermode="x unified", 
-                            xaxis_title="Hora del cambio",
-                            yaxis_title="Probabilidad %"
+                            xaxis_title="Hora",
+                            yaxis_title="Prob %",
+                            height=300,  # <--- Controla la altura aquí (antes era ~450)
+                            margin=dict(l=20, r=20, t=40, b=20) # Ajusta márgenes para ganar espacio
                         )
+                        
+                        # Usamos columnas para reducir el ancho del gráfico al 70% de la pantalla
+                        col_espacio, col_grafico, col_espacio2 = st.columns([0.1, 0.8, 0.1])
+                        with col_grafico:
+                            st.plotly_chart(fig_evo, use_container_width=True)
                         st.plotly_chart(fig_evo, use_container_width=True)
                     else:
                         st.info("Aún no hay historial para esta jornada.")
@@ -1047,6 +1054,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
