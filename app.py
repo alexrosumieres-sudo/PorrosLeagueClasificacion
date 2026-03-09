@@ -806,21 +806,36 @@ else:
                     df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
                     
                     if not df_hist_j.empty:
-                        # 1. FORZAMOS LIMPIEZA DE DATOS (Vital para que se vea la gráfica)
+                        # --- GRÁFICO DE EVOLUCIÓN (CORREGIDO) ---
+                df_hist = leer_datos("HistoricoOraculo")
+                
+                if not df_hist.empty and 'Jornada' in df_hist.columns:
+                    df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
+                    
+                    if not df_hist_j.empty:
+                        # 1. LIMPIEZA DE DECIMALES (Cambiamos ',' por '.' para que Python lo entienda)
+                        df_hist_j['Probabilidad'] = df_hist_j['Probabilidad'].astype(str).str.replace(',', '.')
                         df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
-                        # 2. CONVERTIMOS FECHA A DATETIME para que el eje X sea una línea de tiempo real
+                        
+                        # 2. CONVERTIMOS FECHA A DATETIME
                         df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M:%S', errors='coerce')
-                        if df_hist_j['Fecha_DT'].isna().all(): # Reintento si el formato es solo H:M
+                        if df_hist_j['Fecha_DT'].isna().all():
                             df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M', errors='coerce')
                         
                         df_hist_j = df_hist_j.sort_values('Fecha_DT')
 
+                        # 3. RENDERIZADO
                         fig_evo = px.line(
                             df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
                             title="Evolución en Tiempo Real",
                             markers=True, line_shape="spline"
                         )
-                        fig_evo.update_layout(yaxis_range=[-2, 102], hovermode="x unified", xaxis_title="Hora del cambio")
+                        fig_evo.update_layout(
+                            yaxis_range=[-2, 102], 
+                            hovermode="x unified", 
+                            xaxis_title="Hora del cambio",
+                            yaxis_title="Probabilidad %"
+                        )
                         st.plotly_chart(fig_evo, use_container_width=True)
                     else:
                         st.info("Aún no hay historial para esta jornada.")
@@ -1038,6 +1053,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
