@@ -817,8 +817,7 @@ else:
                         
                         df_hist_j = df_hist_j.sort_values('Fecha_DT')
 
-                        # 3. RENDERIZADO DEL GRÁFICO (Tamaño reducido)
-                        # 3. RENDERIZADO DEL GRÁFICO (Achatado verticalmente)
+                        # 3. RENDERIZADO DEL GRÁFICO
                         fig_evo = px.line(
                             df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
                             title="Evolución en Tiempo Real",
@@ -829,12 +828,14 @@ else:
                             hovermode="x unified", 
                             xaxis_title="Hora",
                             yaxis_title="Prob %",
-                            height=220,  # <--- Altura muy reducida para "acortar" el eje Y
-                            margin=dict(l=10, r=10, t=30, b=10) # Márgenes mínimos para aprovechar el espacio
+                            height=250, 
+                            margin=dict(l=10, r=10, t=30, b=10),
+                            showlegend=True # Mantenemos la leyenda para que se entienda
                         )
                         
-                        # Usamos columnas para que no sea tan ancho y quede proporcionado
-                        c_izq, c_mid, c_der = st.columns([0.15, 0.7, 0.15])
+                        # Aumentamos los laterales ([0.3, 0.4, 0.3]) 
+                        # Ahora el gráfico solo ocupa el 40% del centro
+                        c_izq, c_mid, c_der = st.columns([0.3, 0.4, 0.3])
                         with c_mid:
                             st.plotly_chart(fig_evo, use_container_width=True)
                     else:
@@ -1057,6 +1058,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
