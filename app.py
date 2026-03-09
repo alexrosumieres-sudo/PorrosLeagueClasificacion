@@ -50,6 +50,7 @@ JORNADAS = {
     "Jornada 27": [("Osasuna", "Mallorca"), ("Getafe", "Betis"), ("Levante", "Girona"), ("Atlético", "R. Sociedad"), ("Celta", "Real Madrid"), ("Villarreal", "Elche"), ("Athletic", "Barcelona"), ("Sevilla", "Rayo"), ("Valencia", "Alavés"), ("Espanyol", "Oviedo")],
     "Octavos Champions IDA": [("Galatasaray", "Liverpool"), ("Atalanta", "Bayern Múnich"), ("Atlético", "Tottenham H."), ("Newcastle United", "Barcelona"),  ("Bayer Leverkusen", "Arsenal"), ("Bodø/Glimt", "Sp. Portugal"), ("PSG", "Chelsea"), ("Real Madrid", "M. City")],
     "Jornada 28": [("Alavés", "Villarreal"), ("Girona", "Athletic"), ("Atlético", "Getafe"), ("Oviedo", "Valencia"), ("Real Madrid", "Elche"), ("Mallorca", "Espanyol"), ("Barcelona", "Sevilla"), ("Betis", "Celta"), ("Osasuna", "Rayo"), ("Levante", "R. Sociedad")],
+    "Octavos Champions VUELTA": [("Sp. Portugal", "Bodø/Glimt"), ("Arsenal", "Bayer Leverkusen"), ("Chelsea", "PSG"), ("M. City", "Real Madrid"), ("Barcelona", "Newcastle United"), ("Bayern Múnich", "Atalanta"), ("Liverpool", "Galatasaray"), ("Tottenham H.", "Atlético")],
     "Jornada 29": [("Athletic", "Betis"), ("Barcelona", "Rayo"), ("Celta", "Alavés"), ("Elche", "Mallorca"), ("Espanyol", "Getafe"), ("Levante", "Oviedo"), ("Osasuna", "Girona"), ("Real Madrid", "Atlético"), ("Sevilla", "Valencia"), ("Villarreal", "R. Sociedad")],
     "Jornada 30": [("Alavés", "Osasuna"), ("Atlético", "Barcelona"), ("Getafe", "Athletic"), ("Girona", "Villarreal"), ("Mallorca", "Real Madrid"), ("Rayo", "Elche"), ("Betis", "Espanyol"), ("Oviedo", "Sevilla"), ("R. Sociedad", "Levante"), ("Valencia", "Celta")],
     "Jornada 31": [("Athletic", "Villarreal"), ("Barcelona", "Espanyol"), ("Celta", "Oviedo"), ("Elche", "Valencia"), ("Levante", "Getafe"), ("Mallorca", "Rayo"), ("Osasuna", "Betis"), ("Real Madrid", "Girona"), ("R. Sociedad", "Alavés"), ("Sevilla", "Atlético")],
@@ -1041,6 +1042,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
