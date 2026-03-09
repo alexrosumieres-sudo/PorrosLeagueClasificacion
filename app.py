@@ -836,7 +836,6 @@ else:
                         col_espacio, col_grafico, col_espacio2 = st.columns([0.1, 0.8, 0.1])
                         with col_grafico:
                             st.plotly_chart(fig_evo, use_container_width=True)
-                        st.plotly_chart(fig_evo, use_container_width=True)
                     else:
                         st.info("Aún no hay historial para esta jornada.")
                 else:
@@ -871,6 +870,9 @@ else:
         else:
             st.info("El Oráculo se activa cuando quedan de 1 a 3 partidos.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
+    
+    
+    
     with tabs[7]: # --- PESTAÑA ADMIN COMPLETA ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
@@ -1054,6 +1056,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
