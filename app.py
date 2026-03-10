@@ -347,7 +347,7 @@ def get_now_madrid():
     tz = pytz.timezone('Europe/Madrid')
     # Obtenemos la hora actual en esa zona y le quitamos la información de zona 
     # para que sea compatible con las fechas de tu Excel (naive datetime)
-    return datetime.now(tz).replace(tzinfo=None)
+    return datetime.datetime.now(tz).replace(tzinfo=None)
 
 # --- 3. APP ---
 st.set_page_config(page_title="Porros League 2026", page_icon="⚽", layout="wide")
@@ -1071,6 +1071,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
