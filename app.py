@@ -372,7 +372,8 @@ if not st.session_state.autenticado:
             if u_in in df_u['Usuario'].values: st.error("❌ Usuario ya existe")
             else:
                 nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
-                ="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True)); st.success("✅ Hecho")
+                conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
+                st.success("✅ Hecho")
 else:
     # 1. CARGA DE DATOS
     df_perf = leer_datos("ImagenesPerfil")
@@ -1108,6 +1109,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
