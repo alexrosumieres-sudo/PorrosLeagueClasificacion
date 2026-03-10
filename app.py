@@ -597,7 +597,7 @@ else:
 
                 # 3. Guardar las predicciones en el Excel
                 otras = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
-                ="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
+                conn.update(worksheet="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
                 
                 # 4. Registrar en la hoja de Logs (VAR)
                 log_p = pd.DataFrame([{
@@ -1109,6 +1109,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
