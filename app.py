@@ -590,7 +590,7 @@ else:
                     
                     if cambios:
                         # Solo listamos los nombres de los partidos
-                        log_msg = f"🔄 Modificó: {', '.join(cambios)}"
+                        log_msg = f"🔄 Modificó {len(cambios)} partidos: {', '.join(cambios)}"
                     else:
                         log_msg = f"📝 Re-guardó predicciones sin cambios ({j_global})"
 
@@ -604,7 +604,7 @@ else:
                     "Usuario": st.session_state.user,
                     "Accion": log_msg
                 }])
-                df_l_existente = leer_datos("Logs")
+                df_l_existente = conn.read(worksheet="Logs", ttl=0)
                 conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_p], ignore_index=True))
                 
                 # 5. Limpiar caché y refrescar
@@ -1081,7 +1081,7 @@ else:
         st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczF4bGVvbmQ3eTVuam44dzExbXl4MDU5cmVsY24zMGdyb2dvNnpjdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4DdzRe7wJP0aPI1Pa/giphy.gif", width=300)
         st.caption("Transparencia total: aquí se registra cada movimiento clave de la liga.")
         
-        df_logs = leer_datos("Logs")
+        df_logs = conn.read(worksheet="Logs", ttl=0)
         if not df_logs.empty:
             # Ordenamos para que lo más nuevo salga arriba
             df_logs = df_logs.sort_values("Fecha", ascending=False)
@@ -1102,6 +1102,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
