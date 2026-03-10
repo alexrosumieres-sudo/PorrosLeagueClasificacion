@@ -567,18 +567,49 @@ else:
                 env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
             
             if st.button("💾 Guardar Mis Predicciones", use_container_width=True):
+                # 1. Miramos qué tenía puesto el usuario antes de este cambio
+                preds_viejas = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
+                
+                # 2. Lógica para el mensaje del VAR
+                if preds_viejas.empty:
+                    # Si no hay nada previo, es la primera vez
+                    log_msg = f"📝 Creó sus primeras predicciones (Jornada: {j_global})"
+                else:
+                    # Si ya había algo, comparamos partido a partido
+                    cambios = []
+                    for r_nuevo in env:
+                        m_viejo = preds_viejas[preds_viejas['Partido'] == r_nuevo['Partido']]
+                        
+                        if not m_viejo.empty:
+                            v_l = int(m_viejo.iloc[0]['P_L'])
+                            v_v = int(m_viejo.iloc[0]['P_V'])
+                            
+                            # Si los goles de ahora son diferentes a los guardados, anotamos el partido
+                            if r_nuevo['P_L'] != v_l or r_nuevo['P_V'] != v_v:
+                                cambios.append(r_nuevo['Partido'])
+                    
+                    if cambios:
+                        # Solo listamos los nombres de los partidos
+                        log_msg = f"🔄 Modificó: {', '.join(cambios)}"
+                    else:
+                        log_msg = f"📝 Re-guardó predicciones sin cambios ({j_global})"
+
+                # 3. Guardar las predicciones en el Excel
                 otras = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
                 conn.update(worksheet="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
-                st.cache_data.clear()
-                st.success("✅ Predicciones guardadas con éxito.")
-                # --- REGISTRO EN EL VAR (PREDICCIONES) ---
+                
+                # 4. Registrar en la hoja de Logs (VAR)
                 log_p = pd.DataFrame([{
                     "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
                     "Usuario": st.session_state.user,
-                    "Accion": f"📝 Actualizó sus predicciones (Jornada: {j_global})"
+                    "Accion": log_msg
                 }])
                 df_l_existente = leer_datos("Logs")
                 conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_p], ignore_index=True))
+                
+                # 5. Limpiar caché y refrescar
+                st.cache_data.clear()
+                st.success("✅ Predicciones guardadas y VAR actualizado.")
                 st.rerun()
 
     with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL FINALIZAR) ---
@@ -1071,6 +1102,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
