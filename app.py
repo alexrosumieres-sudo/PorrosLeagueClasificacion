@@ -1091,6 +1091,7 @@ else:
         df_logs = conn.read(worksheet="Logs", ttl=0)
         if not df_logs.empty:
             # Ordenamos para que lo más nuevo salga arriba
+            df_logs["Fecha"] = pd.to_datetime(df_logs["Fecha"])
             df_logs = df_logs.sort_values("Fecha", ascending=False)
             
             for _, fila in df_logs.head(30).iterrows():
@@ -1109,6 +1110,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
