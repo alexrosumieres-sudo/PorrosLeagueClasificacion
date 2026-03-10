@@ -372,7 +372,7 @@ if not st.session_state.autenticado:
             if u_in in df_u['Usuario'].values: st.error("❌ Usuario ya existe")
             else:
                 nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
-                conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True)); st.success("✅ Hecho")
+                ="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True)); st.success("✅ Hecho")
 else:
     # 1. CARGA DE DATOS
     df_perf = leer_datos("ImagenesPerfil")
@@ -596,7 +596,7 @@ else:
 
                 # 3. Guardar las predicciones en el Excel
                 otras = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
-                conn.update(worksheet="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
+                ="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
                 
                 # 4. Registrar en la hoja de Logs (VAR)
                 log_p = pd.DataFrame([{
@@ -607,9 +607,12 @@ else:
                 df_l_existente = conn.read(worksheet="Logs", ttl=0)
                 conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_p], ignore_index=True))
                 
-                # 5. Limpiar caché y refrescar
+                # 5. Limpiar caché COMPLETA y refrescar
                 st.cache_data.clear()
+                st.cache_resource.clear()
+                
                 st.success("✅ Predicciones guardadas y VAR actualizado.")
+                time.sleep(1)
                 st.rerun()
 
     with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL FINALIZAR) ---
@@ -956,9 +959,12 @@ else:
                 if st.button("💾 Guardar Todos los Puntos Base", use_container_width=True):
                     conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
                     st.cache_data.clear()
+                    st.cache_resource.clear()
+                    
                     st.success("✅ Puntos base actualizados.")
+                    time.sleep(1)
                     st.rerun()
-
+                    
             with t_fotos:
                 st.subheader("Asignar Imágenes a Usuarios")
                 if os.path.exists(PERFILES_DIR):
@@ -1102,6 +1108,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
