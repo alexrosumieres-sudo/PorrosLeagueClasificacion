@@ -8,6 +8,7 @@ import random
 import itertools
 import numpy as np
 import time
+import pytz
 
 # --- 1. CONFIGURACIONES GENERALES ---
 PERFILES_DIR = "perfiles/"
@@ -341,6 +342,13 @@ def simular_oraculo(usuarios, df_p_all, df_r_all, jornada_sel):
         for g in gan: victorias[g] += 1 / len(gan)
     return {u: (v/len(combos))*100 for u, v in victorias.items()}
 
+def get_now_madrid():
+    # Definimos la zona horaria de España
+    tz = pytz.timezone('Europe/Madrid')
+    # Obtenemos la hora actual en esa zona y le quitamos la información de zona 
+    # para que sea compatible con las fechas de tu Excel (naive datetime)
+    return datetime.now(tz).replace(tzinfo=None)
+
 # --- 3. APP ---
 st.set_page_config(page_title="Porros League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -466,7 +474,8 @@ else:
             with c3:
                 if not prox_p.empty:
                     # Calculamos la diferencia total
-                    diff = datetime.datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - datetime.datetime.now()
+                    ahora_madrid = get_now_madrid() # Llamamos a tu función horaria
+                    diff = datetime.datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - ahora_madrid
                     ts = int(diff.total_seconds())
                     
                     if ts > 0:
@@ -524,7 +533,7 @@ else:
                 lock = False
                 msg_lock = "" # Tooltip
                 if not res_info.empty:
-                    lock = datetime.datetime.now() > datetime.datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                    lock = get_now_madrid() > datetime.datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
                     if lock:
                         msg_lock = f"Bloqueado: Comenzó el {res_info.iloc[0]['Hora_Inicio']}"
     
@@ -564,7 +573,7 @@ else:
                 st.success("✅ Predicciones guardadas con éxito.")
                 # --- REGISTRO EN EL VAR (PREDICCIONES) ---
                 log_p = pd.DataFrame([{
-                    "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
                     "Usuario": st.session_state.user,
                     "Accion": f"📝 Actualizó sus predicciones (Jornada: {j_global})"
                 }])
@@ -989,62 +998,48 @@ else:
                 
                 st.divider()
                 if st.button("🏟️ GUARDAR RESULTADOS JORNADA", use_container_width=True):
-                    # --- 1. LOGS DEL VAR INTELIGENTES (Detección de cambios) ---
+                    ahora_fresca = get_now_madrid()
+                    # --- 1. LOGS DEL VAR ---
                     logs_adm = []
                     for r in r_env:
-                        # Buscamos cómo estaba el partido antes en la base de datos (df_r_all)
                         match_previo = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r['Partido'])]
-                        
                         registrar = False
-                        prefijo = "OFICIAL"
-
                         if not match_previo.empty:
                             was_fin = match_previo.iloc[0]['Finalizado'] == "SI"
-                            old_rl = int(match_previo.iloc[0]['R_L'])
-                            old_rv = int(match_previo.iloc[0]['R_V'])
-
-                            # Caso A: Se acaba de marcar como finalizado ahora
-                            if r['Finalizado'] == "SI" and not was_fin:
-                                registrar = True
-                            
-                            # Caso B: Ya estaba finalizado pero el admin ha corregido el marcador
-                            elif r['Finalizado'] == "SI" and was_fin:
-                                if int(r['R_L']) != old_rl or int(r['R_V']) != old_rv:
-                                    registrar = True
-                                    prefijo = "CORRECCIÓN"
+                            if r['Finalizado'] == "SI" and not was_fin: registrar = True
                         
                         if registrar:
                             logs_adm.append({
-                                "Fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "Fecha": ahora_fresca.strftime("%Y-%m-%d %H:%M:%S"),
                                 "Usuario": "🛡️ ADMIN",
-                                "Accion": f"⚽ {prefijo}: {r['Partido']} ({r['R_L']}-{r['R_V']}) - {r['Tipo']}"
+                                "Accion": f"⚽ OFICIAL: {r['Partido']} ({r['R_L']}-{r['R_V']})"
                             })
 
                     if logs_adm:
                         df_l_existente = leer_datos("Logs")
                         conn.update(worksheet="Logs", data=pd.concat([df_l_existente, pd.DataFrame(logs_adm)], ignore_index=True))
 
-                    # --- 2. EL RESTO DEL GUARDADO (Sigue igual) ---
+                    # --- 2. GUARDAR RESULTADOS ---
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     df_resultados_new = pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)
                     conn.update(worksheet="Resultados", data=df_resultados_new)
                     
-                    # ... (aquí sigue el código del Oráculo y el rerun)
-                    
-                    # 3. ACTUALIZAR HISTÓRICO ORÁCULO (Para la gráfica de evolución)
+                    # --- 3. ACTUALIZAR HISTÓRICO ORÁCULO (FIX 0% Y HORA) ---
                     if usa_oraculo:
                         probs_ahora = simular_oraculo(u_jugadores, df_p_all, df_resultados_new, j_global)
                         if probs_ahora:
-                            ahora_str = datetime.datetime.now().strftime("%H:%M:%S")
+                            ahora_str = ahora_fresca.strftime("%H:%M:%S")
+                            # QUITAMOS EL FILTRO 'if p > 0' para que la gráfica baje a cero y no desaparezca
                             df_hist_nuevo = pd.DataFrame([
-                                {"Jornada": j_global, "Fecha": ahora_str, "Usuario": u, "Probabilidad": round(p, 1)}
-                                for u, p in probs_ahora.items() if p > 0
+                                {"Jornada": j_global, "Fecha": ahora_str, "Usuario": u, "Probabilidad": round(float(p), 1)}
+                                for u, p in probs_ahora.items()
                             ])
-                            df_h_existente = leer_datos("HistoricoOraculo")
+                            # Leemos historial fresco para evitar sobrescribir
+                            df_h_existente = conn.read(worksheet="HistoricoOraculo", ttl=0)
                             conn.update(worksheet="HistoricoOraculo", data=pd.concat([df_h_existente, df_hist_nuevo], ignore_index=True))
 
                     st.cache_data.clear()
-                    st.success(f"✅ Datos de la {j_global} guardados y VAR actualizado.")
+                    st.success(f"✅ Datos de la {j_global} guardados (Hora Madrid: {ahora_fresca.strftime('%H:%M')})")
                     st.rerun()
         else:
             st.warning("⛔ Acceso restringido.")
@@ -1076,6 +1071,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
