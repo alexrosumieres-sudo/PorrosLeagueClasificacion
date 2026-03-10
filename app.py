@@ -616,65 +616,85 @@ else:
                 time.sleep(1)
                 st.rerun()
 
-    with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL FINALIZAR) ---
+    with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL EMPEZAR O FINALIZAR) ---
         st.header("👀 Qué han puesto los demás")
+        ahora = get_now_madrid()
         
-        # Obtenemos los partidos de esta jornada que ya están finalizados
-        partidos_fin = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
+        # 1. Identificamos qué partidos deben ser revelados (Finalizados O Ya empezados)
+        # Convertimos la columna de hora a formato fecha para comparar
+        df_r_all['Hora_DT'] = pd.to_datetime(df_r_all['Hora_Inicio'], errors='coerce')
         
-        # 1. SECCIÓN DE PARTIDOS FINALIZADOS (REVELACIÓN TOTAL)
-        if not partidos_fin.empty:
-            st.markdown("### ✅ Resultados y Apuestas Reveladas")
-            st.caption("Al finalizar el partido, las apuestas de todos los jugadores se hacen visibles.")
+        revelados = df_r_all[
+            (df_r_all['Jornada'] == j_global) & 
+            ((df_r_all['Finalizado'] == "SI") | (ahora > df_r_all['Hora_DT']))
+        ]
+        
+        if not revelados.empty:
+            st.markdown("### ✅ Apuestas Reveladas")
+            st.caption("Partidos en juego o finalizados: las cartas ya están sobre la mesa.")
             
-            for _, match in partidos_fin.iterrows():
+            # Ordenamos por hora para que sea más natural
+            revelados = revelados.sort_values("Hora_DT", ascending=True)
+
+            for _, match in revelados.iterrows():
                 m_id = match['Partido']
+                es_final = match['Finalizado'] == "SI"
                 res_real = f"{int(match['R_L'])}-{int(match['R_V'])}"
                 tipo_p = match['Tipo']
                 
-                with st.expander(f"📊 {m_id}  —  Resultado Real: {res_real} ({tipo_p})"):
-                    # Buscamos todas las predicciones para este partido específico
+                # Etiqueta de estado
+                estado_tag = "🔴 FINALIZADO" if es_final else "⏱️ EN JUEGO / ESPERANDO ACTA"
+                
+                with st.expander(f"📊 {m_id}  —  {estado_tag} (Real: {res_real})"):
+                    # Buscamos todas las predicciones
                     preds_match = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Partido'] == m_id)]
                     
                     if not preds_match.empty:
                         resumen_partido = []
                         for _, p in preds_match.iterrows():
-                            # Calculamos puntos de cada uno para mostrar en la tabla
-                            pts = calcular_puntos(p['P_L'], p['P_V'], match['R_L'], match['R_V'], tipo_p)
+                            # Solo calculamos puntos reales si el partido está marcado como finalizado
+                            pts = calcular_puntos(p['P_L'], p['P_V'], match['R_L'], match['R_V'], tipo_p) if es_final else 0.0
+                            
                             resumen_partido.append({
                                 "Jugador": p['Usuario'],
                                 "Apostó": f"{int(p['P_L'])}-{int(p['P_V'])}",
-                                "Puntos": pts
+                                "Puntos": pts if es_final else "Pte..."
                             })
                         
-                        # Creamos un DataFrame y lo ordenamos por puntos (quien más ganó, arriba)
-                        df_resumen = pd.DataFrame(resumen_partido).sort_values("Puntos", ascending=False)
+                        df_resumen = pd.DataFrame(resumen_partido)
+                        # Si está finalizado, ordenamos por puntos. Si no, por nombre.
+                        if es_final:
+                            df_resumen = df_resumen.sort_values("Puntos", ascending=False)
+                        else:
+                            df_resumen = df_resumen.sort_values("Jugador")
+                            
                         st.table(df_resumen)
                     else:
-                        st.write("Nadie hizo predicciones para este partido.")
-            st.divider()
-
-        # 2. SECCIÓN DE PARTIDOS NO FINALIZADOS (SOLO PÚBLICAS)
-        st.markdown("### 🔒 Próximos Partidos / En Juego")
-        st.caption("Solo puedes ver las apuestas de quienes las han marcado como 'Públicas'.")
-        
-        # Filtramos predicciones públicas de otros usuarios
-        p_pub = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Publica'] == "SI") & (df_p_all['Usuario'] != st.session_state.user)]
-        
-        # Quitamos de aquí las que ya se muestran arriba por estar finalizadas
-        if not partidos_fin.empty:
-            p_pub = p_pub[~p_pub['Partido'].isin(partidos_fin['Partido'])]
-
-        if p_pub.empty:
-            st.info("No hay apuestas públicas visibles para los partidos restantes.")
+                        st.write("Nadie apostó en este partido.")
         else:
-            usuarios_pub = p_pub['Usuario'].unique()
-            for u in usuarios_pub:
-                with st.expander(f"👤 Apuestas de {u}"):
-                    # Mostramos solo los partidos que aún no han sido revelados arriba
-                    df_u_pub = p_pub[p_pub['Usuario'] == u][['Partido', 'P_L', 'P_V']]
-                    st.table(df_u_pub)
+            st.info("Aún no ha empezado ningún partido de esta jornada. ¡Las apuestas siguen ocultas!")
 
+        # 2. SECCIÓN DE PRÓXIMOS PARTIDOS (Solo las que el usuario quiso hacer públicas antes de tiempo)
+        st.divider()
+        st.markdown("### 🔒 Próximos Partidos (Aún bloqueados)")
+        st.caption("Aquí solo ves a los valientes que marcaron su apuesta como 'Pública' antes de empezar.")
+        
+        # Filtramos: de esta jornada, que NO estén en la lista de revelados, que sean públicas y no seas tú
+        p_futuras = df_p_all[
+            (df_p_all['Jornada'] == j_global) & 
+            (~df_p_all['Partido'].isin(revelados['Partido'])) & 
+            (df_p_all['Publica'] == "SI") & 
+            (df_p_all['Usuario'] != st.session_state.user)
+        ]
+
+        if p_futuras.empty:
+            st.info("No hay más apuestas públicas visibles.")
+        else:
+            for u in p_futuras['Usuario'].unique():
+                with st.expander(f"👤 Apuestas de {u}"):
+                    st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
+
+    
     with tabs[2]: # --- PESTAÑA CLASIFICACIÓN ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True)
         pts_l = []
@@ -1110,6 +1130,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
