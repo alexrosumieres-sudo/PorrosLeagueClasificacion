@@ -402,7 +402,20 @@ else:
         .podium-2 { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important; border: 2px solid #c0c0c0 !important; }
         .podium-3 { background: linear-gradient(135deg, #fff5f0 0%, #ffe0cc 100%) !important; border: 2px solid #cd7f32 !important; }
         .medal-icon { font-size: 1.8em; margin-bottom: 5px; display: block; }
-        </style>
+        /* Estilos de Zona */
+        .zone-champions { border-left: 8px solid #ffd700 !important; background: linear-gradient(90deg, #fffdf0 0%, #ffffff 100%) !important; }
+        .zone-danger { border-left: 8px solid #2baf2b !important; background: linear-gradient(90deg, #f0fff0 0%, #ffffff 100%) !important; }
+        
+        /* Anillos en Clasificación */
+        .ring-avatar { border-radius: 50%; padding: 3px; display: inline-block; line-height: 0; }
+        .ring-gold { background: linear-gradient(45deg, #ffd700, #ffae00); box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+        .ring-silver { background: linear-gradient(45deg, #c0c0c0, #8e8e8e); }
+        .ring-bronze { background: linear-gradient(45deg, #cd7f32, #a0522d); }
+        .ring-green { background: linear-gradient(45deg, #39FF14, #2baf2b); }
+    
+        /* Imagen circular forzada */
+        .stImage img { border-radius: 50% !important; }
+            </style>
     """, unsafe_allow_html=True)
 
     with st.sidebar:
@@ -738,11 +751,11 @@ else:
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
 
     
-    with tabs[2]: # --- PESTAÑA CLASIFICACIÓN ---
-        tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True)
+    with tabs[2]: # --- 📊 CLASIFICACIÓN PREMIUM ---
+        tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
         pts_l = []
         
-        # 1. Cálculo de puntos según el tipo de ranking
+        # 1. Cálculo de puntos (Tu lógica original se mantiene igual de sólida)
         for u in u_jugadores:
             if tipo_r == "General":
                 pb_r = df_base[df_base['Usuario'] == u]
@@ -758,79 +771,73 @@ else:
                     p_a += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
             pts_l.append({"Usuario": u, "Puntos": p_a})
         
-        # 2. Ordenar y preparar DataFrame
         df_rk = pd.DataFrame(pts_l).sort_values("Puntos", ascending=False).reset_index(drop=True)
         df_rk['Posicion'] = range(1, len(df_rk)+1)
         
-        # 3. Datos de referencia para diferencias
         pts_lider = df_rk.iloc[0]['Puntos'] if not df_rk.empty else 0
-        
-        # 4. Renderizado de las tarjetas con TRIPLE MÉTRICA DE PRESIÓN
+        total_usuarios = len(df_rk)
+
+        # 2. Renderizado de Tarjetas
         for i, row in df_rk.iterrows():
             pos = row['Posicion']
             pts_actuales = row['Puntos']
             
-            # --- CÁLCULOS DE DISTANCIA ---
-            # 1. Al Líder (General o de jornada)
-            diff_lider = pts_actuales - pts_lider
+            # --- LÓGICA DE ZONAS Y ANILLOS ---
+            zone_class = ""
+            ring_class = ""
+            if pos <= 3: 
+                zone_class = "zone-champions"
+                ring_class = "ring-gold" if pos == 1 else "ring-silver" if pos == 2 else "ring-bronze"
+            elif pos >= total_usuarios - 1: # Los últimos dos son zona Lagarto
+                zone_class = "zone-danger"
+                ring_class = "ring-green"
             
-            # 2. Al siguiente (el que tienes justo encima)
-            gap_arriba = df_rk.iloc[i-1]['Puntos'] - pts_actuales if i > 0 else 0
-            
-            # 3. Al de abajo (tu colchón de seguridad)
-            gap_abajo = pts_actuales - df_rk.iloc[i+1]['Puntos'] if i < len(df_rk) - 1 else 0
-            
-            # Estilos de podio (mantenemos los anteriores)
-            style_class = ""
             medal_html = f'<span class="pos-badge">#{pos}</span>'
-            if pos == 1:
-                style_class = "podium-1"; medal_html = '<span class="medal-icon">🥇</span>'
-            elif pos == 2:
-                style_class = "podium-2"; medal_html = '<span class="medal-icon">🥈</span>'
-            elif pos == 3:
-                style_class = "podium-3"; medal_html = '<span class="medal-icon">🥉</span>'
+            if pos == 1: medal_html = '<span style="font-size:1.5em;">🥇</span>'
+            elif pos == 2: medal_html = '<span style="font-size:1.5em;">🥈</span>'
+            elif pos == 3: medal_html = '<span style="font-size:1.5em;">🥉</span>'
 
+            # Frase aleatoria
             f_t = random.choice(FRASES_POR_PUESTO.get(pos if pos <= 7 else 7))
             
-            st.markdown(f'<div class="panini-card {style_class}">', unsafe_allow_html=True)
-            c1, c2, c3, c4 = st.columns([0.6, 1.2, 3.2, 1.8]) # Ajustamos anchos para las métricas
+            # Cálculo de barra de progreso (Puntos respecto al líder)
+            porcentaje = (pts_actuales / pts_lider * 100) if pts_lider > 0 else 0
+
+            # --- RENDER CARD ---
+            st.markdown(f'<div class="panini-card {zone_class}" style="margin-bottom:15px; padding:15px; border-radius:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; background: white;">', unsafe_allow_html=True)
+            c1, c2, c3, c4 = st.columns([0.5, 1, 2.5, 2])
             
-            with c1: 
-                st.markdown(f'<div style="text-align:center; padding-top:10px;">{medal_html}</div>', unsafe_allow_html=True)
+            with c1: # Puesto
+                st.markdown(f'<div style="text-align:center; margin-top:15px;">{medal_html}</div>', unsafe_allow_html=True)
             
-            with c2: 
+            with c2: # Avatar con Anillo
+                st.markdown(f'<div class="ring-avatar {ring_class}">', unsafe_allow_html=True)
                 img = foto_dict.get(row['Usuario'])
-                if img and os.path.exists(str(img)): st.image(img, width=85)
+                if img and os.path.exists(str(img)): st.image(img, width=70)
                 else: st.markdown("<h2 style='margin:10px 0;'>👤</h2>", unsafe_allow_html=True)
-            
-            with c3: 
-                name_style = "color: #b8860b; font-weight: 900;" if pos == 1 else ""
-                st.markdown(f'<h3 style="margin-bottom:0; {name_style}">{row["Usuario"]}</h3>', unsafe_allow_html=True)
-                st.markdown(f'<div class="quote-text">"{f_t[0]}"<br><small>— {f_t[1]}</small></div>', unsafe_allow_html=True)
-            
-            with c4: 
-                # Puntos principales
-                st.markdown(f'<div style="text-align: right;"><span style="font-size: 1.8em; font-weight: bold; color: #2baf2b;">{pts_actuales:.2f}</span><br><small>PUNTOS</small></div>', unsafe_allow_html=True)
-                
-                # --- BLOQUE DE TENSIÓN ---
-                st.markdown('<div style="text-align: right; margin-top: 5px; line-height: 1.2;">', unsafe_allow_html=True)
-                
-                # A cuánto estás del de arriba (Siguiente objetivo)
-                if gap_arriba > 0:
-                    st.markdown(f'<span style="color: #ff9800; font-size: 0.85em; font-weight: bold;">🎯 A {gap_arriba:.2f} del anterior</span><br>', unsafe_allow_html=True)
-                
-                # Distancia al líder (Solo si no eres el líder)
-                if diff_lider < 0:
-                    st.markdown(f'<span style="color: #ff4b4b; font-size: 0.85em; font-weight: bold;">🚩 Liderato a {abs(diff_lider):.2f}</span><br>', unsafe_allow_html=True)
-                elif pos == 1 and len(df_rk) > 1:
-                    st.markdown(f'<span style="color: #ffd700; font-size: 0.85em; font-weight: bold;">👑 LÍDER DE LA LIGA</span><br>', unsafe_allow_html=True)
-                
-                # Colchón con el de abajo
-                if gap_abajo > 0:
-                    st.markdown(f'<span style="color: #6c757d; font-size: 0.85em;">🛡️ Colchón: +{gap_abajo:.2f}</span>', unsafe_allow_html=True)
-                
                 st.markdown('</div>', unsafe_allow_html=True)
             
+            with c3: # Nombre y Frase
+                st.markdown(f'<h4 style="margin:0; color:#1e293b;">{row["Usuario"]}</h4>', unsafe_allow_html=True)
+                st.markdown(f'<small style="color:#64748b; font-style:italic;">"{f_t[0]}"</small>', unsafe_allow_html=True)
+                # Mini barra de progreso estética
+                st.markdown(f"""
+                    <div style="width: 80%; background-color: #f1f5f9; border-radius: 10px; height: 6px; margin-top: 8px;">
+                        <div style="width: {porcentaje}%; background-color: {'#ffd700' if pos<=3 else '#3b82f6' if pos<total_usuarios-1 else '#2baf2b'}; border-radius: 10px; height: 100%;"></div>
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            with c4: # Puntos y Gaps
+                st.markdown(f'<div style="text-align: right;"><span style="font-size: 1.4em; font-weight: 800; color: #1e293b;">{pts_actuales:.2f}</span><br><small style="font-weight:bold; color:#64748b;">PUNTOS</small></div>', unsafe_allow_html=True)
+                
+                # Gap visual (A cuánto está el siguiente)
+                if i > 0:
+                    gap = df_rk.iloc[i-1]['Puntos'] - pts_actuales
+                    if gap > 0:
+                        st.markdown(f'<div style="text-align: right;"><small style="color:#f59e0b;">🎯 A {gap:.2f} pts</small></div>', unsafe_allow_html=True)
+                elif pos == 1:
+                    st.markdown('<div style="text-align: right;"><small style="color:#ffd700; font-weight:bold;">🏆 CAPITÁN</small></div>', unsafe_allow_html=True)
+
             st.markdown('</div>', unsafe_allow_html=True)
 
     with tabs[3]: # --- 🏅 PALMARÉS (GLORIA Y HUMILLACIÓN) ---
@@ -1335,3 +1342,4 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
