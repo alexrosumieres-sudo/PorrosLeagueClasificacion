@@ -792,9 +792,9 @@ else:
 
     with tabs[3]: # --- 🏅 PALMARÉS (SALÓN DE LA FAMA) ---
         st.header("🏆 Salón de la Fama: Ganadores de Jornada")
-        st.caption("Ordenado por número de medallas de oro conseguidas.")
+        st.caption("Ranking de medallas de oro conseguidas (Solo jornadas finalizadas).")
 
-        # 1. DATOS HISTÓRICOS (J1 - J24) - Mapeo aplicado
+        # 1. DATOS HISTÓRICOS (J1 - J24) - Mapeo ya aplicado
         historico_ganadores = [
             ("J1", ["Alex"]), ("J2", ["Alec206301"]), ("J3", ["EstafadorJudío"]), 
             ("J4", ["Alec206301"]), ("J5", ["Rodri"]), ("J6", ["Rodri"]), 
@@ -806,90 +806,98 @@ else:
             ("J20", ["Alec206301"]), ("J21", ["Cidón"]), ("J22", ["EstafadorJudío"]),
             ("J23", ["Alec206301"]), ("J24", ["Alex"])
         ]
+        
+        # Lista de nombres exactos que ya tenemos registrados para no duplicar
+        nombres_historicos = [h[0] for h in historico_ganadores]
 
-        # 2. CÁLCULO AUTOMÁTICO (J25+)
+        # 2. CÁLCULO PARA JORNADAS NUEVAS (Incluye Champions, J25, etc.)
         ganadores_actuales = []
+        
         for j_nombre in JORNADAS.keys():
-            # Extraer número de jornada para saltar las históricas
-            try:
-                num_j = int(''.join(filter(str.isdigit, j_nombre)))
-                if num_j <= 24: continue
-            except: continue # Si no tiene número (Champions), la procesamos igual
-            
+            # SI EL NOMBRE YA ESTÁ EN EL HISTÓRICO, LO SALTAMOS
+            if j_nombre in nombres_historicos:
+                continue
+
+            # Miramos si hay algún partido de esta jornada en el Excel
             partidos_j = df_r_all[df_r_all['Jornada'] == j_nombre]
-            if not partidos_j.empty and all(partidos_j['Finalizado'] == "SI"):
+            finalizados = partidos_j[partidos_j['Finalizado'] == "SI"]
+            
+            # Si hay al menos un partido empezado o finalizado, calculamos ganador
+            if not partidos_j.empty:
                 puntos_j = []
                 for u in u_jugadores:
                     u_p_h = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_nombre)]
                     pts_j = 0.0
                     for r in u_p_h.itertuples():
-                        m = df_r_all[(df_r_all['Jornada']==j_nombre)&(df_r_all['Partido']==r.Partido)]
-                        if not m.empty:
+                        # Buscamos el resultado real en el Excel
+                        m = partidos_j[partidos_j['Partido'] == r.Partido]
+                        if not m.empty and m.iloc[0]['Finalizado'] == "SI":
                             pts_j += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
                     puntos_j.append({"Usuario": u, "Puntos": pts_j})
                 
                 if puntos_j:
                     df_pj = pd.DataFrame(puntos_j)
                     max_pts = df_pj['Puntos'].max()
+                    
+                    # Solo mostramos si alguien ha puntuado algo
                     if max_pts > 0:
                         winners = df_pj[df_pj['Puntos'] == max_pts]['Usuario'].tolist()
-                        ganadores_actuales.append((j_nombre, winners))
+                        
+                        # Si no han terminado todos los partidos de esa jornada (ej: Champions IDA)
+                        if len(finalizados) < len(partidos_j):
+                            j_display = f"{j_nombre} (En Juego ⏳)"
+                        else:
+                            j_display = j_nombre
+                        
+                        ganadores_actuales.append((j_display, winners))
 
-        # Unimos todo
+        # Combinamos ambos listados
         palmares_completo = historico_ganadores + ganadores_actuales
         
-        # 3. CONTEO Y ORDENACIÓN (DE MAYOR A MENOR)
+        # 3. CONTEO PARA EL RANKING (Solo contamos victorias de jornadas terminadas)
         conteo_victorias = {}
-        for _, lista_u in palmares_completo:
-            for u in lista_u:
-                conteo_victorias[u] = conteo_victorias.get(u, 0) + 1
+        for jor, lista_u in palmares_completo:
+            if "En Juego" not in jor:
+                for u in lista_u:
+                    conteo_victorias[u] = conteo_victorias.get(u, 0) + 1
         
-        # Creamos el DataFrame y ordenamos estrictamente por Victorias
-        df_ranking_v = pd.DataFrame(
-            list(conteo_victorias.items()), 
-            columns=['Usuario', 'Victorias']
-        ).sort_values('Victorias', ascending=False).reset_index(drop=True)
+        # DataFrame ordenado de más a menos victorias
+        df_ranking_v = pd.DataFrame(list(conteo_victorias.items()), columns=['Usuario', 'Victorias'])
+        df_ranking_v = df_ranking_v.sort_values('Victorias', ascending=False).reset_index(drop=True)
 
-        # 4. RENDERIZADO DE TARJETAS ORDENADAS
+        # 4. RENDERIZADO DE TARJETAS (ORDENADAS)
         st.subheader("🥇 Ranking de Medallas")
+        if not df_ranking_v.empty:
+            columnas_por_fila = 4
+            for i in range(0, len(df_ranking_v), columnas_por_fila):
+                cols = st.columns(columnas_por_fila)
+                for j in range(columnas_por_fila):
+                    idx = i + j
+                    if idx < len(df_ranking_v):
+                        row = df_ranking_v.iloc[idx]
+                        bg = "#fff9c4" if idx == 0 else "#f8f9fa"
+                        border = "#ffd700" if idx == 0 else "#dee2e6"
+                        with cols[j]:
+                            st.markdown(f"""
+                            <div style="text-align:center; padding:10px; border-radius:10px; background:{bg}; border: 1px solid {border}; border-left:5px solid {border}; margin-bottom:10px;">
+                                <b style="color:#333; font-size:0.9em;">{'👑 ' if idx==0 else ''}{row['Usuario']}</b><br>
+                                <span style="font-size:1.8em; font-weight:900; color:#2baf2b;">{int(row['Victorias'])}</span><br>
+                                <small style="color:#666; font-weight:bold;">VICTORIAS</small>
+                            </div>
+                            """, unsafe_allow_html=True)
         
-        # Mostramos filas de 4 tarjetas para que se vea bien en móvil y PC
-        columnas_por_fila = 4
-        for i in range(0, len(df_ranking_v), columnas_por_fila):
-            cols = st.columns(columnas_por_fila)
-            for j in range(columnas_por_fila):
-                idx = i + j
-                if idx < len(df_ranking_v):
-                    row = df_ranking_v.iloc[idx]
-                    # Estilo especial para el top 1
-                    bg_color = "#fff9c4" if idx == 0 else "#f0f2f6"
-                    border_color = "#ffd700" if idx == 0 else "#2baf2b"
-                    crown = "👑 " if idx == 0 else ""
-                    
-                    with cols[j]:
-                        st.markdown(f"""
-                        <div style="text-align:center; padding:15px; border-radius:15px; background:{bg_color}; border-left:5px solid {border_color}; margin-bottom:15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                            <span style="font-size:0.9em; font-weight:bold; color:#444;">{crown}{row['Usuario']}</span><br>
-                            <span style="font-size:2em; font-weight:900; color:#31333F;">{int(row['Victorias'])}</span><br>
-                            <span style="font-size:0.75em; color:{border_color}; font-weight:bold;">VICTORIAS</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-
         st.divider()
 
-        # 5. CRONOLOGÍA (LO MÁS RECIENTE ARRIBA)
-        st.subheader("📅 Cronología de Campeones")
-        col_cron1, col_cron2 = st.columns(2)
+        # 5. CRONOLOGÍA (LO MÁS NUEVO ARRIBA)
+        st.subheader("📅 Historial de Jornadas")
+        c1, c2 = st.columns(2)
+        rev_palmares = list(reversed(palmares_completo))
         
-        # Invertimos la lista para que la última jornada jugada salga primero
-        reversed_palmares = list(reversed(palmares_completo))
-        mitad = (len(reversed_palmares) + 1) // 2
-        
-        for i, (jor, wins) in enumerate(reversed_palmares):
-            target_col = col_cron1 if i < mitad else col_cron2
-            with target_col:
-                nombres_winners = " & ".join(wins)
-                st.markdown(f"**{jor}:** {nombres_winners} 🏆")
+        for i, (jor, wins) in enumerate(rev_palmares):
+            col = c1 if i < (len(rev_palmares)/2) else c2
+            # Si hay varios ganadores, los ponemos con "&"
+            txt_winners = " & ".join(wins)
+            col.write(f"**{jor}:** {txt_winners} 🏆")
     
     with tabs[4]: # STATS PRO
         u_sel = st.selectbox("Analizar:", u_jugadores)
@@ -1231,6 +1239,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
