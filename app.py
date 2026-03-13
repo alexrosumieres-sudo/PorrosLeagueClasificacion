@@ -724,6 +724,24 @@ else:
 
     with tabs[1]: # --- 🔮 PESTAÑA OTROS (TENDENCIAS + REVELACIONES) ---
         st.header("👀 Qué han puesto los demás")
+        
+        # --- [NUEVA LEYENDA DE COLORES] ---
+        st.markdown("""
+        <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; padding: 10px; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div style="width: 12px; height: 12px; background: #3b82f6; border-radius: 3px;"></div>
+                <span style="font-size: 0.8em; font-weight: bold; color: #1e293b;">Local</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div style="width: 12px; height: 12px; background: #94a3b8; border-radius: 3px;"></div>
+                <span style="font-size: 0.8em; font-weight: bold; color: #1e293b;">Empate</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <div style="width: 12px; height: 12px; background: #f59e0b; border-radius: 3px;"></div>
+                <span style="font-size: 0.8em; font-weight: bold; color: #1e293b;">Visitante</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         ahora = get_now_madrid()
 
         # --- [NUEVA ADICIÓN: SABIDURÍA POPULAR] ---
@@ -1461,6 +1479,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
