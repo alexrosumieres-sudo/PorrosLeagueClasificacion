@@ -458,20 +458,50 @@ else:
     st.title(f"Hola, {st.session_state.user} 👋")
 
     # --- RENDER DASHBOARD HERO ---
+    # --- 1. LÓGICA DE CÁLCULO: LÍDER Y LAGARTO(S) ---
+    # Buscamos la última jornada que tenga partidos finalizados
+    jornadas_con_finalizados = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()
+    lagartos_nombres = []
+    puntos_lagarto = 0.0
+    nombre_ultima_j = "-"
+
+    if len(jornadas_con_finalizados) > 0:
+        nombre_ultima_j = jornadas_con_finalizados[-1]
+        puntos_last_j = []
+        
+        for u in u_jugadores:
+            u_p_last = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == nombre_ultima_j)]
+            pts_j = 0.0
+            for r in u_p_last.itertuples():
+                m_res = df_r_all[(df_r_all['Jornada'] == nombre_ultima_j) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
+                if not m_res.empty:
+                    pts_j += calcular_puntos(r.P_L, r.P_V, m_res.iloc[0]['R_L'], m_res.iloc[0]['R_V'], m_res.iloc[0]['Tipo'])
+            puntos_last_j.append({"Usuario": u, "Puntos": pts_j})
+        
+        if puntos_last_j:
+            df_last_j = pd.DataFrame(puntos_last_j)
+            puntos_lagarto = df_last_j['Puntos'].min()
+            # Obtenemos todos los que tengan la puntuación mínima (por si hay empate)
+            lagartos_nombres = df_last_j[df_last_j['Puntos'] == puntos_lagarto]['Usuario'].tolist()
+
+    # --- 2. DISEÑO VISUAL DE LA CABECERA ---
     with st.container():
         st.markdown('<div class="hero-bg">', unsafe_allow_html=True)
-        col_lider, col_lagarto, col_sep, col_datos = st.columns([1.2, 1.2, 0.1, 3.0])
+        # Ajustamos columnas: Lider (1.2), Lagarto (1.2), Espacio (0.1), Datos (3.2)
+        col_lider, col_lagarto, col_sep, col_datos = st.columns([1.2, 1.2, 0.1, 3.2])
         
-        # --- COLUMNA LÍDER ---
+        # --- COLUMNA LÍDER GENERAL ---
         with col_lider:
             st.markdown('<span class="section-tag">LÍDER GENERAL</span>', unsafe_allow_html=True)
             st.markdown('<div style="position: relative; text-align: center;"><span class="crown">👑</span>', unsafe_allow_html=True)
             f_l = foto_dict.get(lider['Usuario'])
-            if f_l and os.path.exists(str(f_l)): st.image(f_l, width=80)
-            else: st.markdown("<h1 style='margin:0;'>👤</h1>", unsafe_allow_html=True)
-            st.markdown(f"<small><b>{lider['Usuario']}</b></small><br><span style='color:#daa520; font-weight:bold; font-size:1.1em;'>{lider['Puntos']:.2f}</span></div>", unsafe_allow_html=True)
+            if f_l and os.path.exists(str(f_l)): 
+                st.image(f_l, width=80)
+            else: 
+                st.markdown("<h1 style='margin:0;'>👤</h1>", unsafe_allow_html=True)
+            st.markdown(f"<small><b>{lider['Usuario']}</b></small><br><span style='color:#daa520; font-weight:bold; font-size:1.1em;'>{lider['Puntos']:.2f} Pts</span></div>", unsafe_allow_html=True)
         
-        # --- COLUMNA LAGARTO(S) ---
+        # --- COLUMNA LAGARTO(S) DE LA ÚLTIMA JORNADA ---
         with col_lagarto:
             st.markdown(f'<span class="section-tag" style="background:#2baf2b;">LAGARTO {nombre_ultima_j}</span>', unsafe_allow_html=True)
             st.markdown('<div style="position: relative; text-align: center;"><span style="font-size:2em; position:absolute; top:-35px; left:35px; transform:rotate(15deg);">🦎</span>', unsafe_allow_html=True)
@@ -479,33 +509,46 @@ else:
             if len(lagartos_nombres) == 1:
                 # Si solo hay uno, mostramos su foto
                 f_p = foto_dict.get(lagartos_nombres[0])
-                if f_p and os.path.exists(str(f_p)): st.image(f_p, width=80)
-                else: st.markdown("<h1 style='margin:0;'>👤</h1>", unsafe_allow_html=True)
+                if f_p and os.path.exists(str(f_p)): 
+                    st.image(f_p, width=80)
+                else: 
+                    st.markdown("<h1 style='margin:0;'>👤</h1>", unsafe_allow_html=True)
                 st.markdown(f"<small><b>{lagartos_nombres[0]}</b></small>", unsafe_allow_html=True)
-            else:
-                # Si hay varios, mostramos icono de grupo y la lista
+            elif len(lagartos_nombres) > 1:
+                # Si hay empate, mostramos icono de plaga y los nombres
                 st.markdown("<h1 style='margin:10px 0;'>🦎🦎</h1>", unsafe_allow_html=True)
                 nombres_fmt = " & ".join(lagartos_nombres)
-                st.markdown(f"<div style='line-height:1; margin-bottom:5px;'><small><b>{nombres_fmt}</b></small></div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='line-height:1.1; margin-bottom:5px;'><small><b>{nombres_fmt}</b></small></div>", unsafe_allow_html=True)
+            else:
+                st.markdown("<h1 style='margin:10px 0;'>-</h1>", unsafe_allow_html=True)
             
             st.markdown(f"<span style='color:#2baf2b; font-weight:bold; font-size:1.1em;'>{puntos_lagarto:.2f} Pts</span></div>", unsafe_allow_html=True)
 
-        # --- COLUMNA DATOS (TIEMPO Y TUS PUNTOS) ---
+        # --- COLUMNA DE DATOS DEL USUARIO Y CONTADOR ---
         with col_datos:
             st.markdown(f'<span class="section-tag">{"PANEL CONTROL" if es_admin else "TUS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
             c2, c3, c4 = st.columns(3)
-            with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
+            with c2: 
+                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
+            
             with c3:
                 if not prox_p.empty:
                     ahora_madrid = get_now_madrid()
                     diff = datetime.datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - ahora_madrid
                     ts = int(diff.total_seconds())
                     if ts > 0:
-                        h, m = (ts % 86400) // 3600, (ts % 3600) // 60
+                        h = (ts % 86400) // 3600
+                        m = (ts % 3600) // 60
                         color = "#ff4b4b" if ts < 7200 else "#2baf2b"
                         st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{color}; font-size: 1.2em;">{h:02d}h {m:02d}m</span></div>', unsafe_allow_html=True)
-                    else: st.markdown('<div class="kpi-box"><span class="kpi-label">Mercado</span><span class="kpi-value" style="color:#6c757d;">Cerrado</span></div>', unsafe_allow_html=True)
-            with c4: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<div class="kpi-box"><span class="kpi-label">Mercado</span><span class="kpi-value" style="color:#6c757d;">Cerrado</span></div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Finalizada</span></div>', unsafe_allow_html=True)
+            
+            with c4: 
+                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
+        
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
@@ -1236,6 +1279,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
