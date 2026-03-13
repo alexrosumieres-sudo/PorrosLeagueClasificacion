@@ -916,10 +916,10 @@ else:
 
             st.markdown('</div>', unsafe_allow_html=True)
 
-    with tabs[3]: # --- 🏅 PALMARÉS (GLORIA Y HUMILLACIÓN) ---
+    with tabs[3]: # --- 🏅 PALMARÉS (GLORIA, PODER Y HUMILLACIÓN) ---
         st.header("🏅 El Palmarés de la Porra")
         
-        # --- 1. DATOS HISTÓRICOS J1-J24 ---
+        # --- 1. DATOS HISTÓRICOS J1-J24 (Líderes extraídos de tu imagen) ---
         hist_ganadores = [
             ("J1", ["Alex"]), ("J2", ["Alec206301"]), ("J3", ["EstafadorJudío"]), ("J4", ["Alec206301"]), ("J5", ["Rodri"]), ("J6", ["Rodri"]), 
             ("J7", ["EstafadorJudío"]), ("J8", ["Pachuco67"]), ("J9", ["Alex"]), ("J10", ["Lagartoputero"]), ("J11", ["Pachuco67"]), ("J12", ["Pablo Riera"]),
@@ -936,32 +936,55 @@ else:
             ("J23", ["Alex", "Pachuco67", "Pablo Riera"]), ("J24", ["Pablo Riera"])
         ]
 
-        # --- 2. CÁLCULO AUTOMÁTICO J25+ ---
-        gan_act, perd_act = [], []
+        hist_lideres = [
+            ("J1", ["Alex"]), ("J2", ["Alec206301"]), ("J3", ["Alec206301"]), ("J4", ["Alec206301"]), ("J5", ["Alex"]),
+            ("J6", ["Alex"]), ("J7", ["Alex"]), ("J8", ["Alex"]), ("J9", ["Alex"]), ("J10", ["EstafadorJudío"]),
+            ("J11", ["EstafadorJudío"]), ("J12", ["EstafadorJudío"]), ("J13", ["Alex"]), ("J14", ["Alex"]), ("J15", ["Alex"]),
+            ("J16", ["EstafadorJudío"]), ("J17", ["EstafadorJudío"]), ("J18", ["EstafadorJudío"]), ("J19", ["EstafadorJudío"]), ("J20", ["EstafadorJudío"]),
+            ("J21", ["EstafadorJudío"]), ("J22", ["EstafadorJudío"]), ("J23", ["EstafadorJudío"]), ("J24", ["EstafadorJudío"])
+        ]
+
+        # --- 2. CÁLCULO AUTOMÁTICO J25+ (Incluyendo Líder Acumulado) ---
+        gan_act, perd_act, lider_act = [], [], []
         nombres_hist = [h[0] for h in hist_ganadores]
+        
+        # Para calcular el líder jornada a jornada, necesitamos el acumulado
+        pts_acumulados = {u: safe_float(df_base[df_base['Usuario'] == u]['Puntos'].values[0]) if not df_base[df_base['Usuario'] == u].empty else 0.0 for u in u_jugadores}
+
         for j_n in JORNADAS.keys():
-            if j_n in nombres_hist: continue
             partidos_j = df_r_all[df_r_all['Jornada'] == j_n]
             fin_j = partidos_j[partidos_j['Finalizado'] == "SI"]
+            
             if not partidos_j.empty:
-                pts_j = []
+                pts_esta_j = []
                 for u in u_jugadores:
                     u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_n)]
-                    total = sum(calcular_puntos(r.P_L, r.P_V, fin_j[fin_j['Partido']==r.Partido].iloc[0]['R_L'], fin_j[fin_j['Partido']==r.Partido].iloc[0]['R_V'], fin_j[fin_j['Partido']==r.Partido].iloc[0]['Tipo']) for r in u_p.itertuples() if not fin_j[fin_j['Partido']==r.Partido].empty)
-                    pts_j.append({"Usuario": u, "Puntos": total})
-                if pts_j:
-                    df_res = pd.DataFrame(pts_j)
+                    puntos_round = sum(calcular_puntos(r.P_L, r.P_V, fin_j[fin_j['Partido']==r.Partido].iloc[0]['R_L'], fin_j[fin_j['Partido']==r.Partido].iloc[0]['R_V'], fin_j[fin_j['Partido']==r.Partido].iloc[0]['Tipo']) for r in u_p.itertuples() if not fin_j[fin_j['Partido']==r.Partido].empty)
+                    pts_esta_j.append({"Usuario": u, "Puntos": puntos_round})
+                    pts_acumulados[u] += puntos_round # Actualizamos el acumulado general
+                
+                if j_n in nombres_hist: continue # Si es histórica, ya tenemos los datos arriba
+
+                if pts_esta_j:
+                    df_res = pd.DataFrame(pts_esta_j)
                     max_p, min_p = df_res['Puntos'].max(), df_res['Puntos'].min()
+                    
+                    # Líder de la general en esta jornada
+                    max_general = max(pts_acumulados.values())
+                    lideres_gen = [u for u, p in pts_acumulados.items() if p == max_general]
+
                     if max_p > 0 or len(fin_j) > 0:
                         tag = " (En Juego ⏳)" if len(fin_j) < len(partidos_j) else ""
                         gan_act.append((j_n + tag, df_res[df_res['Puntos'] == max_p]['Usuario'].tolist()))
                         perd_act.append((j_n + tag, df_res[df_res['Puntos'] == min_p]['Usuario'].tolist()))
+                        lider_act.append((j_n + tag, lideres_gen))
 
         todos_gan = hist_ganadores + gan_act
         todos_perd = hist_perdedores + perd_act
+        todos_lider = hist_lideres + lider_act
 
         # --- 🥇 SECCIÓN GANADORES ---
-        st.subheader("🥇 Olimpo de los Dioses")
+        st.subheader("🥇 Olimpo de los Dioses (Héroes de Jornada)")
         count_g = {}
         for j, us in todos_gan:
             if "En Juego" not in j: 
@@ -975,10 +998,25 @@ else:
 
         st.divider()
 
-        # --- 🦎 SECCIÓN PERDEDORES: EL LAGARTO DE HONOR ---
-        st.subheader("🦎 El Lagarto de Honor")
-        st.caption("Dedicado a Lagartoputero, nuestro rojo más persistente. 🦎")
+        # --- 👑 SECCIÓN LÍDERES (TRONO DEL PODER) ---
+        st.subheader("👑 El Trono del Poder (Líderes Generales)")
+        st.caption("Ranking de permanencia en la cima de la clasificación general.")
+        count_l = {}
+        for j, us in todos_lider:
+            if "En Juego" not in j:
+                for u in us: count_l[u] = count_l.get(u, 0) + 1
+        df_l_rank = pd.DataFrame(list(count_l.items()), columns=['U', 'V']).sort_values('V', ascending=False)
         
+        c_l = st.columns(4)
+        for i, (_, r) in enumerate(df_l_rank.iterrows()):
+            with c_l[i % 4]:
+                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border:2px solid #0ea5e9; margin-bottom:10px;">
+                    <b style="color:#0369a1; font-size:0.85em;">👑 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#0369a1;">{int(r['V'])}</span><br><small style="color:#0369a1; font-weight:bold;">SEMANAS</small></div>""", unsafe_allow_html=True)
+
+        st.divider()
+
+        # --- 🦎 SECCIÓN PERDEDORES: EL LAGARTO DE HONOR ---
+        st.subheader("🦎 El Lagarto de Honor (Peores de Jornada)")
         count_p = {}
         for j, us in todos_perd:
             if "En Juego" not in j:
@@ -988,12 +1026,12 @@ else:
         c_p = st.columns(4)
         for i, (_, r) in enumerate(df_p_rank.iterrows()):
             emoji = "🦎" if r['V'] > 5 else "🦗"
-            st_color = "#32cd32" if r['V'] > 5 else "#6c757d" # Verde lagarto o gris
+            st_color = "#32cd32" if r['V'] > 5 else "#6c757d"
             with c_p[i % 4]:
                 st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#f0fff0; border:2px solid {st_color}; margin-bottom:10px;">
                     <b style="color:#333; font-size:0.85em;">{emoji} {r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:{st_color};">{int(r['V'])}</span><br><small style="color:{st_color}; font-weight:bold;">LAGARTOS</small></div>""", unsafe_allow_html=True)
 
-        # --- 🏳️ CEMENTERIO DE DESERTORES (MÁXIMA HUMILLACIÓN) ---
+        # --- 🏳️ CEMENTERIO DE DESERTORES ---
         st.error("### 🏳️ EL RINCÓN DE LOS COBARDES 🏳️")
         col_rip1, col_rip2 = st.columns([1, 2])
         with col_rip1:
@@ -1001,25 +1039,30 @@ else:
         with col_rip2:
             st.markdown("""
             **Aquí yacen los que no dieron la talla:**
-            * **Davo** y **Javi**: La presión de ser los últimos pudo con ellos. Se fueron sin avisar. 💀
-            * **Rodri**: El traidor. Saboreó el Olimpo con **2 victorias**, pero le temblaron las piernas y huyó. Una retirada que mancha su historial para siempre. 🏳️
-            
-            *El VAR no olvida. La liga sigue, vosotros no.*
+            * **Davo** y **Javi**: No aguantaron la presión de ser colistas. Desaparecidos en combate. 💀
+            * **Rodri**: Saboreó el Olimpo, pero huyó cuando la liga se puso seria. 🏳️
             """)
 
-        # --- 📅 CRONOLOGÍA ---
+        # --- 📅 ACTA HISTÓRICA (TABLA CON COLUMNA LÍDER) ---
         st.divider()
         st.subheader("📅 Acta Histórica de Jornadas")
         cronologia = []
-        j_nombres = [g[0] for g in todos_gan]
-        for jor in reversed(j_nombres):
+        # Obtenemos todos los nombres de jornada únicos ordenados
+        j_ordenadas = [f"J{i}" for i in range(1, 39)] # O las que existan
+        
+        for jor_key in reversed(todos_gan):
+            jor = jor_key[0]
             g = next((x[1] for x in todos_gan if x[0] == jor), ["-"])
             p = next((x[1] for x in todos_perd if x[0] == jor), ["-"])
+            l = next((x[1] for x in todos_lider if x[0] == jor), ["-"])
+            
             cronologia.append({
                 "Jornada": jor,
                 "Héroe (🏆)": " & ".join(g),
+                "Líder (👑)": " & ".join(l),
                 "Lagarto (🦎)": " & ".join(p)
             })
+        
         st.table(pd.DataFrame(cronologia))
     
     with tabs[4]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
@@ -1418,6 +1461,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
