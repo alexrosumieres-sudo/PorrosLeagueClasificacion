@@ -383,52 +383,28 @@ else:
 
     # --- CSS ---
     st.markdown("""
-<style>
-    /* El contenedor principal con degradado deportivo */
-    .hero-bg {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); /* Azul muy oscuro premium */
-        padding: 25px;
-        border-radius: 20px;
-        color: white;
-        margin-bottom: 20px;
-        border: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-    }
+        <style>
+        .stApp { background-color: #ffffff; color: #31333F; }
+        .hero-bg { background: #f8f9fa; border-radius: 20px; padding: 25px; margin-bottom: 25px; border: 1px solid #dee2e6; }
+        .kpi-box { background: white; border-radius: 12px; padding: 12px; text-align: center; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .kpi-label { font-size: 0.75em; color: #6c757d; font-weight: bold; text-transform: uppercase; }
+        .kpi-value { font-size: 1.6em; font-weight: 800; color: #2baf2b; display: block; }
+        .panini-card { background: #f8f9fb; border-radius: 15px; padding: 20px; border: 1px solid #e0e0e0; margin-bottom: 20px; }
+        .quote-text { color: #4f4f4f; font-style: italic; border-left: 3px solid #2baf2b; padding-left: 10px; margin: 10px 0; }
+        .pos-badge { background-color: #2baf2b; color: white; padding: 5px 15px; border-radius: 50%; font-weight: bold; }
+        .match-box { background: #ffffff; border-radius: 10px; padding: 15px; border: 1px solid #eee; border-left: 5px solid #2baf2b; margin-bottom: 10px; }
+        .crown { font-size: 2em; position: absolute; top: -35px; left: 35px; transform: rotate(-15deg); z-index: 10; }
+        .section-tag { font-size: 0.7em; background: #31333F; color: white; padding: 2px 8px; border-radius: 5px; margin-bottom: 5px; display: inline-block; }
+        .match-box-locked { background: #e9ecef !important; opacity: 0.8; border-left: 5px solid #6c757d !important; filter: grayscale(0.5); }
+        .lock-icon { font-size: 1.2em; cursor: help; }
+        /* Estilos para el Podio */
+        .podium-1 { background: linear-gradient(135deg, #fffdf0 0%, #fff9c4 100%) !important; border: 2px solid #ffd700 !important; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2); transform: scale(1.02); }
+        .podium-2 { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important; border: 2px solid #c0c0c0 !important; }
+        .podium-3 { background: linear-gradient(135deg, #fff5f0 0%, #ffe0cc 100%) !important; border: 2px solid #cd7f32 !important; }
+        .medal-icon { font-size: 1.8em; margin-bottom: 5px; display: block; }
+        </style>
+    """, unsafe_allow_html=True)
 
-    /* Foto circular con anillo de poder */
-    .profile-ring {
-        display: inline-block;
-        padding: 4px; /* Espacio para el anillo */
-        border-radius: 50%;
-        margin-bottom: 10px;
-    }
-
-    .ring-leader {
-        background: linear-gradient(45deg, #ffd700, #ff8c00); /* Oro brillante */
-        box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
-    }
-
-    .ring-lizard {
-        background: linear-gradient(45deg, #39FF14, #2baf2b); /* Verde radioactivo */
-        box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
-    }
-
-    /* Forzar que la imagen de Streamlit sea circular */
-    .hero-bg img {
-        border-radius: 50% !important;
-        border: 2px solid #0f172a !important; /* Separación entre foto y anillo */
-    }
-
-    .crown-float {
-        font-size: 1.8em;
-        position: absolute;
-        top: -25px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 10;
-    }
-</style>
-""", unsafe_allow_html=True)
     with st.sidebar:
         st.title("⚽ Menú Liga")
         
@@ -517,60 +493,37 @@ else:
         # --- COLUMNA LÍDER GENERAL ---
         with col_lider:
             st.markdown('<span class="section-tag">LÍDER GENERAL</span>', unsafe_allow_html=True)
-            # Envolvemos todo en un div relativo para la corona
-            st.markdown('<div style="position: relative; text-align: center; margin-top:20px;">', unsafe_allow_html=True)
-            st.markdown('<span class="crown-float">👑</span>', unsafe_allow_html=True)
-            
-            # El anillo dorado
-            st.markdown('<div class="profile-ring ring-leader">', unsafe_allow_html=True)
+            st.markdown('<div style="position: relative; text-align: center;"><span class="crown">👑</span>', unsafe_allow_html=True)
             f_l = foto_dict.get(lider['Usuario'])
             if f_l and os.path.exists(str(f_l)): 
-                st.image(f_l, width=85)
+                st.image(f_l, width=80)
             else: 
                 st.markdown("<h1 style='margin:0;'>👤</h1>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True) # Cierre anillo
-            
-            st.markdown(f"<br><b>{lider['Usuario']}</b><br><span style='color:#ffd700; font-size:1.2em;'>{lider['Puntos']:.2f} Pts</span></div>", unsafe_allow_html=True)
-                
+            st.markdown(f"<small><b>{lider['Usuario']}</b></small><br><span style='color:#daa520; font-weight:bold; font-size:1.1em;'>{lider['Puntos']:.2f} Pts</span></div>", unsafe_allow_html=True)
+        
         # --- COLUMNA LAGARTO(S) DE LA ÚLTIMA JORNADA ---
         with col_lagarto:
-            # Cambiamos el tag si hay empate
-            tag_text = f"LAGARTO {nombre_ultima_j}" if len(lagartos_nombres) == 1 else "PLAGA DE LAGARTOS 🦎"
-            st.markdown(f'<span class="section-tag" style="background:#2baf2b;">{tag_text}</span>', unsafe_allow_html=True)
-            
-            st.markdown('<div style="position: relative; text-align: center; margin-top:20px;">', unsafe_allow_html=True)
-            st.markdown('<span class="crown-float">🦎</span>', unsafe_allow_html=True)
-            
-            # El anillo verde radioactivo
-            st.markdown('<div class="profile-ring ring-lizard">', unsafe_allow_html=True)
+            st.markdown(f'<span class="section-tag" style="background:#2baf2b;">LAGARTO {nombre_ultima_j}</span>', unsafe_allow_html=True)
+            st.markdown('<div style="position: relative; text-align: center;"><span style="font-size:2em; position:absolute; top:-35px; left:35px; transform:rotate(15deg);">🦎</span>', unsafe_allow_html=True)
             
             if len(lagartos_nombres) == 1:
-                # CASO 1: Un solo perdedor (con su foto)
+                # Si solo hay uno, mostramos su foto
                 f_p = foto_dict.get(lagartos_nombres[0])
                 if f_p and os.path.exists(str(f_p)): 
-                    st.image(f_p, width=85)
+                    st.image(f_p, width=80)
                 else: 
                     st.markdown("<h1 style='margin:0;'>👤</h1>", unsafe_allow_html=True)
+                st.markdown(f"<small><b>{lagartos_nombres[0]}</b></small>", unsafe_allow_html=True)
+            elif len(lagartos_nombres) > 1:
+                # Si hay empate, mostramos icono de plaga y los nombres
+                st.markdown("<h1 style='margin:10px 0;'>🦎🦎</h1>", unsafe_allow_html=True)
+                nombres_fmt = " & ".join(lagartos_nombres)
+                st.markdown(f"<div style='line-height:1.1; margin-bottom:5px;'><small><b>{nombres_fmt}</b></small></div>", unsafe_allow_html=True)
             else:
-                # CASO 2: Empate (mostramos un icono de "Plaga")
-                # Aquí puedes poner un emoji de grupo o algo que indique multitud
-                st.markdown("<div style='padding:15px;'><span style='font-size:3em;'>🦎🦎</span></div>", unsafe_allow_html=True)
+                st.markdown("<h1 style='margin:10px 0;'>-</h1>", unsafe_allow_html=True)
             
-            st.markdown('</div>', unsafe_allow_html=True) # Cierre anillo
-            
-            # Nombres de los "afortunados"
-            nombres_fmt = " & ".join(lagartos_nombres)
-            # Si hay muchos nombres, bajamos un poco el tamaño de la letra para que no se salga
-            font_size_name = "0.9em" if len(lagartos_nombres) > 2 else "1em"
-            
-            st.markdown(f"""
-                <br><div style='line-height:1.2;'>
-                    <span style='font-size:{font_size_name}; font-weight:bold;'>{nombres_fmt}</span><br>
-                    <span style='color:#39FF14; font-size:1.2em; font-weight:bold;'>{puntos_lagarto:.2f} Pts</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
+            st.markdown(f"<span style='color:#2baf2b; font-weight:bold; font-size:1.1em;'>{puntos_lagarto:.2f} Pts</span></div>", unsafe_allow_html=True)
+
         # --- COLUMNA DE DATOS DEL USUARIO Y CONTADOR ---
         with col_datos:
             st.markdown(f'<span class="section-tag">{"PANEL CONTROL" if es_admin else "TUS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
@@ -1382,52 +1335,3 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
