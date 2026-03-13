@@ -851,7 +851,7 @@ else:
 
         # --- 🦎 SECCIÓN PERDEDORES: EL LAGARTO DE HONOR ---
         st.subheader("🦎 El Lagarto de Honor")
-        st.caption("En tributo a Lagartoputero, el coleccionista de derrotas definitivo. 🦎")
+        st.caption("Dedicado a Lagartoputero, nuestro rojo más persistente. 🦎")
         
         count_p = {}
         for j, us in todos_perd:
@@ -871,7 +871,7 @@ else:
         st.error("### 🏳️ EL RINCÓN DE LOS COBARDES 🏳️")
         col_rip1, col_rip2 = st.columns([1, 2])
         with col_rip1:
-            st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=150)
+            st.image("https://media.giphy.com/media/Af7ap9yc7uAzC/giphy.gif", use_container_width=True)
         with col_rip2:
             st.markdown("""
             **Aquí yacen los que no dieron la talla:**
@@ -1236,6 +1236,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
