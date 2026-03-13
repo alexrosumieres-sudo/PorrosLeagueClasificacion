@@ -939,119 +939,99 @@ else:
             })
         st.table(pd.DataFrame(cronologia))
     
-    with tabs[4]: # --- 📈 STATS PRO (POWER RANKING & RENDIMIENTO) ---
-        st.header("📈 Análisis de Rendimiento PRO")
-        
-        # 1. BASE DE DATOS DE LAS JORNADAS J22, J23 y J24 (Extraído de tu imagen)
-        # Calculado restando el acumulado: (J22-J21), (J23-J22), (J24-J23)
-        stats_imagen = {
-            "Alex": {"J22": 2.0, "J23": 3.5, "J24": 3.5},
-            "Pachuco67": {"J22": 2.25, "J23": 3.5, "J24": 2.5},
-            "EstafadorJudío": {"J22": 5.5, "J23": 4.25, "J24": 1.75},
-            "Lagartoputero": {"J22": 1.5, "J23": 5.5, "J24": 2.25},
-            "Cidon": {"J22": 3.75, "J23": 4.0, "J24": 2.0},
-            "Alec206301": {"J22": 4.75, "J23": 5.25, "J24": 3.25},
-            "Pablo Riera": {"J22": 4.0, "J23": 3.5, "J24": 1.5}
-        }
+    with tabs[4]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
+        # Creamos las sub-pestañas dentro de Stats PRO
+        sub_tabs = st.tabs(["👤 Análisis Individual", "🔥 Power Ranking (L3J)"])
 
-        # 2. IDENTIFICAR LAS ÚLTIMAS 3 JORNADAS DISPONIBLES
-        # Miramos qué jornadas hay en el Excel que estén finalizadas (J25+)
-        jor_excel = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique().tolist()
-        
-        # Unimos el histórico de la imagen con lo nuevo del Excel
-        historico_nombres = ["J22", "J23", "J24"]
-        todas_finalizadas = historico_nombres + [j for j in jor_excel if j not in historico_nombres]
-        
-        # Tomamos las 3 últimas del total
-        ultimas_3 = todas_finalizadas[-3:]
-
-        # 3. CÁLCULO DE PUNTOS PARA EL POWER RANKING
-        ranking_power_list = []
-        u_activos = list(stats_imagen.keys())
-
-        for u in u_activos:
-            pts_acumulados = 0.0
-            for j in ultimas_3:
-                if j in stats_imagen[u]:
-                    # Si la jornada es de las de la imagen, sumamos el valor fijo
-                    pts_acumulados += stats_imagen[u][j]
-                else:
-                    # Si la jornada es nueva (Excel), calculamos los puntos reales
-                    u_p_j = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j)]
-                    res_j = df_r_all[(df_r_all['Jornada'] == j) & (df_r_all['Finalizado'] == "SI")]
-                    for r in u_p_j.itertuples():
-                        m = res_j[res_j['Partido'] == r.Partido]
-                        if not m.empty:
-                            pts_acumulados += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-            
-            ranking_power_list.append({"Usuario": u, "Puntos (L3J)": pts_acumulados})
-
-        df_power = pd.DataFrame(ranking_power_list).sort_values("Puntos (L3J)", ascending=False).reset_index(drop=True)
-
-        # 4. RENDERIZADO VISUAL
-        st.subheader(f"🔥 Power Ranking (Últimas: {', '.join(ultimas_3)})")
-        st.caption("Mide el estado de forma actual. El pasado lejano aquí no cuenta.")
-
-        col_tabla, col_destacado = st.columns([1.4, 1])
-
-        with col_tabla:
-            # Mostramos la tabla con barras de progreso internas
-            st.dataframe(
-                df_power,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Puntos (L3J)": st.column_config.ProgressColumn(
-                        "Rendimiento",
-                        help="Puntos sumados en las últimas 3 jornadas",
-                        format="%.2f pts",
-                        min_value=0,
-                        max_value=float(df_power["Puntos (L3J)"].max()) if not df_power.empty else 15,
-                    ),
-                    "Usuario": "Jugador"
-                }
-            )
-
-        with col_destacado:
-            if not df_power.empty:
-                top_1 = df_power.iloc[0]
-                last_1 = df_power.iloc[-1]
+        with sub_tabs[0]: # --- SUB-PESTAÑA 1: LO QUE YA TENÍAS ---
+            u_sel = st.selectbox("Analizar:", u_jugadores, key="sb_stats_pro")
+            adn = analizar_adn_pro(u_sel, df_p_all, df_r_all)
+            if adn:
+                c1, c2, c3 = st.columns(3)
+                c1.metric("⭐ Amuleto", adn['amuleto'])
+                c2.metric("💀 Bestia", adn['bestia'])
+                c3.metric("🎯 %", f"{(adn['signos']+adn['exactos'])/(adn['exactos']+adn['signos']+adn['fallos']+0.001)*100:.1f}%")
                 
-                # Tarjeta del líder en forma
-                st.markdown(f"""
-                <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 15px; border-radius: 12px; color: white; margin-bottom: 10px;">
-                    <span style="font-size: 0.8em; font-weight: bold;">🚀 ON FIRE</span><br>
-                    <span style="font-size: 1.4em; font-weight: 800;">{top_1['Usuario']}</span><br>
-                    <span style="font-size: 1.1em;">{top_1['Puntos (L3J)']:.2f} pts</span>
-                </div>
-                """, unsafe_allow_html=True)
+                st.plotly_chart(px.pie(
+                    values=[adn['exactos'], adn['signos'], adn['fallos']], 
+                    names=['Plenos', 'Signos', 'Fallos'], 
+                    color_discrete_sequence=['#2baf2b', '#ffd700', '#ff4b4b']
+                ), use_container_width=True)
+            
+            st.markdown("---")
+            st.subheader(f"🎯 Mapa de Calor de Resultados: {u_sel}")
+            st.caption("Eje X: Goles Local | Eje Y: Goles Visitante.")
+            
+            u_p_stats = df_p_all[df_p_all['Usuario'] == u_sel]
+            if not u_p_stats.empty:
+                fig_heat = px.density_heatmap(
+                    u_p_stats, x="P_L", y="P_V",
+                    labels={'P_L': 'Goles Local', 'P_V': 'Goles Visitante'},
+                    color_continuous_scale="Viridis", text_auto=True,
+                    nbinsx=6, nbinsy=6
+                )
+                fig_heat.update_layout(
+                    xaxis = dict(tickmode = 'linear', tick0 = 0, dtick = 1),
+                    yaxis = dict(tickmode = 'linear', tick0 = 0, dtick = 1),
+                    height=400
+                )
+                st.plotly_chart(fig_heat, use_container_width=True)
+                
+                marcador_top = u_p_stats.groupby(['P_L', 'P_V']).size().idxmax()
+                st.info(f"💡 Tu resultado fetiche es el **{int(marcador_top[0])}-{int(marcador_top[1])}**")
 
-                # Tarjeta del que está "congelado"
-                st.markdown(f"""
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; color: #64748b;">
-                    <span style="font-size: 0.8em; font-weight: bold;">🧊 PECHOFRÍO</span><br>
-                    <span style="font-size: 1.2em; font-weight: 700; color: #475569;">{last_1['Usuario']}</span><br>
-                    <span>{last_1['Puntos (L3J)']:.2f} pts</span>
-                </div>
-                """, unsafe_allow_html=True)
+        with sub_tabs[1]: # --- SUB-PESTAÑA 2: POWER RANKING (DATOS IMAGEN + EXCEL) ---
+            st.subheader("🔥 Estado de Forma (Últimas 3 Jornadas)")
+            
+            # 1. Datos de la imagen (J22, J23, J24 calculados)
+            stats_imagen = {
+                "Alex": {"J22": 2.0, "J23": 3.5, "J24": 3.5},
+                "Pachuco67": {"J22": 2.25, "J23": 3.5, "J24": 2.5},
+                "EstafadorJudío": {"J22": 5.5, "J23": 4.25, "J24": 1.75},
+                "Lagartoputero": {"J22": 1.5, "J23": 5.5, "J24": 2.25},
+                "Cidon": {"J22": 3.75, "J23": 4.0, "J24": 2.0},
+                "Alec206301": {"J22": 4.75, "J23": 5.25, "J24": 3.25},
+                "Pablo Riera": {"J22": 4.0, "J23": 3.5, "J24": 1.5}
+            }
 
-        st.divider()
+            # 2. Lógica para detectar las 3 jornadas más recientes
+            jor_excel = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique().tolist()
+            todas_finalizadas = ["J22", "J23", "J24"] + [j for j in jor_excel if j not in ["J22", "J23", "J24"]]
+            ultimas_3 = todas_finalizadas[-3:]
 
-        # 5. GRÁFICO DE BARRAS COMPARATIVO
-        st.subheader("📊 Comparativa de Empuje")
-        st.bar_chart(df_power.set_index("Usuario"), color="#3b82f6")
+            # 3. Cálculo de puntos
+            ranking_pwr = []
+            for u in stats_imagen.keys():
+                total_pts = 0.0
+                for j in ultimas_3:
+                    if j in stats_imagen[u]:
+                        total_pts += stats_imagen[u][j]
+                    else:
+                        u_p_j = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j)]
+                        res_j = df_r_all[(df_r_all['Jornada'] == j) & (df_r_all['Finalizado'] == "SI")]
+                        total_pts += sum(calcular_puntos(r.P_L, r.P_V, res_j[res_j['Partido']==r.Partido].iloc[0]['R_L'], res_j[res_j['Partido']==r.Partido].iloc[0]['R_V'], res_j[res_j['Partido']==r.Partido].iloc[0]['Tipo']) for r in u_p_j.itertuples() if not res_j[res_j['Partido']==r.Partido].empty)
+                ranking_pwr.append({"Usuario": u, "Puntos (L3J)": total_pts})
 
-        # 6. MÉTRICAS ADICIONALES (OPCIONAL)
-        st.subheader("🎯 Precisión Histórica")
-        c1, c2, c3 = st.columns(3)
-        # Aquí puedes añadir más lógica de conteo de plenos si quieres
-        with c1:
-            st.metric("Mejor Racha", f"{df_power['Puntos (L3J)'].max():.2f}", "Récord L3J")
-        with c2:
-            st.metric("Media del Grupo", f"{df_power['Puntos (L3J)'].mean():.2f}", "pts")
-        with c3:
-            st.metric("Lagartos en Acecho", len(df_power[df_power['Puntos (L3J)'] < 5]), "Peligro")
+            df_pwr = pd.DataFrame(ranking_pwr).sort_values("Puntos (L3J)", ascending=False).reset_index(drop=True)
 
+            # 4. Diseño visual
+            col_t, col_cards = st.columns([1.5, 1])
+            with col_t:
+                st.dataframe(df_pwr, use_container_width=True, hide_index=True,
+                             column_config={"Puntos (L3J)": st.column_config.ProgressColumn("Puntos", format="%.2f", min_value=0, max_value=float(df_pwr["Puntos (L3J)"].max()))})
+            
+            with col_cards:
+                if not df_pwr.empty:
+                    # Tarjeta Líder
+                    st.markdown(f"""<div style="background:#1e3a8a; color:white; padding:15px; border-radius:10px; text-align:center;">
+                    <small>TOP ESTADO FORMA 🚀</small><br><b style="font-size:1.3em;">{df_pwr.iloc[0]['Usuario']}</b><br>
+                    <span style="color:#60a5fa;">{df_pwr.iloc[0]['Puntos (L3J)']:.2f} pts</span></div>""", unsafe_allow_html=True)
+                    
+                    # Tarjeta Pechofrío
+                    st.markdown(f"""<div style="background:#fff1f2; color:#be123c; padding:10px; border-radius:10px; text-align:center; margin-top:10px; border:1px solid #fda4af;">
+                    <small>🧊 PECHOFRÍO: {df_pwr.iloc[-1]['Usuario']}</small></div>""", unsafe_allow_html=True)
+
+            st.plotly_chart(px.bar(df_pwr, x='Usuario', y='Puntos (L3J)', color='Puntos (L3J)', color_continuous_scale='Blues'), use_container_width=True)
     with tabs[5]: # DETALLES
         df_rf = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
         if not df_rf.empty:
@@ -1355,6 +1335,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
