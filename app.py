@@ -460,52 +460,52 @@ else:
     # --- RENDER DASHBOARD HERO ---
     with st.container():
         st.markdown('<div class="hero-bg">', unsafe_allow_html=True)
-        col_lider, col_sep, col_datos = st.columns([1.5, 0.2, 3.5])
+        col_lider, col_lagarto, col_sep, col_datos = st.columns([1.2, 1.2, 0.1, 3.0])
+        
+        # --- COLUMNA LÍDER ---
         with col_lider:
-            st.markdown('<span class="section-tag">LÍDER ACTUAL</span>', unsafe_allow_html=True)
+            st.markdown('<span class="section-tag">LÍDER GENERAL</span>', unsafe_allow_html=True)
             st.markdown('<div style="position: relative; text-align: center;"><span class="crown">👑</span>', unsafe_allow_html=True)
             f_l = foto_dict.get(lider['Usuario'])
-            if f_l and os.path.exists(str(f_l)): st.image(f_l, width=90)
-            else: st.markdown("<h2 style='margin:0;'>👤</h2>", unsafe_allow_html=True)
-            st.markdown(f"**{lider['Usuario']}**<br><span style='color:#daa520; font-weight:bold;'>{lider['Puntos']:.2f} Pts</span></div>", unsafe_allow_html=True)
+            if f_l and os.path.exists(str(f_l)): st.image(f_l, width=80)
+            else: st.markdown("<h1 style='margin:0;'>👤</h1>", unsafe_allow_html=True)
+            st.markdown(f"<small><b>{lider['Usuario']}</b></small><br><span style='color:#daa520; font-weight:bold; font-size:1.1em;'>{lider['Puntos']:.2f}</span></div>", unsafe_allow_html=True)
+        
+        # --- COLUMNA LAGARTO(S) ---
+        with col_lagarto:
+            st.markdown(f'<span class="section-tag" style="background:#2baf2b;">LAGARTO {nombre_ultima_j}</span>', unsafe_allow_html=True)
+            st.markdown('<div style="position: relative; text-align: center;"><span style="font-size:2em; position:absolute; top:-35px; left:35px; transform:rotate(15deg);">🦎</span>', unsafe_allow_html=True)
+            
+            if len(lagartos_nombres) == 1:
+                # Si solo hay uno, mostramos su foto
+                f_p = foto_dict.get(lagartos_nombres[0])
+                if f_p and os.path.exists(str(f_p)): st.image(f_p, width=80)
+                else: st.markdown("<h1 style='margin:0;'>👤</h1>", unsafe_allow_html=True)
+                st.markdown(f"<small><b>{lagartos_nombres[0]}</b></small>", unsafe_allow_html=True)
+            else:
+                # Si hay varios, mostramos icono de grupo y la lista
+                st.markdown("<h1 style='margin:10px 0;'>🦎🦎</h1>", unsafe_allow_html=True)
+                nombres_fmt = " & ".join(lagartos_nombres)
+                st.markdown(f"<div style='line-height:1; margin-bottom:5px;'><small><b>{nombres_fmt}</b></small></div>", unsafe_allow_html=True)
+            
+            st.markdown(f"<span style='color:#2baf2b; font-weight:bold; font-size:1.1em;'>{puntos_lagarto:.2f} Pts</span></div>", unsafe_allow_html=True)
+
+        # --- COLUMNA DATOS (TIEMPO Y TUS PUNTOS) ---
         with col_datos:
             st.markdown(f'<span class="section-tag">{"PANEL CONTROL" if es_admin else "TUS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
             c2, c3, c4 = st.columns(3)
             with c2: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
             with c3:
                 if not prox_p.empty:
-                    # Calculamos la diferencia total
-                    ahora_madrid = get_now_madrid() # Llamamos a tu función horaria
+                    ahora_madrid = get_now_madrid()
                     diff = datetime.datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - ahora_madrid
                     ts = int(diff.total_seconds())
-                    
                     if ts > 0:
-                        # Desglose de tiempo
-                        dias = ts // 86400
-                        horas = (ts % 86400) // 3600
-                        minutos = (ts % 3600) // 60
-                        segundos = ts % 60
-                        
-                        # Lógica de colores dinámica
-                        # Rojo: < 2h | Naranja: < 24h | Verde: > 24h
-                        color = "#ff4b4b" if ts < 7200 else ("#ffa500" if ts < 86400 else "#2baf2b")
-                        
-                        # Formato de texto
-                        t_str = f"{horas:02d}h {minutos:02d}m {segundos:02d}s"
-                        if dias > 0: t_str = f"{dias}d {horas:02d}h" # Si faltan días, priorizamos días/horas
-                        
-                        st.markdown(f'''
-                            <div class="kpi-box">
-                                <span class="kpi-label">Cierre en</span>
-                                <span class="kpi-value" style="color:{color}; font-size: 1.3em;">{t_str}</span>
-                            </div>
-                        ''', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="kpi-box"><span class="kpi-label">Mercado</span><span class="kpi-value" style="color:#6c757d;">Cerrado</span></div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Cerrada</span></div>', unsafe_allow_html=True)
-            with c4:
-                st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
+                        h, m = (ts % 86400) // 3600, (ts % 3600) // 60
+                        color = "#ff4b4b" if ts < 7200 else "#2baf2b"
+                        st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{color}; font-size: 1.2em;">{h:02d}h {m:02d}m</span></div>', unsafe_allow_html=True)
+                    else: st.markdown('<div class="kpi-box"><span class="kpi-label">Mercado</span><span class="kpi-value" style="color:#6c757d;">Cerrado</span></div>', unsafe_allow_html=True)
+            with c4: st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
@@ -1236,6 +1236,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
