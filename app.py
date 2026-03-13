@@ -790,111 +790,102 @@ else:
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-    with tabs[3]: # --- 🏅 PALMARÉS (GLORIA Y VERGÜENZA) ---
+    with tabs[3]: # --- 🏅 PALMARÉS (GLORIA Y HUMILLACIÓN) ---
         st.header("🏅 El Palmarés de la Porra")
         
-        # --- 1. DATOS HISTÓRICOS J1-J24 (GANADORES Y PERDEDORES) ---
+        # --- 1. DATOS HISTÓRICOS J1-J24 (ACTUALIZADO CON CIDON) ---
         hist_ganadores = [
             ("J1", ["Alex"]), ("J2", ["Alec206301"]), ("J3", ["EstafadorJudío"]), ("J4", ["Alec206301"]), ("J5", ["Rodri"]), ("J6", ["Rodri"]), 
             ("J7", ["EstafadorJudío"]), ("J8", ["Pachuco67"]), ("J9", ["Alex"]), ("J10", ["Lagartoputero"]), ("J11", ["Pachuco67"]), ("J12", ["Pablo Riera"]),
             ("J13", ["Alex", "Alec206301"]), ("J14", ["Davo"]), ("J15", ["EstafadorJudío", "Pablo Riera"]), ("J16", ["EstafadorJudío"]),
-            ("J17", ["Pablo Riera"]), ("J18", ["EstafadorJudío"]), ("J19", ["Pablo Riera"]), ("J20", ["Alec206301"]), ("J21", ["Cidón"]), 
+            ("J17", ["Pablo Riera"]), ("J18", ["EstafadorJudío"]), ("J19", ["Pablo Riera"]), ("J20", ["Alec206301"]), ("J21", ["Cidon"]), 
             ("J22", ["EstafadorJudío"]), ("J23", ["Alec206301"]), ("J24", ["Alex"])
         ]
         
         hist_perdedores = [
-            ("J1", ["Cidón"]), ("J2", ["Cidón"]), ("J3", ["Alec206301"]), ("J4", ["Lagartoputero"]), ("J5", ["Davo"]), ("J6", ["Javi"]),
+            ("J1", ["Cidon"]), ("J2", ["Cidon"]), ("J3", ["Alec206301"]), ("J4", ["Lagartoputero"]), ("J5", ["Davo"]), ("J6", ["Javi"]),
             ("J7", ["Lagartoputero", "Alec206301"]), ("J8", ["Davo"]), ("J9", ["Rodri"]), ("J10", ["Davo"]), ("J11", ["Davo"]), ("J12", ["Javi"]),
             ("J13", ["Lagartoputero"]), ("J14", ["Lagartoputero"]), ("J15", ["Javi"]), ("J16", ["Davo"]), ("J17", ["Lagartoputero"]), ("J18", ["Alex"]),
-            ("J19", ["Davo", "Javi"]), ("J20", ["Lagartoputero", "Cidón"]), ("J21", ["Lagartoputero"]), ("J22", ["Lagartoputero"]), 
+            ("J19", ["Davo", "Javi"]), ("J20", ["Lagartoputero", "Cidon"]), ("J21", ["Lagartoputero"]), ("J22", ["Lagartoputero"]), 
             ("J23", ["Alex", "Pachuco67", "Pablo Riera"]), ("J24", ["Pablo Riera"])
         ]
 
         # --- 2. CÁLCULO AUTOMÁTICO J25+ ---
         gan_act, perd_act = [], []
         nombres_hist = [h[0] for h in hist_ganadores]
-        
         for j_n in JORNADAS.keys():
             if j_n in nombres_hist: continue
             partidos_j = df_r_all[df_r_all['Jornada'] == j_n]
             fin_j = partidos_j[partidos_j['Finalizado'] == "SI"]
-            
             if not partidos_j.empty:
                 pts_j = []
                 for u in u_jugadores:
                     u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_n)]
                     total = sum(calcular_puntos(r.P_L, r.P_V, fin_j[fin_j['Partido']==r.Partido].iloc[0]['R_L'], fin_j[fin_j['Partido']==r.Partido].iloc[0]['R_V'], fin_j[fin_j['Partido']==r.Partido].iloc[0]['Tipo']) for r in u_p.itertuples() if not fin_j[fin_j['Partido']==r.Partido].empty)
                     pts_j.append({"Usuario": u, "Puntos": total})
-                
                 if pts_j:
                     df_res = pd.DataFrame(pts_j)
                     max_p, min_p = df_res['Puntos'].max(), df_res['Puntos'].min()
-                    # Solo procesamos si la jornada ha avanzado
                     if max_p > 0 or len(fin_j) > 0:
                         tag = " (En Juego ⏳)" if len(fin_j) < len(partidos_j) else ""
                         gan_act.append((j_n + tag, df_res[df_res['Puntos'] == max_p]['Usuario'].tolist()))
                         perd_act.append((j_n + tag, df_res[df_res['Puntos'] == min_p]['Usuario'].tolist()))
 
-        # Unimos históricos con actuales
         todos_gan = hist_ganadores + gan_act
         todos_perd = hist_perdedores + perd_act
 
-        # --- 3. SECCIÓN GANADORES (SALÓN DE LA FAMA) ---
-        st.subheader("🥇 Salón de la Fama")
+        # --- 🥇 SECCIÓN GANADORES (SALÓN DE LA FAMA) ---
+        st.subheader("🥇 Olimpo de los Dioses")
         count_g = {}
         for j, us in todos_gan:
             if "En Juego" not in j: 
                 for u in us: count_g[u] = count_g.get(u, 0) + 1
-        
         df_g = pd.DataFrame(list(count_g.items()), columns=['U', 'V']).sort_values('V', ascending=False)
-        
         c_g = st.columns(4)
         for i, (_, r) in enumerate(df_g.iterrows()):
             with c_g[i % 4]:
-                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#fff9c4; border-left:5px solid #ffd700; margin-bottom:10px;">
-                    <b style="font-size:0.85em;">{r['U']}</b><br><span style="font-size:1.6em; font-weight:900;">{int(r['V'])}</span><br><small>VICTORIAS</small></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #fff9c4 0%, #ffeb3b 100%); border:2px solid #ffd700; margin-bottom:10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <b style="color:#000; font-size:0.9em;">🏆 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#000;">{int(r['V'])}</span><br><small style="color:#000; font-weight:bold;">MEDALLAS</small></div>""", unsafe_allow_html=True)
 
         st.divider()
 
-        # --- 4. SECCIÓN PERDEDORES (EL MURO DE LA VERGÜENZA) ---
-        st.subheader("🥄 La Cuchara de Palo")
-        st.info("Ranking de los que más veces han quedado últimos. Incluye a los que se rindieron y dejaron de jugar. 🤡")
-        
+        # --- 🥄 SECCIÓN PERDEDORES (EL MURO DE LA VERGÜENZA) ---
+        st.subheader("🥄 El Muro de la Vergüenza")
         count_p = {}
         for j, us in todos_perd:
             if "En Juego" not in j:
                 for u in us: count_p[u] = count_p.get(u, 0) + 1
-        
         df_p_rank = pd.DataFrame(list(count_p.items()), columns=['U', 'V']).sort_values('V', ascending=False)
         
         c_p = st.columns(4)
         for i, (_, r) in enumerate(df_p_rank.iterrows()):
-            # Estilo más oscuro/gris para los perdedores
+            emoji = "🤡" if r['V'] > 5 else "🥄"
+            st_color = "#ff4b4b" if r['V'] > 5 else "#6c757d"
             with c_p[i % 4]:
-                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#f0f2f6; border-left:5px solid #6c757d; margin-bottom:10px; opacity:0.8;">
-                    <b style="font-size:0.85em;">{r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:#444;">{int(r['V'])}</span><br><small>CUCHARAS 🥄</small></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#fdf2f2; border:2px solid {st_color}; margin-bottom:10px;">
+                    <b style="color:{st_color}; font-size:0.85em;">{emoji} {r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:{st_color};">{int(r['V'])}</span><br><small style="color:{st_color};">FRACASOS</small></div>""", unsafe_allow_html=True)
 
-        # --- 5. TABLA CRONOLÓGICA ---
+        # --- 🏳️ CEMENTERIO DE DESERTORES ---
+        st.markdown("### 🏳️ El Rincón de los Cobardes")
+        st.error("""
+        **AQUÍ YACEN LOS QUE SE RINDIERON:** * **Davo** y **Javi**: No aguantaron la presión de ir últimos y tiraron la toalla. 
+        Sus nombres quedan aquí para la posteridad como recordatorio de su falta de fe. 💀
+        """)
+
+        # --- 📅 CRONOLOGÍA ---
         st.divider()
-        st.subheader("📅 Resumen por Jornada")
-        
-        # Preparar datos para una tabla bonita
+        st.subheader("📅 Acta Histórica de Jornadas")
         cronologia = []
-        # Usamos un set para tener todas las jornadas únicas
         j_nombres = [g[0] for g in todos_gan]
         for jor in reversed(j_nombres):
             g = next((x[1] for x in todos_gan if x[0] == jor), ["-"])
             p = next((x[1] for x in todos_perd if x[0] == jor), ["-"])
             cronologia.append({
                 "Jornada": jor,
-                "Ganador(es) 🏆": " & ".join(g),
-                "Cuchara de Palo 🥄": " & ".join(p)
+                "Héroe (🏆)": " & ".join(g),
+                "Villano (🤡)": " & ".join(p)
             })
-        
         st.table(pd.DataFrame(cronologia))
-        
-        # Mensaje especial para los desaparecidos
-        st.caption("Nota: Davo, Javi, Cidón... el VAR no olvida vuestra rendición. Seguís en el ranking por méritos propios.")
     
     with tabs[4]: # STATS PRO
         u_sel = st.selectbox("Analizar:", u_jugadores)
@@ -1236,6 +1227,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
