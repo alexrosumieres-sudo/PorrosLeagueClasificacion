@@ -510,7 +510,7 @@ else:
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     # Busca esta línea y añade "📜 VAR" al final
-    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
+    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏅 Palmarés", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
 
     with tabs[0]: # --- PESTAÑA APUESTAS ---
         if es_admin:
@@ -790,7 +790,93 @@ else:
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-    with tabs[3]: # STATS PRO
+    with tabs[3]: # --- 🏅 PALMARÉS (SALÓN DE LA FAMA) ---
+        st.header("🏆 Salón de la Fama: Ganadores de Jornada")
+        st.caption("La gloria eterna se gana jornada a jornada. Aquí residen los campeones.")
+
+        # 1. DATOS HISTÓRICOS (J1 - J24) basados en tu imagen y mapeo
+        historico_ganadores = [
+            ("J1", ["Alex"]), ("J2", ["Alec206301"]), ("J3", ["EstafadorJudío"]), 
+            ("J4", ["Alec206301"]), ("J5", ["Rodri"]), ("J6", ["Rodri"]), 
+            ("J7", ["EstafadorJudío"]), ("J8", ["Pachuco67"]), ("J9", ["Alex"]), 
+            ("J10", ["Lagartoputero"]), ("J11", ["Pachuco67"]), ("J12", ["Pablo Riera"]),
+            ("J13", ["Alex", "Alec206301"]), ("J14", ["Davo"]), 
+            ("J15", ["EstafadorJudío", "Pablo Riera"]), ("J16", ["EstafadorJudío"]),
+            ("J17", ["Pablo Riera"]), ("J18", ["EstafadorJudío"]), ("J19", ["Pablo Riera"]),
+            ("J20", ["Alec206301"]), ("J21", ["Cidón"]), ("J22", ["EstafadorJudío"]),
+            ("J23", ["Alec206301"]), ("J24", ["Alex"])
+        ]
+
+        # 2. CÁLCULO AUTOMÁTICO PARA JORNADAS ACTUALES (J25+)
+        ganadores_actuales = []
+        # Solo revisamos jornadas que tengan al menos un partido finalizado
+        jornadas_con_datos = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()
+        
+        for j_nombre in JORNADAS.keys():
+            # Saltamos las que ya están en el histórico manual
+            num_j = int(''.join(filter(str.isdigit, j_nombre))) if any(c.isdigit() for c in j_nombre) else 999
+            if num_j <= 24: continue
+            
+            # Si la jornada ha terminado (todos sus partidos a SI)
+            partidos_j = df_r_all[df_r_all['Jornada'] == j_nombre]
+            if not partidos_j.empty and all(partidos_j['Finalizado'] == "SI"):
+                # Calculamos quién ganó esa jornada
+                puntos_j = []
+                for u in u_jugadores:
+                    u_p_h = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_nombre)]
+                    pts_j = 0.0
+                    for r in u_p_h.itertuples():
+                        m = df_r_all[(df_r_all['Jornada']==j_nombre)&(df_r_all['Partido']==r.Partido)]
+                        if not m.empty:
+                            pts_j += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                    puntos_j.append({"Usuario": u, "Puntos": pts_j})
+                
+                if puntos_j:
+                    df_pj = pd.DataFrame(puntos_j)
+                    max_pts = df_pj['Puntos'].max()
+                    if max_pts > 0: # Evitamos contar jornadas vacías
+                        winners = df_pj[df_pj['Puntos'] == max_pts]['Usuario'].tolist()
+                        ganadores_actuales.append((j_nombre, winners))
+
+        # Unimos todo el palmarés
+        palmares_completo = historico_ganadores + ganadores_actuales
+        
+        # 3. RENDERIZADO DE MÉTRICAS (TOP GANADORES)
+        conteo_victorias = {}
+        for _, lista_u in palmares_completo:
+            for u in lista_u:
+                conteo_victorias[u] = conteo_victorias.get(u, 0) + 1
+        
+        df_ranking_v = pd.DataFrame(list(conteo_victorias.items()), columns=['Usuario', 'Victorias']).sort_values('Victorias', ascending=False)
+
+        st.subheader("🥇 Ranking de Medallas")
+        cols_m = st.columns(len(df_ranking_v) if len(df_ranking_v) < 5 else 5)
+        for idx, row in df_ranking_v.iterrows():
+            with cols_m[idx % 5]:
+                st.markdown(f"""
+                <div style="text-align:center; padding:10px; border-radius:10px; background:#f0f2f6; border-bottom:4px solid #ffd700; margin-bottom:10px;">
+                    <span style="font-size:0.8em; font-weight:bold; color:#666;">{row['Usuario']}</span><br>
+                    <span style="font-size:1.5em; font-weight:800; color:#31333F;">{row['Victorias']}</span><br>
+                    <span style="font-size:0.7em; color:#2baf2b;">JORNADAS</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+        st.divider()
+
+        # 4. CRONOLOGÍA DETALLADA
+        st.subheader("📅 Historial de Jornadas")
+        
+        # Mostramos en cuadrícula para que no ocupe demasiado espacio vertical
+        col_cron1, col_cron2 = st.columns(2)
+        mitad = len(palmares_completo) // 2
+        
+        for i, (jor, wins) in enumerate(reversed(palmares_completo)): # Invertido para ver lo último primero
+            target_col = col_cron1 if i < mitad else col_cron2
+            with target_col:
+                nombres_winners = " & ".join(wins)
+                st.markdown(f"**{jor}:** {nombres_winners} 🏆")
+    
+    with tabs[4]: # STATS PRO
         u_sel = st.selectbox("Analizar:", u_jugadores)
         adn = analizar_adn_pro(u_sel, df_p_all, df_r_all)
         if adn:
@@ -827,7 +913,7 @@ else:
             marcador_top = u_p_stats.groupby(['P_L', 'P_V']).size().idxmax()
             st.info(f"💡 Tu resultado fetiche es el **{int(marcador_top[0])}-{int(marcador_top[1])}**")
 
-    with tabs[4]: # DETALLES
+    with tabs[5]: # DETALLES
         df_rf = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
         if not df_rf.empty:
             m_p = pd.DataFrame(index=df_rf['Partido'].unique(), columns=u_jugadores)
@@ -839,7 +925,7 @@ else:
             st.dataframe(m_p.astype(float), use_container_width=True)
         else: st.info("Sin partidos finalizados.")
 
-    with tabs[5]: # SIMULADOR
+    with tabs[6]: # SIMULADOR
         usr_sim = st.selectbox("Simular LaLiga según apuestas de:", u_jugadores)
         if st.button("Generar Clasificación Simulada"):
             sim = {k: v.copy() for k, v in STATS_LALIGA_BASE.items()}
@@ -854,7 +940,7 @@ else:
                 except: continue
             st.dataframe(pd.DataFrame.from_dict(sim, orient='index').sort_values("Pts", ascending=False), use_container_width=True)
 
-    with tabs[6]: # --- 🎲 ORÁCULO ---
+    with tabs[7]: # --- 🎲 ORÁCULO ---
         if usa_oraculo:
             with st.spinner("🔮 El Oráculo está analizando el futuro..."):
                 st.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmNrNjVlaW0xZzM0MWxubDQyZGhla3V4eXVnMHU5eHcwN3NxamRtMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Jap1tdjahS0rm/giphy.gif", width=300)
@@ -957,7 +1043,7 @@ else:
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
     
     
-    with tabs[7]: # --- PESTAÑA ADMIN COMPLETA ---
+    with tabs[8]: # --- PESTAÑA ADMIN COMPLETA ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
             
@@ -1103,7 +1189,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
 
-    with tabs[8]: # --- PESTAÑA VAR ---
+    with tabs[9]: # --- PESTAÑA VAR ---
         st.header("🏁 El VAR de la Porra")
         st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczF4bGVvbmQ3eTVuam44dzExbXl4MDU5cmVsY24zMGdyb2dvNnpjdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4DdzRe7wJP0aPI1Pa/giphy.gif", width=300)
         st.caption("Transparencia total: aquí se registra cada movimiento clave de la liga.")
@@ -1130,6 +1216,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
