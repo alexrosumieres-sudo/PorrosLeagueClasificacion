@@ -834,7 +834,7 @@ else:
         todos_gan = hist_ganadores + gan_act
         todos_perd = hist_perdedores + perd_act
 
-        # --- 🥇 SECCIÓN GANADORES (SALÓN DE LA FAMA) ---
+        # --- 🥇 SECCIÓN GANADORES ---
         st.subheader("🥇 Olimpo de los Dioses")
         count_g = {}
         for j, us in todos_gan:
@@ -844,13 +844,15 @@ else:
         c_g = st.columns(4)
         for i, (_, r) in enumerate(df_g.iterrows()):
             with c_g[i % 4]:
-                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #fff9c4 0%, #ffeb3b 100%); border:2px solid #ffd700; margin-bottom:10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <b style="color:#000; font-size:0.9em;">🏆 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#000;">{int(r['V'])}</span><br><small style="color:#000; font-weight:bold;">MEDALLAS</small></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #fff9c4 0%, #ffeb3b 100%); border:2px solid #ffd700; margin-bottom:10px;">
+                    <b style="color:#000; font-size:0.85em;">🏆 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#000;">{int(r['V'])}</span><br><small style="color:#000; font-weight:bold;">MEDALLAS</small></div>""", unsafe_allow_html=True)
 
         st.divider()
 
-        # --- 🥄 SECCIÓN PERDEDORES (EL MURO DE LA VERGÜENZA) ---
-        st.subheader("🥄 El Muro de la Vergüenza")
+        # --- 🦎 SECCIÓN PERDEDORES: EL LAGARTO DE HONOR ---
+        st.subheader("🦎 El Lagarto de Honor")
+        st.caption("En tributo a Lagartoputero, el coleccionista de derrotas definitivo. 🦎")
+        
         count_p = {}
         for j, us in todos_perd:
             if "En Juego" not in j:
@@ -859,20 +861,25 @@ else:
         
         c_p = st.columns(4)
         for i, (_, r) in enumerate(df_p_rank.iterrows()):
-            emoji = "🤡" if r['V'] > 5 else "🥄"
-            st_color = "#ff4b4b" if r['V'] > 5 else "#6c757d"
+            emoji = "🦎" if r['V'] > 5 else "🦗"
+            st_color = "#32cd32" if r['V'] > 5 else "#6c757d" # Verde lagarto o gris
             with c_p[i % 4]:
-                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#fdf2f2; border:2px solid {st_color}; margin-bottom:10px;">
-                    <b style="color:{st_color}; font-size:0.85em;">{emoji} {r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:{st_color};">{int(r['V'])}</span><br><small style="color:{st_color};">FRACASOS</small></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#f0fff0; border:2px solid {st_color}; margin-bottom:10px;">
+                    <b style="color:#333; font-size:0.85em;">{emoji} {r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:{st_color};">{int(r['V'])}</span><br><small style="color:{st_color}; font-weight:bold;">LAGARTOS</small></div>""", unsafe_allow_html=True)
 
-        # --- 🏳️ CEMENTERIO DE DESERTORES ---
-        st.markdown("### 🏳️ El Rincón de los Cobardes")
-        st.error("""
-        **AQUÍ YACEN LOS QUE SE RINDIERON:** * **Davo** y **Javi**: No aguantaron la presión de ir últimos y tiraron la toalla. 💀
-        * **Rodri**: El caso más triste. Saboreó la gloria con 2 victorias, pero le flaquearon las piernas y abandonó a sus compañeros. Una retirada para el olvido. 🏳️
-        
-        Vuestros nombres quedan aquí grabados para que nadie olvide vuestra falta de fe.
-        """)
+        # --- 🏳️ CEMENTERIO DE DESERTORES (MÁXIMA HUMILLACIÓN) ---
+        st.error("### 🏳️ EL RINCÓN DE LOS COBARDES 🏳️")
+        col_rip1, col_rip2 = st.columns([1, 2])
+        with col_rip1:
+            st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=150)
+        with col_rip2:
+            st.markdown("""
+            **Aquí yacen los que no dieron la talla:**
+            * **Davo** y **Javi**: La presión de ser los últimos pudo con ellos. Se fueron sin avisar. 💀
+            * **Rodri**: El traidor. Saboreó el Olimpo con **2 victorias**, pero le temblaron las piernas y huyó. Una retirada que mancha su historial para siempre. 🏳️
+            
+            *El VAR no olvida. La liga sigue, vosotros no.*
+            """)
 
         # --- 📅 CRONOLOGÍA ---
         st.divider()
@@ -885,7 +892,7 @@ else:
             cronologia.append({
                 "Jornada": jor,
                 "Héroe (🏆)": " & ".join(g),
-                "Villano (🤡)": " & ".join(p)
+                "Lagarto (🦎)": " & ".join(p)
             })
         st.table(pd.DataFrame(cronologia))
     
@@ -1229,6 +1236,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
