@@ -722,12 +722,45 @@ else:
                 time.sleep(1.2)
                 st.rerun()
 
-    with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL EMPEZAR O FINALIZAR) ---
+    with tabs[1]: # --- 🔮 PESTAÑA OTROS (TENDENCIAS + REVELACIONES) ---
         st.header("👀 Qué han puesto los demás")
         ahora = get_now_madrid()
-        
+
+        # --- [NUEVA ADICIÓN: SABIDURÍA POPULAR] ---
+        st.markdown("### 🔮 Sabiduría Popular (Tendencias)")
+        preds_j = df_p_all[df_p_all['Jornada'] == j_global]
+
+        if not preds_j.empty:
+            with st.expander("📊 Ver tendencias de voto del grupo", expanded=False):
+                for loc, vis in JORNADAS[j_global]:
+                    m_id = f"{loc}-{vis}"
+                    m_preds = preds_j[preds_j['Partido'] == m_id]
+                    total = len(m_preds)
+                    
+                    if total > 0:
+                        v_l = len(m_preds[m_preds['P_L'] > m_preds['P_V']])
+                        v_x = len(m_preds[m_preds['P_L'] == m_preds['P_V']])
+                        v_v = len(m_preds[m_preds['P_L'] < m_preds['P_V']])
+                        
+                        p_l, p_x, p_v = (v_l/total)*100, (v_x/total)*100, (v_v/total)*100
+
+                        st.markdown(f"""
+                        <div style="margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold;">
+                                <span>{loc}</span> <span style="color: #94a3b8;">vs</span> <span>{vis}</span>
+                            </div>
+                            <div style="display: flex; height: 18px; border-radius: 4px; overflow: hidden; background: #f1f5f9; margin-top:4px;">
+                                <div style="width: {p_l}%; background: #3b82f6; color: white; font-size: 0.7em; text-align: center; line-height: 18px;">{p_l:.0f}%</div>
+                                <div style="width: {p_x}%; background: #94a3b8; color: white; font-size: 0.7em; text-align: center; line-height: 18px;">{p_x:.0f}%</div>
+                                <div style="width: {p_v}%; background: #f59e0b; color: white; font-size: 0.7em; text-align: center; line-height: 18px;">{p_v:.0f}%</div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+        # --- [FIN ADICIÓN] ---
+
+        st.divider()
+
         # 1. Identificamos qué partidos deben ser revelados (Finalizados O Ya empezados)
-        # Convertimos la columna de hora a formato fecha para comparar
         df_r_all['Hora_DT'] = pd.to_datetime(df_r_all['Hora_Inicio'], errors='coerce')
         
         revelados = df_r_all[
@@ -739,7 +772,6 @@ else:
             st.markdown("### ✅ Apuestas Reveladas")
             st.caption("Partidos en juego o finalizados: las cartas ya están sobre la mesa.")
             
-            # Ordenamos por hora para que sea más natural
             revelados = revelados.sort_values("Hora_DT", ascending=True)
 
             for _, match in revelados.iterrows():
@@ -748,17 +780,14 @@ else:
                 res_real = f"{int(match['R_L'])}-{int(match['R_V'])}"
                 tipo_p = match['Tipo']
                 
-                # Etiqueta de estado
                 estado_tag = "🔴 FINALIZADO" if es_final else "⏱️ EN JUEGO / ESPERANDO ACTA"
                 
-                with st.expander(f"📊 {m_id}  —  {estado_tag} (Real: {res_real})"):
-                    # Buscamos todas las predicciones
+                with st.expander(f"📊 {m_id}  —  {estado_tag} (Real: {res_real})"):
                     preds_match = df_p_all[(df_p_all['Jornada'] == j_global) & (df_p_all['Partido'] == m_id)]
                     
                     if not preds_match.empty:
                         resumen_partido = []
                         for _, p in preds_match.iterrows():
-                            # Solo calculamos puntos reales si el partido está marcado como finalizado
                             pts = calcular_puntos(p['P_L'], p['P_V'], match['R_L'], match['R_V'], tipo_p) if es_final else 0.0
                             
                             resumen_partido.append({
@@ -768,7 +797,6 @@ else:
                             })
                         
                         df_resumen = pd.DataFrame(resumen_partido)
-                        # Si está finalizado, ordenamos por puntos. Si no, por nombre.
                         if es_final:
                             df_resumen = df_resumen.sort_values("Puntos", ascending=False)
                         else:
@@ -780,12 +808,11 @@ else:
         else:
             st.info("Aún no ha empezado ningún partido de esta jornada. ¡Las apuestas siguen ocultas!")
 
-        # 2. SECCIÓN DE PRÓXIMOS PARTIDOS (Solo las que el usuario quiso hacer públicas antes de tiempo)
+        # 2. SECCIÓN DE PRÓXIMOS PARTIDOS (Públicas antes de tiempo)
         st.divider()
         st.markdown("### 🔒 Próximos Partidos (Aún bloqueados)")
         st.caption("Aquí solo ves a los valientes que marcaron su apuesta como 'Pública' antes de empezar.")
         
-        # Filtramos: de esta jornada, que NO estén en la lista de revelados, que sean públicas y no seas tú
         p_futuras = df_p_all[
             (df_p_all['Jornada'] == j_global) & 
             (~df_p_all['Partido'].isin(revelados['Partido'])) & 
@@ -799,7 +826,6 @@ else:
             for u in p_futuras['Usuario'].unique():
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
-
     
     with tabs[2]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
@@ -1392,5 +1418,6 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
