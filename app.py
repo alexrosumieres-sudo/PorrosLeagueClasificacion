@@ -724,8 +724,10 @@ else:
 
     with tabs[1]: # --- 🔮 PESTAÑA OTROS (TENDENCIAS + REVELACIONES) ---
         st.header("👀 Qué han puesto los demás")
-        
-        # --- [NUEVA LEYENDA DE COLORES] ---
+        ahora = get_now_madrid()
+
+        # --- [NUEVA ADICIÓN: SABIDURÍA POPULAR] ---
+        st.markdown("### 🔮 Sabiduría Popular (Tendencias)")
         st.markdown("""
         <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; padding: 10px; background: #f8fafc; border-radius: 10px; border: 1px dashed #cbd5e1;">
             <div style="display: flex; align-items: center; gap: 5px;">
@@ -742,10 +744,6 @@ else:
             </div>
         </div>
         """, unsafe_allow_html=True)
-        ahora = get_now_madrid()
-
-        # --- [NUEVA ADICIÓN: SABIDURÍA POPULAR] ---
-        st.markdown("### 🔮 Sabiduría Popular (Tendencias)")
         preds_j = df_p_all[df_p_all['Jornada'] == j_global]
 
         if not preds_j.empty:
@@ -1479,6 +1477,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
