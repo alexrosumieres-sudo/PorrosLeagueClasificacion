@@ -871,7 +871,7 @@ else:
         st.error("### 🏳️ EL RINCÓN DE LOS COBARDES 🏳️")
         col_rip1, col_rip2 = st.columns([1, 2])
         with col_rip1:
-            st.image("https://media.giphy.com/media/Af7ap9yc7uAzC/giphy.gif", use_container_width=True)
+            st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdm1ubDM0bmxmMWo3NWtsODlvajlhZWU2M2g3Y2xta2lhOXhxb3UwZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/y8nAwsdR5zTKE/giphy.gif", use_container_width=True)
         with col_rip2:
             st.markdown("""
             **Aquí yacen los que no dieron la talla:**
@@ -1236,6 +1236,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
