@@ -793,7 +793,7 @@ else:
     with tabs[3]: # --- 🏅 PALMARÉS (GLORIA Y HUMILLACIÓN) ---
         st.header("🏅 El Palmarés de la Porra")
         
-        # --- 1. DATOS HISTÓRICOS J1-J24 (ACTUALIZADO CON CIDON) ---
+        # --- 1. DATOS HISTÓRICOS J1-J24 ---
         hist_ganadores = [
             ("J1", ["Alex"]), ("J2", ["Alec206301"]), ("J3", ["EstafadorJudío"]), ("J4", ["Alec206301"]), ("J5", ["Rodri"]), ("J6", ["Rodri"]), 
             ("J7", ["EstafadorJudío"]), ("J8", ["Pachuco67"]), ("J9", ["Alex"]), ("J10", ["Lagartoputero"]), ("J11", ["Pachuco67"]), ("J12", ["Pablo Riera"]),
@@ -868,8 +868,10 @@ else:
         # --- 🏳️ CEMENTERIO DE DESERTORES ---
         st.markdown("### 🏳️ El Rincón de los Cobardes")
         st.error("""
-        **AQUÍ YACEN LOS QUE SE RINDIERON:** * **Davo** y **Javi**: No aguantaron la presión de ir últimos y tiraron la toalla. 
-        Sus nombres quedan aquí para la posteridad como recordatorio de su falta de fe. 💀
+        **AQUÍ YACEN LOS QUE SE RINDIERON:** * **Davo** y **Javi**: No aguantaron la presión de ir últimos y tiraron la toalla. 💀
+        * **Rodri**: El caso más triste. Saboreó la gloria con 2 victorias, pero le flaquearon las piernas y abandonó a sus compañeros. Una retirada para el olvido. 🏳️
+        
+        Vuestros nombres quedan aquí grabados para que nadie olvide vuestra falta de fe.
         """)
 
         # --- 📅 CRONOLOGÍA ---
@@ -1227,6 +1229,7 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
 
 
