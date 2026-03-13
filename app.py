@@ -412,10 +412,8 @@ else:
         .ring-silver { background: linear-gradient(45deg, #c0c0c0, #8e8e8e); }
         .ring-bronze { background: linear-gradient(45deg, #cd7f32, #a0522d); }
         .ring-green { background: linear-gradient(45deg, #39FF14, #2baf2b); }
-    
-        /* Imagen circular forzada */
-        .stImage img { border-radius: 50% !important; }
-            </style>
+        /* Tarjeta de partido estilo App */   
+
     """, unsafe_allow_html=True)
 
     with st.sidebar:
@@ -568,108 +566,160 @@ else:
     # Busca esta línea y añade "📜 VAR" al final
     tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏅 Palmarés", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
 
-    with tabs[0]: # --- PESTAÑA APUESTAS ---
+    with tabs[0]: # --- ✍️ PESTAÑA APUESTAS (REDISEÑO TOTAL) ---
+        # 1. CSS EXCLUSIVO PARA LAS TARJETAS DE APUESTAS
+        st.markdown("""
+        <style>
+            .bet-card {
+                background: white;
+                padding: 20px;
+                border-radius: 15px;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                margin-bottom: 15px;
+            }
+            .bet-card-locked {
+                background: #f1f5f9;
+                padding: 20px;
+                border-radius: 15px;
+                border: 1px solid #cbd5e1;
+                opacity: 0.8;
+                margin-bottom: 15px;
+            }
+            .team-label {
+                font-weight: 800;
+                font-size: 0.9em;
+                color: #1e293b;
+                text-align: center;
+                margin-bottom: 5px;
+                text-transform: uppercase;
+            }
+            .vs-box {
+                text-align: center;
+                font-weight: 900;
+                color: #94a3b8;
+                padding-top: 10px;
+            }
+            .lock-icon { font-size: 1.2em; }
+        </style>
+        """, unsafe_allow_html=True)
+
         if es_admin:
             st.warning("🛡️ Acceso restringido: Los administradores no participan en las porras.")
             st.info("Tu función es supervisar la liga y actualizar los resultados desde la pestaña **⚙️ Admin**.")
             st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
         else:
+            # Recuperar predicciones actuales del usuario
             u_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
             env = []
+            
+            st.markdown(f"### 🗓️ Tu Hoja de Apuestas: {j_global}")
+            st.caption("Asegúrate de guardar antes de que empiece cada partido.")
+
             for i, (loc, vis) in enumerate(JORNADAS[j_global]):
                 m_id = f"{loc}-{vis}"
                 
-                # 1. Lógica de bloqueo
+                # Cargar datos guardados si existen
                 dl, dv, dp = 0, 0, "NO"
                 if not u_preds.empty:
                     match_data = u_preds[u_preds['Partido'] == m_id]
                     if not match_data.empty:
                         dl, dv, dp = int(match_data.iloc[0]['P_L']), int(match_data.iloc[0]['P_V']), match_data.iloc[0]['Publica']
                 
+                # Lógica de Bloqueo por tiempo
                 res_info = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                 lock = False
-                msg_lock = "" # Tooltip
+                hora_partido = ""
                 if not res_info.empty:
-                    lock = get_now_madrid() > datetime.datetime.strptime(str(res_info.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
-                    if lock:
-                        msg_lock = f"Bloqueado: Comenzó el {res_info.iloc[0]['Hora_Inicio']}"
-    
-                # 2. Aplicar clase CSS dinámica
-                card_class = "match-box-locked" if lock else "match-box"
+                    hora_partido = res_info.iloc[0]['Hora_Inicio']
+                    lock = get_now_madrid() > datetime.datetime.strptime(str(hora_partido), "%Y-%m-%d %H:%M:%S")
+
+                # --- RENDER DE LA TARJETA ---
+                card_class = "bet-card-locked" if lock else "bet-card"
                 st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
                 
-                c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 0.5, 2, 1, 2])
+                # Columnas: Logo L (1), Input L (2), VS (1), Input V (2), Logo V (1), Pub (1.5)
+                c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 1, 2, 1, 1.5])
                 
-                with c1: 
-                    log = get_logo(loc)
-                    if log: st.image(log, width=45)
+                with c1: # Escudo Local
+                    log_l = get_logo(loc)
+                    if log_l: st.image(log_l, width=50)
                 
-                # 3. Añadir Tooltip (help) e icono 🔒
-                with c2: 
-                    label_l = f"{loc} 🔒" if lock else loc
-                    pl = st.number_input(label_l, 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock, help=msg_lock)
+                with c2: # Marcador Local
+                    st.markdown(f'<p class="team-label">{loc}</p>', unsafe_allow_html=True)
+                    pl = st.number_input("G", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
                 
-                with c4: 
-                    label_v = f"{vis} 🔒" if lock else vis
-                    pv = st.number_input(label_v, 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock, help=msg_lock)
+                with c3: # Separador VS
+                    st.markdown('<div class="vs-box">VS</div>', unsafe_allow_html=True)
+                    if lock: 
+                        st.markdown('<p style="text-align:center;" title="Partido en juego o finalizado">🔒</p>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<p style="text-align:center; font-size:0.65em; color:#64748b;">{str(hora_partido)[11:16]}</p>', unsafe_allow_html=True)
+
+                with c4: # Marcador Visitante
+                    st.markdown(f'<p class="team-label">{vis}</p>', unsafe_allow_html=True)
+                    pv = st.number_input("G", 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
                 
-                with c5: 
-                    logv = get_logo(vis)
-                    if logv: st.image(logv, width=45)
+                with c5: # Escudo Visitante
+                    log_v = get_logo(vis)
+                    if log_v: st.image(log_v, width=50)
                 
-                with c6: 
-                    pub = st.checkbox("Pública", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock)
+                with c6: # Visibilidad
+                    st.markdown("<p style='font-size:0.7em; text-align:center; font-weight:bold;'>👁️ PÚBLICA</p>", unsafe_allow_html=True)
+                    pub = st.checkbox("Ver", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
                 
                 st.markdown('</div>', unsafe_allow_html=True)
-                env.append({"Usuario": st.session_state.user, "Jornada": j_global, "Partido": m_id, "P_L": pl, "P_V": pv, "Publica": "SI" if pub else "NO"})
-            
-            if st.button("💾 Guardar Mis Predicciones", use_container_width=True):
-                # 1. Miramos qué tenía puesto el usuario antes de este cambio
+                
+                # Recopilar datos para el envío
+                env.append({
+                    "Usuario": st.session_state.user, 
+                    "Jornada": j_global, 
+                    "Partido": m_id, 
+                    "P_L": pl, 
+                    "P_V": pv, 
+                    "Publica": "SI" if pub else "NO"
+                })
+
+            # --- BOTÓN DE GUARDADO Y LÓGICA VAR ---
+            st.markdown("---")
+            if st.button("💾 GUARDAR MIS PRONÓSTICOS", use_container_width=True, type="primary"):
+                # 1. Comparar con lo anterior para el log del VAR
                 preds_viejas = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
                 
-                # 2. Lógica para el mensaje del VAR
                 if preds_viejas.empty:
-                    # Si no hay nada previo, es la primera vez
                     log_msg = f"📝 Creó sus primeras predicciones (Jornada: {j_global})"
                 else:
-                    # Si ya había algo, comparamos partido a partido
                     cambios = []
                     for r_nuevo in env:
                         m_viejo = preds_viejas[preds_viejas['Partido'] == r_nuevo['Partido']]
-                        
                         if not m_viejo.empty:
-                            v_l = int(m_viejo.iloc[0]['P_L'])
-                            v_v = int(m_viejo.iloc[0]['P_V'])
-                            
-                            # Si los goles de ahora son diferentes a los guardados, anotamos el partido
-                            if r_nuevo['P_L'] != v_l or r_nuevo['P_V'] != v_v:
+                            if r_nuevo['P_L'] != int(m_viejo.iloc[0]['P_L']) or r_nuevo['P_V'] != int(m_viejo.iloc[0]['P_V']):
                                 cambios.append(r_nuevo['Partido'])
                     
                     if cambios:
-                        # Solo listamos los nombres de los partidos
                         log_msg = f"🔄 Modificó {len(cambios)} partidos: {', '.join(cambios)}"
                     else:
                         log_msg = f"📝 Re-guardó predicciones sin cambios ({j_global})"
 
-                # 3. Guardar las predicciones en el Excel
-                otras = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
-                conn.update(worksheet="Predicciones", data=pd.concat([otras, pd.DataFrame(env)], ignore_index=True))
+                # 2. Actualizar base de datos
+                otras_preds = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
+                df_final_p = pd.concat([otras_preds, pd.DataFrame(env)], ignore_index=True)
+                conn.update(worksheet="Predicciones", data=df_final_p)
                 
-                # 4. Registrar en la hoja de Logs (VAR)
-                log_p = pd.DataFrame([{
+                # 3. Escribir en el VAR (Logs)
+                log_entry = pd.DataFrame([{
                     "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
                     "Usuario": st.session_state.user,
                     "Accion": log_msg
                 }])
                 df_l_existente = conn.read(worksheet="Logs", ttl=0)
-                conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_p], ignore_index=True))
+                conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_entry], ignore_index=True))
                 
-                # 5. Limpiar caché COMPLETA y refrescar
+                # 4. Feedback y Refresco
                 st.cache_data.clear()
                 st.cache_resource.clear()
-                
-                st.success("✅ Predicciones guardadas y VAR actualizado.")
-                time.sleep(1)
+                st.success(f"✅ ¡Hecho! El VAR ha registrado: {log_msg}")
+                time.sleep(1.2)
                 st.rerun()
 
     with tabs[1]: # --- PESTAÑA OTROS (REVELAR AL EMPEZAR O FINALIZAR) ---
@@ -1342,4 +1392,5 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
 
