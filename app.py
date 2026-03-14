@@ -629,17 +629,27 @@ else:
 
                 st.markdown(f'<div class="{"bet-card-locked" if lock else "bet-card"}">', unsafe_allow_html=True)
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 1, 2, 1, 1.5])
-                with c1: st.image(get_logo(loc), width=50) if get_logo(loc) else None
-                with c2:
+                with c1: # Escudo Local (CORREGIDO)
+                    logo_loc = get_logo(loc)
+                    if logo_loc:
+                        st.image(logo_loc, width=50)
+                
+                with c2: 
                     st.markdown(f'<p class="team-label">{loc}</p>', unsafe_allow_html=True)
-                    pl = st.number_input("G", 0, 9, dl, key=f"pl_{i}", disabled=lock, label_visibility="collapsed")
-                with c3:
+                    pl = st.number_input("G", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
+                
+                with c3: 
                     st.markdown('<div class="vs-box">VS</div>', unsafe_allow_html=True)
-                    st.markdown(f'<p style="text-align:center; font-size:0.6em;">{"🔒" if lock else str(hora_p)[11:16]}</p>', unsafe_allow_html=True)
-                with c4:
+                    st.markdown(f'<p style="text-align:center; font-size:0.65em; color:#64748b;">{"🔒" if lock else str(hora_partido)[11:16]}</p>', unsafe_allow_html=True)
+                
+                with c4: 
                     st.markdown(f'<p class="team-label">{vis}</p>', unsafe_allow_html=True)
-                    pv = st.number_input("G", 0, 9, dv, key=f"pv_{i}", disabled=lock, label_visibility="collapsed")
-                with c5: st.image(get_logo(vis), width=50) if get_logo(vis) else None
+                    pv = st.number_input("G", 0, 9, dv, key=f"pv_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
+                
+                with c5: # Escudo Visitante (CORREGIDO)
+                    logo_vis = get_logo(vis)
+                    if logo_vis:
+                        st.image(logo_vis, width=50)
                 with c6:
                     st.markdown("<p style='font-size:0.7em; text-align:center;'>👁️ PÚBLICA</p>", unsafe_allow_html=True)
                     pub = st.checkbox("Ver", dp=="SI", key=f"pb_{i}", disabled=lock, label_visibility="collapsed")
