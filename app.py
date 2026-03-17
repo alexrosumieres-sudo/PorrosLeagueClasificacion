@@ -875,7 +875,7 @@ else:
             """Guarda el mensaje en la pestaña 'Chat_Global' del Excel"""
             try:
                 nueva_fila = pd.DataFrame([{
-                    "Fecha": datetime.now(pytz.timezone('Europe/Madrid')).strftime("%d/%m %H:%M"),
+                    "Fecha": datetime.datetime.now(pytz.timezone('Europe/Madrid')).strftime("%d/%m %H:%M"),
                     "Usuario": usuario,
                     "Mensaje": str(mensaje)
                 }])
