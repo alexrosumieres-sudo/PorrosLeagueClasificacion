@@ -869,54 +869,54 @@ else:
         st.header("⚽ ChatG-O-L: El Analista Canalla")
         st.caption("Pregúntale al analista más tóxico de la liga sobre vuestras miserias.")
     
-        # --- DIAGNÓSTICO DE SECRETOS ---
+        # --- 1. COMPROBACIÓN DE SECRETOS ---
         if "GEMINI_API_KEY" not in st.secrets:
-            st.error("🚨 ERROR DE CONFIGURACIÓN: No encuentro la clave 'GEMINI_API_KEY' en los Secrets de Streamlit.")
-            st.info("💡 Solución: Ve a Settings > Secrets y asegúrate de que la clave esté escrita EXACTAMENTE así, en mayúsculas y fuera de cualquier bloque de corchetes.")
+            st.error("🚨 ERROR DE CONFIGURACIÓN: No encuentro la clave 'GEMINI_API_KEY' en los Secrets.")
+            st.info("💡 Ve a Settings > Secrets y añade GEMINI_API_KEY.")
         else:
+            # --- 2. INTENTO DE CONFIGURACIÓN Y CHAT ---
             try:
-                # Configuración de la IA
+                # Configuración inicial
                 api_key_ia = st.secrets["GEMINI_API_KEY"]
                 genai.configure(api_key=api_key_ia)
-                try:
-                    # 1. Usamos el modelo 1.5 Flash (suele tener más margen)
-                    # Probamos con el nombre estándar que Google recomienda para evitar el 404
-                    model_ia = genai.GenerativeModel('gemini-1.5-flash') 
+                model_ia = genai.GenerativeModel('gemini-1.5-flash') 
         
-                    if "messages_ia" not in st.session_state:
-                        st.session_state.messages_ia = [{"role": "assistant", "content": "¡Ya estoy aquí! ChatG-O-L al aparato. ¿A quién vamos a humillar hoy?"}]
+                # Inicializar historial si no existe
+                if "messages_ia" not in st.session_state:
+                    st.session_state.messages_ia = [{"role": "assistant", "content": "¡Ya estoy aquí! ChatG-O-L al aparato. ¿A quién vamos a humillar hoy?"}]
         
-                    # Mostrar historial
-                    for message in st.session_state.messages_ia:
-                        with st.chat_message(message["role"]):
-                            st.markdown(message["content"])
+                # Mostrar historial
+                for message in st.session_state.messages_ia:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
         
-                    if prompt_user := st.chat_input("Pregunta algo..."):
-                        st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
-                        with st.chat_message("user"):
-                            st.markdown(prompt_user)
+                # Entrada de usuario
+                if prompt_user := st.chat_input("Pregunta algo a ChatG-O-L..."):
+                    st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
+                    with st.chat_message("user"):
+                        st.markdown(prompt_user)
         
-                        with st.chat_message("assistant"):
-                            # 2. Usamos un bloque de control para el límite de velocidad
-                            try:
-                                # Reducimos el contexto (enviamos solo los últimos 5 logs en lugar de 8)
-                                # Esto ahorra 'tokens' y evita el error 429
+                    with st.chat_message("assistant"):
+                        try:
+                            # Generar contexto y respuesta
+                            with st.spinner("ChatG-O-L está afilando la lengua..."):
                                 contexto_fresco = preparar_contexto_ia(df_hero, df_logs_all.head(5))
-                                
                                 respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
                                 texto_respuesta = respuesta_ia.text
                                 
                                 st.markdown(texto_respuesta)
                                 st.session_state.messages_ia.append({"role": "assistant", "content": texto_respuesta})
-                            
-                            except Exception as e:
-                                if "429" in str(e):
-                                    st.error("🚨 ¡Saturación! ChatG-O-L está agotado de tanto rajar. Espera 60 segundos y vuelve a intentarlo.")
-                                else:
-                                    st.error(f"Error: {e}")
-        
-                except Exception as e:
-                    st.error(f"Error crítico: {e}")
+                        
+                        except Exception as e:
+                            if "429" in str(e):
+                                st.error("🚨 ¡Saturación! ChatG-O-L está agotado. Espera 60 segundos.")
+                            else:
+                                st.error(f"⚠️ Error de Gemini: {e}")
+            
+            # --- ESTE ES EL EXCEPT QUE TE FALTABA PARA CERRAR EL PRIMER TRY ---
+            except Exception as e:
+                st.error(f"❌ Error crítico en la pestaña de IA: {e}")
+
     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
