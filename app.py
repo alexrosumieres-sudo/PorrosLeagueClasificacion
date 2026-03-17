@@ -865,58 +865,58 @@ else:
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
     with tabs[2]:
-    st.header("⚽ ChatG-O-L: El Analista Canalla")
-    st.caption("Pregúntale al analista más tóxico de la liga sobre vuestras miserias.")
-
-    # --- DIAGNÓSTICO DE SECRETOS ---
-    if "GEMINI_API_KEY" not in st.secrets:
-        st.error("🚨 ERROR DE CONFIGURACIÓN: No encuentro la clave 'GEMINI_API_KEY' en los Secrets de Streamlit.")
-        st.info("💡 Solución: Ve a Settings > Secrets y asegúrate de que la clave esté escrita EXACTAMENTE así, en mayúsculas y fuera de cualquier bloque de corchetes.")
-    else:
-        try:
-            # Configuración de la IA
-            api_key_ia = st.secrets["GEMINI_API_KEY"]
-            genai.configure(api_key=api_key_ia)
-            model_ia = genai.GenerativeModel('gemini-1.5-flash')
-
-            # Inicializar historial de chat si no existe
-            if "messages_ia" not in st.session_state:
-                st.session_state.messages_ia = [
-                    {"role": "assistant", "content": "¡Ya estoy aquí! Soy ChatG-O-L. ¿Quién de vosotros va a ser el primero en recibir un repaso?"}
-                ]
-
-            # Mostrar mensajes del historial
-            for message in st.session_state.messages_ia:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            # Entrada del chat
-            if prompt_user := st.chat_input("Dime algo, tibio..."):
-                # 1. Añadir mensaje del usuario al historial y mostrarlo
-                st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
-                with st.chat_message("user"):
-                    st.markdown(prompt_user)
-
-                # 2. Generar respuesta de la IA
-                with st.chat_message("assistant"):
-                    with st.spinner("ChatG-O-L está afilando la lengua..."):
-                        try:
-                            # Generamos el contexto fresco con los datos actuales
-                            contexto_fresco = preparar_contexto_ia(df_hero, df_logs)
+        st.header("⚽ ChatG-O-L: El Analista Canalla")
+        st.caption("Pregúntale al analista más tóxico de la liga sobre vuestras miserias.")
+    
+        # --- DIAGNÓSTICO DE SECRETOS ---
+        if "GEMINI_API_KEY" not in st.secrets:
+            st.error("🚨 ERROR DE CONFIGURACIÓN: No encuentro la clave 'GEMINI_API_KEY' en los Secrets de Streamlit.")
+            st.info("💡 Solución: Ve a Settings > Secrets y asegúrate de que la clave esté escrita EXACTAMENTE así, en mayúsculas y fuera de cualquier bloque de corchetes.")
+        else:
+            try:
+                # Configuración de la IA
+                api_key_ia = st.secrets["GEMINI_API_KEY"]
+                genai.configure(api_key=api_key_ia)
+                model_ia = genai.GenerativeModel('gemini-1.5-flash')
+    
+                # Inicializar historial de chat si no existe
+                if "messages_ia" not in st.session_state:
+                    st.session_state.messages_ia = [
+                        {"role": "assistant", "content": "¡Ya estoy aquí! Soy ChatG-O-L. ¿Quién de vosotros va a ser el primero en recibir un repaso?"}
+                    ]
+    
+                # Mostrar mensajes del historial
+                for message in st.session_state.messages_ia:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+    
+                # Entrada del chat
+                if prompt_user := st.chat_input("Dime algo, tibio..."):
+                    # 1. Añadir mensaje del usuario al historial y mostrarlo
+                    st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
+                    with st.chat_message("user"):
+                        st.markdown(prompt_user)
+    
+                    # 2. Generar respuesta de la IA
+                    with st.chat_message("assistant"):
+                        with st.spinner("ChatG-O-L está afilando la lengua..."):
+                            try:
+                                # Generamos el contexto fresco con los datos actuales
+                                contexto_fresco = preparar_contexto_ia(df_hero, df_logs)
+                                
+                                # Llamada a la IA
+                                respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
+                                texto_respuesta = respuesta_ia.text
+                                
+                                st.markdown(texto_respuesta)
+                                st.session_state.messages_ia.append({"role": "assistant", "content": texto_respuesta})
                             
-                            # Llamada a la IA
-                            respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
-                            texto_respuesta = respuesta_ia.text
-                            
-                            st.markdown(texto_respuesta)
-                            st.session_state.messages_ia.append({"role": "assistant", "content": texto_respuesta})
-                        
-                        except Exception as error_ia:
-                            st.error(f"⚠️ Error de Gemini: {error_ia}")
-                            st.info("Esto suele pasar si la API Key es inválida o si Google ha bloqueado la respuesta por seguridad.")
-
-        except Exception as e:
-            st.error(f"❌ Error crítico al inicializar ChatG-O-L: {e}")
+                            except Exception as error_ia:
+                                st.error(f"⚠️ Error de Gemini: {error_ia}")
+                                st.info("Esto suele pasar si la API Key es inválida o si Google ha bloqueado la respuesta por seguridad.")
+    
+            except Exception as e:
+                st.error(f"❌ Error crítico al inicializar ChatG-O-L: {e}")
     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
