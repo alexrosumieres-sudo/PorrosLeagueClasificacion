@@ -866,82 +866,94 @@ else:
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
     
-    with tabs[2]: # Asegúrate de que es el índice correcto de tu pestaña
+    with tabs[2]:
         st.header("⚽ ChatG-O-L: El Muro de la Infamia")
-        st.caption("Chat Global: Todo lo que digas aquí lo verá hasta el último del grupo.")
-    
-        # 1. Función para GUARDAR mensajes en el Excel
+        st.caption("Todo lo que se dice aquí queda grabado en el Excel para la posteridad.")
+
+        # --- 1. FUNCIONES INTERNAS DEL CHAT ---
         def guardar_mensaje_global(usuario, mensaje):
-            nueva_fila = pd.DataFrame([{
-                "Fecha": datetime.now(pytz.timezone('Europe/Madrid')).strftime("%d/%m %H:%M"),
-                "Usuario": usuario,
-                "Mensaje": mensaje
-            }])
-            # Usamos la conexión existente para añadir la fila
-            conn.create(worksheet="Chat_Global", data=nueva_fila)
-    
-        # 2. Función para LEER mensajes del Excel
+            """Guarda el mensaje en la pestaña 'Chat_Global' del Excel"""
+            try:
+                nueva_fila = pd.DataFrame([{
+                    "Fecha": datetime.now(pytz.timezone('Europe/Madrid')).strftime("%d/%m %H:%M"),
+                    "Usuario": usuario,
+                    "Mensaje": str(mensaje)
+                }])
+                conn.create(worksheet="Chat_Global", data=nueva_fila)
+            except Exception as e:
+                st.error(f"Error al guardar en Excel: {e}")
+
         def leer_chat_global():
-            # ttl=10 para que refresque cada 10 segundos y no sature
-            return conn.read(worksheet="Chat_Global", ttl=10).tail(15)
-    
-        # --- LÓGICA DEL CHAT ---
+            """Lee los últimos 15 mensajes del chat"""
+            try:
+                # ttl=5 para que refresque rápido si alguien más escribe
+                df = conn.read(worksheet="Chat_Global", ttl=5)
+                return df.tail(15)
+            except:
+                # Si la hoja está vacía o no existe aún mensajes
+                return pd.DataFrame(columns=["Fecha", "Usuario", "Mensaje"])
+
+        # --- 2. VERIFICACIÓN DE LA API Y CONFIGURACIÓN ---
         if "GEMINI_API_KEY" not in st.secrets:
-            st.error("🚨 Falta la clave GEMINI_API_KEY.")
+            st.error("🚨 No se encuentra la clave 'GEMINI_API_KEY' en los Secrets.")
         else:
             try:
-                # Configurar IA
+                # Configuración del modelo (usamos 'latest' que es el que te funcionó)
                 api_key_ia = st.secrets["GEMINI_API_KEY"]
                 genai.configure(api_key=api_key_ia)
                 model_ia = genai.GenerativeModel('gemini-flash-latest')
-    
-                # Leer historial del Excel
-                # --- LÓGICA DEL CHAT GLOBAL ---
+
+                # --- 3. MOSTRAR EL HISTORIAL DEL EXCEL ---
                 df_chat = leer_chat_global()
-    
-                # Mostrar historial
+                
                 for _, fila in df_chat.iterrows():
+                    # Si el usuario es ChatG-O-L, ponemos icono de asistente, si no, de usuario
                     role = "assistant" if fila["Usuario"] == "ChatG-O-L" else "user"
                     with st.chat_message(role):
-                        st.markdown(f"**{fila['Usuario']}**: {fila['Mensaje']}")
-    
-                # Entrada de nuevo mensaje
-                if prompt_user := st.chat_input("Escribe tu perla aquí..."):
-                    # USAMOS TU VARIABLE: st.session_state.user
-                    nombre_real = st.session_state.get("user", "Infiltrado")
+                        st.markdown(f"**{fila['Usuario']}** ({fila['Fecha']}):  \n{fila['Mensaje']}")
+
+                # --- 4. ENTRADA DE NUEVO MENSAJE ---
+                if prompt_user := st.chat_input("Suelta tu bilis..."):
+                    # Sacamos el nombre de tu variable confirmada
+                    nombre_autor = st.session_state.get("user", "Infiltrado")
                     
-                    # A. Guardar mensaje del USUARIO en Excel
-                    guardar_mensaje_global(nombre_real, prompt_user)
+                    # A. Guardar lo que dice el usuario en el Excel
+                    guardar_mensaje_global(nombre_autor, prompt_user)
                     
-                    # B. Generar respuesta de la IA
+                    # B. Respuesta de la IA
                     with st.chat_message("assistant"):
-                        with st.spinner("ChatG-O-L está afilando los colmillos..."):
+                        with st.spinner("ChatG-O-L está afilando la lengua..."):
                             try:
+                                # Generamos el contexto (Clasificación + VAR)
+                                # Usamos df_logs_all que cargamos al principio
                                 contexto = preparar_contexto_ia(df_hero, df_logs_all.head(5))
                                 
-                                # Le pasamos el nombre real para que el zasca sea personalizado
-                                prompt_ia = f"""
+                                prompt_final = f"""
                                 {contexto}
-                                USUARIO ACTUAL: {nombre_real}. 
-                                INSTRUCCIÓN: Estás en un chat público. Responde a su mensaje humillándole 
-                                un poco si va mal en la liga o alabando su suerte si va bien. 
-                                Sé breve.
-                                
-                                PREGUNTA DE {nombre_real}: {prompt_user}
+                                ---
+                                ESTÁS EN UN CHAT GLOBAL. 
+                                EL USUARIO QUE TE HABLA ES: {nombre_autor}.
+                                INSTRUCCIÓN: Sé breve, sarcástico y métete con él según su puesto en la liga.
+                                PREGUNTA: {prompt_user}
                                 """
                                 
-                                respuesta_ia = model_ia.generate_content(prompt_ia)
-                                texto_ia = respuesta_ia.text
+                                response = model_ia.generate_content(prompt_final)
+                                texto_respuesta = response.text
                                 
-                                # C. Guardar respuesta de la IA en Excel
-                                guardar_mensaje_global("ChatG-O-L", texto_ia)
+                                # C. Guardar respuesta de la IA en el Excel
+                                guardar_mensaje_global("ChatG-O-L", texto_respuesta)
                                 
-                                # Recargamos para que todos vean la "magia"
+                                # D. Refrescar la app para que aparezca todo
                                 st.rerun()
                                 
                             except Exception as e:
-                                st.error(f"Error de cuota: Espera un momento, la IA está saturada. {e}")
+                                if "429" in str(e):
+                                    st.error("🚨 Cuota agotada. Google nos ha castigado un minuto sin hablar.")
+                                else:
+                                    st.error(f"⚠️ Error de la IA: {e}")
 
+            except Exception as e:
+                st.error(f"❌ Error crítico en ChatG-O-L: {e}")
     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
