@@ -879,7 +879,7 @@ else:
                     "Usuario": usuario,
                     "Mensaje": str(mensaje)
                 }])
-                conn.create(worksheet="Chat_Global", data=nueva_fila)
+                conn.update(worksheet="Chat_Global", data=nueva_fila)
             except Exception as e:
                 st.error(f"Error al guardar en Excel: {e}")
 
