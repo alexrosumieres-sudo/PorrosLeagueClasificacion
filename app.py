@@ -865,57 +865,59 @@ else:
             for u in p_futuras['Usuario'].unique():
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
-    with tabs[2]:
+    with tabs[2]: # O el número de pestaña que sea ChatG-O-L
         st.header("⚽ ChatG-O-L: El Analista Canalla")
-        st.caption("Pregúntale al analista más tóxico de la liga sobre vuestras miserias.")
-    
-        # --- 1. COMPROBACIÓN DE SECRETOS ---
+        
+        # 1. Verificación de seguridad
         if "GEMINI_API_KEY" not in st.secrets:
-            st.error("🚨 ERROR DE CONFIGURACIÓN: No encuentro la clave 'GEMINI_API_KEY' en los Secrets.")
-            st.info("💡 Ve a Settings > Secrets y añade GEMINI_API_KEY.")
+            st.error("🚨 Falta la clave en Secrets.")
         else:
-            # --- 2. INTENTO DE CONFIGURACIÓN Y CHAT ---
             try:
-                # Configuración inicial
+                # 2. Configuración del modelo 'latest'
                 api_key_ia = st.secrets["GEMINI_API_KEY"]
                 genai.configure(api_key=api_key_ia)
-                model_ia = genai.GenerativeModel('gemini-1.5-flash') 
-        
-                # Inicializar historial si no existe
+                model_ia = genai.GenerativeModel('gemini-flash-latest') 
+
+                # 3. Inicializar el chat en la sesión
                 if "messages_ia" not in st.session_state:
                     st.session_state.messages_ia = [{"role": "assistant", "content": "¡Ya estoy aquí! ChatG-O-L al aparato. ¿A quién vamos a humillar hoy?"}]
-        
-                # Mostrar historial
+
+                # 4. Dibujar los mensajes que ya existen
                 for message in st.session_state.messages_ia:
                     with st.chat_message(message["role"]):
                         st.markdown(message["content"])
-        
-                # Entrada de usuario
+
+                # 5. EL MOMENTO CLAVE: Entrada del usuario
                 if prompt_user := st.chat_input("Pregunta algo a ChatG-O-L..."):
+                    # Mostrar mensaje del usuario
                     st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
                     with st.chat_message("user"):
                         st.markdown(prompt_user)
-        
+
+                    # --- AQUÍ VA EL TROZO QUE ME HAS PREGUNTADO ---
                     with st.chat_message("assistant"):
                         try:
-                            # Generar contexto y respuesta
-                            with st.spinner("ChatG-O-L está afilando la lengua..."):
+                            with st.spinner("ChatG-O-L está analizando vuestras miserias..."):
+                                # Generamos el "chivatazo" (Contexto) con solo 5 logs para no saturar
                                 contexto_fresco = preparar_contexto_ia(df_hero, df_logs_all.head(5))
-                                respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
-                                texto_respuesta = respuesta_ia.text
                                 
-                                st.markdown(texto_respuesta)
-                                st.session_state.messages_ia.append({"role": "assistant", "content": texto_respuesta})
+                                # Llamada real a la IA
+                                respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta del usuario: {prompt_user}")
+                                texto_final = respuesta_ia.text
+                                
+                                # Mostrar y guardar la respuesta
+                                st.markdown(texto_final)
+                                st.session_state.messages_ia.append({"role": "assistant", "content": texto_final})
                         
                         except Exception as e:
                             if "429" in str(e):
-                                st.error("🚨 ¡Saturación! ChatG-O-L está agotado. Espera 60 segundos.")
+                                st.error("🚨 ¡Saturación! Google nos ha cortado el grifo un minuto. Respira y vuelve a intentarlo.")
                             else:
                                 st.error(f"⚠️ Error de Gemini: {e}")
-            
-            # --- ESTE ES EL EXCEPT QUE TE FALTABA PARA CERRAR EL PRIMER TRY ---
+                    # --- FIN DEL TROZO ---
+
             except Exception as e:
-                st.error(f"❌ Error crítico en la pestaña de IA: {e}")
+                st.error(f"❌ Error crítico al inicializar: {e}")
 
     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
