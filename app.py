@@ -865,59 +865,74 @@ else:
             for u in p_futuras['Usuario'].unique():
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
-    with tabs[2]: # O el número de pestaña que sea ChatG-O-L
-        st.header("⚽ ChatG-O-L: El Analista Canalla")
-        
-        # 1. Verificación de seguridad
+    
+    with tabs[2]: # Asegúrate de que es el índice correcto de tu pestaña
+        st.header("⚽ ChatG-O-L: El Muro de la Infamia")
+        st.caption("Chat Global: Todo lo que digas aquí lo verá hasta el último del grupo.")
+    
+        # 1. Función para GUARDAR mensajes en el Excel
+        def guardar_mensaje_global(usuario, mensaje):
+            nueva_fila = pd.DataFrame([{
+                "Fecha": datetime.now(pytz.timezone('Europe/Madrid')).strftime("%d/%m %H:%M"),
+                "Usuario": usuario,
+                "Mensaje": mensaje
+            }])
+            # Usamos la conexión existente para añadir la fila
+            conn.create(worksheet="Chat_Global", data=nueva_fila)
+    
+        # 2. Función para LEER mensajes del Excel
+        def leer_chat_global():
+            # ttl=10 para que refresque cada 10 segundos y no sature
+            return conn.read(worksheet="Chat_Global", ttl=10).tail(15)
+    
+        # --- LÓGICA DEL CHAT ---
         if "GEMINI_API_KEY" not in st.secrets:
-            st.error("🚨 Falta la clave en Secrets.")
+            st.error("🚨 Falta la clave GEMINI_API_KEY.")
         else:
             try:
-                # 2. Configuración del modelo 'latest'
+                # Configurar IA
                 api_key_ia = st.secrets["GEMINI_API_KEY"]
                 genai.configure(api_key=api_key_ia)
-                model_ia = genai.GenerativeModel('gemini-flash-latest') 
-
-                # 3. Inicializar el chat en la sesión
-                if "messages_ia" not in st.session_state:
-                    st.session_state.messages_ia = [{"role": "assistant", "content": "¡Ya estoy aquí! ChatG-O-L al aparato. ¿A quién vamos a humillar hoy?"}]
-
-                # 4. Dibujar los mensajes que ya existen
-                for message in st.session_state.messages_ia:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
-
-                # 5. EL MOMENTO CLAVE: Entrada del usuario
-                if prompt_user := st.chat_input("Pregunta algo a ChatG-O-L..."):
-                    # Mostrar mensaje del usuario
-                    st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
-                    with st.chat_message("user"):
-                        st.markdown(prompt_user)
-
-                    # --- AQUÍ VA EL TROZO QUE ME HAS PREGUNTADO ---
+                model_ia = genai.GenerativeModel('gemini-flash-latest')
+    
+                # Leer historial del Excel
+                df_chat = leer_chat_global()
+    
+                # Mostrar historial a todo el mundo
+                for _, fila in df_chat.iterrows():
+                    role = "assistant" if fila["Usuario"] == "ChatG-O-L" else "user"
+                    with st.chat_message(role):
+                        st.markdown(f"**{fila['Usuario']}**: {fila['Mensaje']}")
+    
+                # Entrada de nuevo mensaje
+                if prompt_user := st.chat_input("Suelta tu bilis aquí..."):
+                    # A. Guardar mensaje del USUARIO en Excel
+                    guardar_mensaje_global(st.session_state.usuario, prompt_user)
+                    
+                    # B. Generar respuesta de la IA
                     with st.chat_message("assistant"):
-                        try:
-                            with st.spinner("ChatG-O-L está analizando vuestras miserias..."):
-                                # Generamos el "chivatazo" (Contexto) con solo 5 logs para no saturar
-                                contexto_fresco = preparar_contexto_ia(df_hero, df_logs_all.head(5))
+                        with st.spinner("ChatG-O-L está dictando sentencia pública..."):
+                            try:
+                                # Contexto fresco (puntos y VAR)
+                                contexto = preparar_contexto_ia(df_hero, df_logs_all.head(5))
                                 
-                                # Llamada real a la IA
-                                respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta del usuario: {prompt_user}")
-                                texto_final = respuesta_ia.text
+                                # Pedimos a la IA que sea breve para el chat global
+                                prompt_ia = f"{contexto}\n\nOJO: Estás en un CHAT GLOBAL. Sé breve y humilla al usuario '{st.session_state.usuario}' delante de todos.\nPregunta: {prompt_user}"
                                 
-                                # Mostrar y guardar la respuesta
-                                st.markdown(texto_final)
-                                st.session_state.messages_ia.append({"role": "assistant", "content": texto_final})
-                        
-                        except Exception as e:
-                            if "429" in str(e):
-                                st.error("🚨 ¡Saturación! Google nos ha cortado el grifo un minuto. Respira y vuelve a intentarlo.")
-                            else:
-                                st.error(f"⚠️ Error de Gemini: {e}")
-                    # --- FIN DEL TROZO ---
-
+                                respuesta_ia = model_ia.generate_content(prompt_ia)
+                                texto_ia = respuesta_ia.text
+                                
+                                # C. Guardar respuesta de la IA en Excel
+                                guardar_mensaje_global("ChatG-O-L", texto_ia)
+                                
+                                # Forzar recarga para que aparezca el mensaje recién guardado
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"Error de cuota/IA: {e}")
+    
             except Exception as e:
-                st.error(f"❌ Error crítico al inicializar: {e}")
+                st.error(f"Error crítico: {e}")
 
     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
