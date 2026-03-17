@@ -879,7 +879,7 @@ else:
                 api_key_ia = st.secrets["GEMINI_API_KEY"]
                 genai.configure(api_key=api_key_ia)
                 # Prueba con este nombre que es el estándar más compatible
-                model_ia = genai.GenerativeModel('models/gemini-1.5-flash')
+                model_ia = genai.GenerativeModel('gemini-1.5-flash')
     
                 # Inicializar historial de chat si no existe
                 if "messages_ia" not in st.session_state:
