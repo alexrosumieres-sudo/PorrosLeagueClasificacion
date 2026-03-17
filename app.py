@@ -879,44 +879,44 @@ else:
                 api_key_ia = st.secrets["GEMINI_API_KEY"]
                 genai.configure(api_key=api_key_ia)
                 try:
-            # 1. Usamos el modelo 1.5 Flash (suele tener más margen)
-            # Probamos con el nombre estándar que Google recomienda para evitar el 404
-            model_ia = genai.GenerativeModel('gemini-1.5-flash') 
-
-            if "messages_ia" not in st.session_state:
-                st.session_state.messages_ia = [{"role": "assistant", "content": "¡Ya estoy aquí! ChatG-O-L al aparato. ¿A quién vamos a humillar hoy?"}]
-
-            # Mostrar historial
-            for message in st.session_state.messages_ia:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            if prompt_user := st.chat_input("Pregunta algo..."):
-                st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
-                with st.chat_message("user"):
-                    st.markdown(prompt_user)
-
-                with st.chat_message("assistant"):
-                    # 2. Usamos un bloque de control para el límite de velocidad
-                    try:
-                        # Reducimos el contexto (enviamos solo los últimos 5 logs en lugar de 8)
-                        # Esto ahorra 'tokens' y evita el error 429
-                        contexto_fresco = preparar_contexto_ia(df_hero, df_logs_all.head(5))
-                        
-                        respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
-                        texto_respuesta = respuesta_ia.text
-                        
-                        st.markdown(texto_respuesta)
-                        st.session_state.messages_ia.append({"role": "assistant", "content": texto_respuesta})
-                    
-                    except Exception as e:
-                        if "429" in str(e):
-                            st.error("🚨 ¡Saturación! ChatG-O-L está agotado de tanto rajar. Espera 60 segundos y vuelve a intentarlo.")
-                        else:
-                            st.error(f"Error: {e}")
-
-        except Exception as e:
-            st.error(f"Error crítico: {e}")
+                    # 1. Usamos el modelo 1.5 Flash (suele tener más margen)
+                    # Probamos con el nombre estándar que Google recomienda para evitar el 404
+                    model_ia = genai.GenerativeModel('gemini-1.5-flash') 
+        
+                    if "messages_ia" not in st.session_state:
+                        st.session_state.messages_ia = [{"role": "assistant", "content": "¡Ya estoy aquí! ChatG-O-L al aparato. ¿A quién vamos a humillar hoy?"}]
+        
+                    # Mostrar historial
+                    for message in st.session_state.messages_ia:
+                        with st.chat_message(message["role"]):
+                            st.markdown(message["content"])
+        
+                    if prompt_user := st.chat_input("Pregunta algo..."):
+                        st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
+                        with st.chat_message("user"):
+                            st.markdown(prompt_user)
+        
+                        with st.chat_message("assistant"):
+                            # 2. Usamos un bloque de control para el límite de velocidad
+                            try:
+                                # Reducimos el contexto (enviamos solo los últimos 5 logs en lugar de 8)
+                                # Esto ahorra 'tokens' y evita el error 429
+                                contexto_fresco = preparar_contexto_ia(df_hero, df_logs_all.head(5))
+                                
+                                respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
+                                texto_respuesta = respuesta_ia.text
+                                
+                                st.markdown(texto_respuesta)
+                                st.session_state.messages_ia.append({"role": "assistant", "content": texto_respuesta})
+                            
+                            except Exception as e:
+                                if "429" in str(e):
+                                    st.error("🚨 ¡Saturación! ChatG-O-L está agotado de tanto rajar. Espera 60 segundos y vuelve a intentarlo.")
+                                else:
+                                    st.error(f"Error: {e}")
+        
+                except Exception as e:
+                    st.error(f"Error crítico: {e}")
     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
