@@ -415,7 +415,8 @@ if not st.session_state.autenticado:
 else:
     # 1. CARGA DE DATOS
     df_perf = leer_datos("ImagenesPerfil")
-    df_r_all, df_p_all, df_u_all, df_base = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase")
+    # Cargamos también los logs para que ChatG-O-L los vea
+    df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase"), leer_datos("Logs")
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
@@ -902,7 +903,8 @@ else:
                         with st.spinner("ChatG-O-L está afilando la lengua..."):
                             try:
                                 # Generamos el contexto fresco con los datos actuales
-                                contexto_fresco = preparar_contexto_ia(df_hero, df_logs)
+                                # Usamos df_logs_all que es la que acabamos de definir arriba
+                                contexto_fresco = preparar_contexto_ia(df_hero, df_logs_all)
                                 
                                 # Llamada a la IA
                                 respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
