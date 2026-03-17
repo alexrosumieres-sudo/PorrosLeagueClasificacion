@@ -4,3 +4,4 @@ plotly
 st-gsheets-connection
 pytz
 google-generativeai
+streamlit-gsheets
