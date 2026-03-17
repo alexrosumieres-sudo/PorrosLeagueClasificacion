@@ -878,50 +878,45 @@ else:
                 # Configuración de la IA
                 api_key_ia = st.secrets["GEMINI_API_KEY"]
                 genai.configure(api_key=api_key_ia)
-                modelos_disponibles = [m.name for m in genai.list_models()]
-                st.write(f"DEBUG: Modelos que ve tu API: {modelos_disponibles}")
-                # Prueba con este nombre que es el estándar más compatible
-                model_ia = genai.GenerativeModel('gemini-2.0-flash')
-    
-                # Inicializar historial de chat si no existe
-                if "messages_ia" not in st.session_state:
-                    st.session_state.messages_ia = [
-                        {"role": "assistant", "content": "¡Ya estoy aquí! Soy ChatG-O-L. ¿Quién de vosotros va a ser el primero en recibir un repaso?"}
-                    ]
-    
-                # Mostrar mensajes del historial
-                for message in st.session_state.messages_ia:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
-    
-                # Entrada del chat
-                if prompt_user := st.chat_input("Dime algo, tibio..."):
-                    # 1. Añadir mensaje del usuario al historial y mostrarlo
-                    st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
-                    with st.chat_message("user"):
-                        st.markdown(prompt_user)
-    
-                    # 2. Generar respuesta de la IA
-                    with st.chat_message("assistant"):
-                        with st.spinner("ChatG-O-L está afilando la lengua..."):
-                            try:
-                                # Generamos el contexto fresco con los datos actuales
-                                # Usamos df_logs_all que es la que acabamos de definir arriba
-                                contexto_fresco = preparar_contexto_ia(df_hero, df_logs_all)
-                                
-                                # Llamada a la IA
-                                respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
-                                texto_respuesta = respuesta_ia.text
-                                
-                                st.markdown(texto_respuesta)
-                                st.session_state.messages_ia.append({"role": "assistant", "content": texto_respuesta})
-                            
-                            except Exception as error_ia:
-                                st.error(f"⚠️ Error de Gemini: {error_ia}")
-                                st.info("Esto suele pasar si la API Key es inválida o si Google ha bloqueado la respuesta por seguridad.")
-    
-            except Exception as e:
-                st.error(f"❌ Error crítico al inicializar ChatG-O-L: {e}")
+                try:
+            # 1. Usamos el modelo 1.5 Flash (suele tener más margen)
+            # Probamos con el nombre estándar que Google recomienda para evitar el 404
+            model_ia = genai.GenerativeModel('gemini-1.5-flash') 
+
+            if "messages_ia" not in st.session_state:
+                st.session_state.messages_ia = [{"role": "assistant", "content": "¡Ya estoy aquí! ChatG-O-L al aparato. ¿A quién vamos a humillar hoy?"}]
+
+            # Mostrar historial
+            for message in st.session_state.messages_ia:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            if prompt_user := st.chat_input("Pregunta algo..."):
+                st.session_state.messages_ia.append({"role": "user", "content": prompt_user})
+                with st.chat_message("user"):
+                    st.markdown(prompt_user)
+
+                with st.chat_message("assistant"):
+                    # 2. Usamos un bloque de control para el límite de velocidad
+                    try:
+                        # Reducimos el contexto (enviamos solo los últimos 5 logs en lugar de 8)
+                        # Esto ahorra 'tokens' y evita el error 429
+                        contexto_fresco = preparar_contexto_ia(df_hero, df_logs_all.head(5))
+                        
+                        respuesta_ia = model_ia.generate_content(f"{contexto_fresco}\n\nPregunta: {prompt_user}")
+                        texto_respuesta = respuesta_ia.text
+                        
+                        st.markdown(texto_respuesta)
+                        st.session_state.messages_ia.append({"role": "assistant", "content": texto_respuesta})
+                    
+                    except Exception as e:
+                        if "429" in str(e):
+                            st.error("🚨 ¡Saturación! ChatG-O-L está agotado de tanto rajar. Espera 60 segundos y vuelve a intentarlo.")
+                        else:
+                            st.error(f"Error: {e}")
+
+        except Exception as e:
+            st.error(f"Error crítico: {e}")
     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
