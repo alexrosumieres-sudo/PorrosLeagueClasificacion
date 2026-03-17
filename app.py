@@ -1288,16 +1288,21 @@ else:
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
     
     
-    with tabs[8]: # --- PESTAÑA ADMIN COMPLETA ---
+    with tabs[8]: # --- PESTAÑA ADMIN ACTUALIZADA ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
             
-            # Sub-pestañas para organizar el trabajo
-            t_bases, t_fotos, t_resultados = st.tabs(["⭐ Puntos Base", "📸 Fotos de Perfil", "⚽ Resultados y Horarios"])
+            # --- SUB-PESTAÑAS ORGANIZADAS ---
+            t_bases, t_ajustes, t_fotos, t_resultados = st.tabs([
+                "⭐ Puntos Base", 
+                "⚖️ Ajustes Manuales",
+                "📸 Fotos de Perfil", 
+                "⚽ Resultados y Horarios"
+            ])
 
             with t_bases:
                 st.subheader("Configurar Puntos Iniciales")
-                st.info("Usa esto para dar ventaja a nuevos jugadores o corregir errores manuales.")
+                st.info("Usa esto para definir la base fija de cada jugador.")
                 upd_b = []
                 for u in u_jugadores:
                     pb_row = df_base[df_base['Usuario'] == u]
@@ -1311,12 +1316,57 @@ else:
                 if st.button("💾 Guardar Todos los Puntos Base", use_container_width=True):
                     conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
                     st.cache_data.clear()
-                    st.cache_resource.clear()
-                    
                     st.success("✅ Puntos base actualizados.")
                     time.sleep(1)
                     st.rerun()
+
+            with t_ajustes:
+                st.subheader("⚖️ Sanciones y Bonificaciones")
+                st.markdown("Añade o resta puntos directamente al total y deja constancia en el VAR.")
+                
+                with st.form("form_ajuste"):
+                    c1, c2 = st.columns(2)
+                    u_target = c1.selectbox("Jugador a ajustar:", u_jugadores)
+                    pts_ajuste = c2.number_input("Puntos (+/-):", value=0.0, step=0.25, help="Usa valores negativos para sanciones.")
+                    concepto = st.text_input("Concepto del ajuste:", placeholder="Ej: Sanción por no pagar la cuota / Bonus por acertar el Pichichi")
                     
+                    submit_ajuste = st.form_submit_button("⚖️ Aplicar Ajuste y Notificar al VAR", use_container_width=True)
+
+                if submit_ajuste:
+                    if concepto.strip() == "":
+                        st.error("❌ Debes indicar un concepto para el ajuste.")
+                    elif pts_ajuste == 0:
+                        st.warning("⚠️ El ajuste es 0, no se han realizado cambios.")
+                    else:
+                        # 1. Actualizar PuntosBase (Sumar al valor actual)
+                        df_base_copy = df_base.copy()
+                        if u_target in df_base_copy['Usuario'].values:
+                            df_base_copy.loc[df_base_copy['Usuario'] == u_target, 'Puntos'] += pts_ajuste
+                        else:
+                            nueva_fila = pd.DataFrame([{"Usuario": u_target, "Puntos": pts_ajuste}])
+                            df_base_copy = pd.concat([df_base_copy, nueva_fila], ignore_index=True)
+                        
+                        conn.update(worksheet="PuntosBase", data=df_base_copy)
+
+                        # 2. Registrar en el VAR (Logs)
+                        ahora_madrid = get_now_madrid()
+                        simbolo = "+" if pts_ajuste > 0 else ""
+                        txt_log = f"⚖️ AJUSTE: {simbolo}{pts_ajuste} pts a {u_target}. Motivo: {concepto}"
+                        
+                        nuevo_log = pd.DataFrame([{
+                            "Fecha": ahora_madrid.strftime("%Y-%m-%d %H:%M:%S"),
+                            "Usuario": "🛡️ ADMIN",
+                            "Accion": txt_log
+                        }])
+                        
+                        df_logs_actual = leer_datos("Logs")
+                        conn.update(worksheet="Logs", data=pd.concat([df_logs_actual, nuevo_log], ignore_index=True))
+
+                        st.cache_data.clear()
+                        st.success(f"✅ Ajuste aplicado con éxito: {txt_log}")
+                        time.sleep(1.5)
+                        st.rerun()
+
             with t_fotos:
                 st.subheader("Asignar Imágenes a Usuarios")
                 if os.path.exists(PERFILES_DIR):
@@ -1345,10 +1395,7 @@ else:
 
             with t_resultados:
                 st.subheader(f"Gestión de la {j_global}")
-                st.write("Configura el tipo de partido, la fecha/hora de bloqueo y los resultados.")
-                
                 r_env = []
-                # Uso de datetime.time explícito para evitar conflictos de nombres
                 h_ops = [datetime.time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
                 
                 for i, (loc, vis) in enumerate(JORNADAS[j_global]):
@@ -1368,7 +1415,6 @@ else:
                             hora_v = dt_obj.strftime("%H:%M")
                         except: pass
 
-                    st.markdown(f"---")
                     st.markdown(f"**⚽ {m_id}**")
                     c1, c2, c3, c4, c5, c6 = st.columns([1.2, 1.2, 1, 0.7, 0.7, 0.6])
                     
@@ -1388,7 +1434,6 @@ else:
                 st.divider()
                 if st.button("🏟️ GUARDAR RESULTADOS JORNADA", use_container_width=True):
                     ahora_fresca = get_now_madrid()
-                    # --- 1. LOGS DEL VAR ---
                     logs_adm = []
                     for r in r_env:
                         match_previo = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r['Partido'])]
@@ -1408,56 +1453,57 @@ else:
                         df_l_existente = leer_datos("Logs")
                         conn.update(worksheet="Logs", data=pd.concat([df_l_existente, pd.DataFrame(logs_adm)], ignore_index=True))
 
-                    # --- 2. GUARDAR RESULTADOS ---
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     df_resultados_new = pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)
                     conn.update(worksheet="Resultados", data=df_resultados_new)
                     
-                    # --- 3. ACTUALIZAR HISTÓRICO ORÁCULO (FIX 0% Y HORA) ---
-                    if usa_oraculo:
-                        probs_ahora = simular_oraculo(u_jugadores, df_p_all, df_resultados_new, j_global)
-                        if probs_ahora:
-                            ahora_str = ahora_fresca.strftime("%H:%M:%S")
-                            # QUITAMOS EL FILTRO 'if p > 0' para que la gráfica baje a cero y no desaparezca
-                            df_hist_nuevo = pd.DataFrame([
-                                {"Jornada": j_global, "Fecha": ahora_str, "Usuario": u, "Probabilidad": round(float(p), 1)}
-                                for u, p in probs_ahora.items()
-                            ])
-                            # Leemos historial fresco para evitar sobrescribir
-                            df_h_existente = conn.read(worksheet="HistoricoOraculo", ttl=0)
-                            conn.update(worksheet="HistoricoOraculo", data=pd.concat([df_h_existente, df_hist_nuevo], ignore_index=True))
-
                     st.cache_data.clear()
-                    st.success(f"✅ Datos de la {j_global} guardados (Hora Madrid: {ahora_fresca.strftime('%H:%M')})")
+                    st.success(f"✅ Datos guardados.")
                     st.rerun()
         else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
-
-    with tabs[9]: # --- PESTAÑA VAR ---
+    with tabs[9]: # --- PESTAÑA VAR MEJORADA ---
         st.header("🏁 El VAR de la Porra")
         st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczF4bGVvbmQ3eTVuam44dzExbXl4MDU5cmVsY24zMGdyb2dvNnpjdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4DdzRe7wJP0aPI1Pa/giphy.gif", width=300)
         st.caption("Transparencia total: aquí se registra cada movimiento clave de la liga.")
         
         df_logs = conn.read(worksheet="Logs", ttl=0)
         if not df_logs.empty:
-            # Ordenamos para que lo más nuevo salga arriba
             df_logs["Fecha"] = pd.to_datetime(df_logs["Fecha"])
             df_logs = df_logs.sort_values("Fecha", ascending=False)
             
-            for _, fila in df_logs.head(30).iterrows():
-                # Estilo diferente si es el Admin o un Usuario
+            for _, fila in df_logs.head(40).iterrows():
                 es_admin_log = "ADMIN" in str(fila['Usuario'])
+                accion_txt = str(fila['Accion'])
+                
+                # --- Lógica de Iconos Dinámicos ---
+                icon = "📝" # Por defecto (predicciones)
+                if "⚖️ AJUSTE" in accion_txt: icon = "⚖️"
+                if "⚽ OFICIAL" in accion_txt: icon = "🏟️"
+                if "🔄 Modificó" in accion_txt: icon = "🔄"
                 
                 with st.container():
-                    c_time, c_user, c_act = st.columns([1, 1, 3])
-                    c_time.caption(f"🕒 {fila['Fecha']}")
-                    c_user.markdown(f"**{fila['Usuario']}**")
+                    c_time, c_user, c_act = st.columns([1.2, 1, 3])
                     
+                    # Formatear fecha para que sea más legible
+                    fecha_fmt = fila['Fecha'].strftime("%d/%m %H:%M")
+                    c_time.caption(f"🕒 {fecha_fmt}")
+                    
+                    # Color del nombre de usuario
+                    user_display = f"**{fila['Usuario']}**"
+                    c_user.markdown(user_display)
+                    
+                    # Estilo del mensaje
                     if es_admin_log:
-                        c_act.info(fila['Accion'])
+                        # Si es un ajuste manual, le damos un toque distinto
+                        if "⚖️" in icon:
+                            c_act.warning(f"{icon} {accion_txt.replace('⚖️ AJUSTE:', '')}")
+                        else:
+                            c_act.info(f"{icon} {accion_txt}")
                     else:
-                        c_act.write(fila['Accion'])
+                        c_act.write(f"{icon} {accion_txt}")
+                    
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
