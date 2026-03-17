@@ -1338,17 +1338,29 @@ else:
                     elif pts_ajuste == 0:
                         st.warning("⚠️ El ajuste es 0, no se han realizado cambios.")
                     else:
-                        # 1. Actualizar PuntosBase (Sumar al valor actual)
+                        # 1. Copiamos y ASEGURAMOS que la columna sea numérica
                         df_base_copy = df_base.copy()
+                        
+                        # Limpiamos la columna de puntos: pasamos a string, cambiamos coma por punto y convertimos a número
+                        df_base_copy['Puntos'] = pd.to_numeric(
+                            df_base_copy['Puntos'].astype(str).str.replace(',', '.'), 
+                            errors='coerce'
+                        ).fillna(0.0)
+
+                        # 2. Aplicamos el ajuste
                         if u_target in df_base_copy['Usuario'].values:
-                            df_base_copy.loc[df_base_copy['Usuario'] == u_target, 'Puntos'] += pts_ajuste
+                            # Filtramos la fila y sumamos
+                            idx = df_base_copy[df_base_copy['Usuario'] == u_target].index
+                            df_base_copy.loc[idx, 'Puntos'] += float(pts_ajuste)
                         else:
-                            nueva_fila = pd.DataFrame([{"Usuario": u_target, "Puntos": pts_ajuste}])
+                            # Si el usuario no estaba en PuntosBase, lo creamos
+                            nueva_fila = pd.DataFrame([{"Usuario": u_target, "Puntos": float(pts_ajuste)}])
                             df_base_copy = pd.concat([df_base_copy, nueva_fila], ignore_index=True)
                         
+                        # 3. Subimos a GSheets
                         conn.update(worksheet="PuntosBase", data=df_base_copy)
 
-                        # 2. Registrar en el VAR (Logs)
+                        # 4. Registrar en el VAR (Logs)
                         ahora_madrid = get_now_madrid()
                         simbolo = "+" if pts_ajuste > 0 else ""
                         txt_log = f"⚖️ AJUSTE: {simbolo}{pts_ajuste} pts a {u_target}. Motivo: {concepto}"
@@ -1359,6 +1371,7 @@ else:
                             "Accion": txt_log
                         }])
                         
+                        # Leer logs frescos para no borrar lo anterior
                         df_logs_actual = leer_datos("Logs")
                         conn.update(worksheet="Logs", data=pd.concat([df_logs_actual, nuevo_log], ignore_index=True))
 
