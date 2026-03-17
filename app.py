@@ -878,6 +878,8 @@ else:
                 # Configuración de la IA
                 api_key_ia = st.secrets["GEMINI_API_KEY"]
                 genai.configure(api_key=api_key_ia)
+                modelos_disponibles = [m.name for m in genai.list_models()]
+                st.write(f"DEBUG: Modelos que ve tu API: {modelos_disponibles}")
                 # Prueba con este nombre que es el estándar más compatible
                 model_ia = genai.GenerativeModel('gemini-1.5-flash')
     
