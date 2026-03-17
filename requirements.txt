@@ -3,4 +3,4 @@ pandas
 plotly
 st-gsheets-connection
 pytz
-google-generativeai>=0.7.2
+google-generativeai>=0.8.3
