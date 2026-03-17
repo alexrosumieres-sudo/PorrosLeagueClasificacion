@@ -881,7 +881,7 @@ else:
                 modelos_disponibles = [m.name for m in genai.list_models()]
                 st.write(f"DEBUG: Modelos que ve tu API: {modelos_disponibles}")
                 # Prueba con este nombre que es el estándar más compatible
-                model_ia = genai.GenerativeModel('gemini-1.5-flash')
+                model_ia = genai.GenerativeModel('gemini-2.0-flash')
     
                 # Inicializar historial de chat si no existe
                 if "messages_ia" not in st.session_state:
