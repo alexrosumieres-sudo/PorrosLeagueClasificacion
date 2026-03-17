@@ -9,6 +9,7 @@ import itertools
 import numpy as np
 import time
 import pytz
+import google.generativeai as genai
 
 # --- 1. CONFIGURACIONES GENERALES ---
 PERFILES_DIR = "perfiles/"
@@ -279,6 +280,43 @@ def leer_datos(pestaña):
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
         return pd.read_csv(url)
     except: return pd.DataFrame()
+
+def preparar_contexto_ia(df_hero, df_logs):
+    # Resumen de la clasificación
+    top_3 = df_hero.head(3)
+    ultimo = df_hero.iloc[-1]
+    
+    resumen_clasificacion = "CLASIFICACIÓN ACTUAL:\n"
+    for _, fila in df_hero.iterrows():
+        resumen_clasificacion += f"- {fila['Usuario']}: {fila['Puntos']} pts (Puesto {fila['Posicion']})\n"
+    
+    # Resumen del VAR (últimos 5 movimientos)
+    ultimos_logs = df_logs.head(5)
+    resumen_var = "ÚLTIMOS EVENTOS DEL VAR:\n"
+    for _, log in ultimos_logs.iterrows():
+        resumen_var += f"- {log['Usuario']} hizo: {log['Accion']}\n"
+
+    # El "Prompt" Maestro
+    contexto = f"""
+    Eres 'ChatG-O-L', la IA oficial y más 'faltosa' de la Porros League 2026.
+    Tu personalidad: Eres un híbrido entre un analista de datos de la NASA y un ultra del fútbol de los 90.
+    Sarcástico, ácido, fanático del fútbol, un poco 'cuñao' y usas el sarcasmo de 'La Sotana', odias a los 'tibios' y no perdonas un fallo..
+    
+    {resumen_clasificacion}
+    
+    {resumen_var}
+    
+    Instrucciones: 
+    1. Preséntate siempre como ChatG-O-L si te preguntan quién eres.
+    2. Si alguien te pregunta por tácticas, responde que 'lo importante es que corran y sientan los colores'.
+    3. Si el líder pregunta, dile que tiene una flor en el culo.
+    4. Si el 'Lagarto' (último) pregunta, dile que se dedique al ganchillo.
+    5. Si alguien va último, búrlate de su falta de visión futbolística.
+    6. Si el Admin ha sancionado a alguien, apoya la dictadura del Admin.
+    7. Habla de los usuarios por sus nombres.
+    8. Usa expresiones como 'vender humo', 'pechofrío', 'manta' o 'robo histórico'.
+    """
+    return contexto
 
 def safe_float(valor):
     try:
@@ -564,7 +602,7 @@ else:
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     # Busca esta línea y añade "📜 VAR" al final
-    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏅 Palmarés", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
+    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "🤖IA", "📊 Clasificación", "🏅 Palmarés", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
 
     with tabs[0]: # --- ✍️ PESTAÑA APUESTAS (REDISEÑO TOTAL) ---
         # 1. CSS EXCLUSIVO PARA LAS TARJETAS DE APUESTAS
@@ -826,8 +864,49 @@ else:
             for u in p_futuras['Usuario'].unique():
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
+    with tabs[2]: # La nueva pestaña de IA
+        st.header("🤖 El Oráculo Sotanero")
+        st.caption("Pregúntale lo que quieras sobre la liga, pide consejos o deja que insulte a tus rivales.")
+
+        # Configurar la API (Coge la clave de los secretos de Streamlit)
+        # Para pruebas locales puedes poner genai.configure(api_key="TU_CLAVE_AQUI")
+        try:
+            api_key = st.secrets["GEMINI_API_KEY"]
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+
+            # Inicializar historial de chat
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            # Mostrar mensajes antiguos
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+            # Entrada del usuario
+            if prompt := st.chat_input("¿Quién es el más manta del grupo?"):
+                # 1. Mostrar mensaje del usuario
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+
+                # 2. Generar respuesta con contexto fresco
+                with st.chat_message("assistant"):
+                    with st.spinner("El Oráculo está consultando los astros (y el VAR)..."):
+                        # AQUÍ ESTÁ EL TRUCO: Le pasamos los datos actualizados
+                        contexto_fresco = preparar_contexto_ia(df_hero, df_logs)
+                        full_prompt = f"{contexto_fresco}\n\nPregunta del usuario: {prompt}"
+                        
+                        response = model.generate_content(full_prompt)
+                        st.markdown(response.text)
+                
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+        
+        except Exception as e:
+            st.error("Configura la clave 'GEMINI_API_KEY' en los Secrets de Streamlit para hablar con el Oráculo.")
     
-    with tabs[2]: # --- 📊 CLASIFICACIÓN PREMIUM ---
+    with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
         pts_l = []
         
@@ -916,7 +995,7 @@ else:
 
             st.markdown('</div>', unsafe_allow_html=True)
 
-    with tabs[3]: # --- 🏅 PALMARÉS (GLORIA, PODER Y HUMILLACIÓN) ---
+    with tabs[4]: # --- 🏅 PALMARÉS (GLORIA, PODER Y HUMILLACIÓN) ---
         st.header("🏅 El Palmarés de la Porra")
         
         # --- 1. DATOS HISTÓRICOS J1-J24 (Líderes extraídos de tu imagen) ---
@@ -1065,7 +1144,7 @@ else:
         
         st.table(pd.DataFrame(cronologia))
     
-    with tabs[4]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
+    with tabs[5]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
         # Creamos las sub-pestañas dentro de Stats PRO
         sub_tabs = st.tabs(["👤 Análisis Individual", "🔥 Power Ranking (L3J)", "📉 Evolución de Puesto"])
 
@@ -1254,7 +1333,7 @@ else:
                 st.info("Esperando a que termine la Jornada 25 para mostrar la carnicería...")
 
     
-    with tabs[5]: # DETALLES
+    with tabs[6]: # DETALLES
         df_rf = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
         if not df_rf.empty:
             m_p = pd.DataFrame(index=df_rf['Partido'].unique(), columns=u_jugadores)
@@ -1266,7 +1345,7 @@ else:
             st.dataframe(m_p.astype(float), use_container_width=True)
         else: st.info("Sin partidos finalizados.")
 
-    with tabs[6]: # SIMULADOR
+    with tabs[7]: # SIMULADOR
         usr_sim = st.selectbox("Simular LaLiga según apuestas de:", u_jugadores)
         if st.button("Generar Clasificación Simulada"):
             sim = {k: v.copy() for k, v in STATS_LALIGA_BASE.items()}
@@ -1281,7 +1360,7 @@ else:
                 except: continue
             st.dataframe(pd.DataFrame.from_dict(sim, orient='index').sort_values("Pts", ascending=False), use_container_width=True)
 
-    with tabs[7]: # --- 🎲 ORÁCULO ---
+    with tabs[8]: # --- 🎲 ORÁCULO ---
         if usa_oraculo:
             with st.spinner("🔮 El Oráculo está analizando el futuro..."):
                 st.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmNrNjVlaW0xZzM0MWxubDQyZGhla3V4eXVnMHU5eHcwN3NxamRtMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Jap1tdjahS0rm/giphy.gif", width=300)
@@ -1384,7 +1463,7 @@ else:
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
     
     
-    with tabs[8]: # --- PESTAÑA ADMIN ACTUALIZADA ---
+    with tabs[9]: # --- PESTAÑA ADMIN ACTUALIZADA ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
             
@@ -1572,7 +1651,7 @@ else:
         else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
-    with tabs[9]: # --- PESTAÑA VAR MEJORADA ---
+    with tabs[10]: # --- PESTAÑA VAR MEJORADA ---
         st.header("🏁 El VAR de la Porra")
         st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczF4bGVvbmQ3eTVuam44dzExbXl4MDU5cmVsY24zMGdyb2dvNnpjdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4DdzRe7wJP0aPI1Pa/giphy.gif", width=300)
         st.caption("Transparencia total: aquí se registra cada movimiento clave de la liga.")
@@ -1616,6 +1695,8 @@ else:
                     st.divider()
         else:
             st.info("El historial está vacío. ¡Que empiece el juego!")
+
+
 
 
 
