@@ -896,28 +896,39 @@ else:
                 model_ia = genai.GenerativeModel('gemini-flash-latest')
     
                 # Leer historial del Excel
+                # --- LÓGICA DEL CHAT GLOBAL ---
                 df_chat = leer_chat_global()
     
-                # Mostrar historial a todo el mundo
+                # Mostrar historial
                 for _, fila in df_chat.iterrows():
                     role = "assistant" if fila["Usuario"] == "ChatG-O-L" else "user"
                     with st.chat_message(role):
                         st.markdown(f"**{fila['Usuario']}**: {fila['Mensaje']}")
     
                 # Entrada de nuevo mensaje
-                if prompt_user := st.chat_input("Suelta tu bilis aquí..."):
+                if prompt_user := st.chat_input("Escribe tu perla aquí..."):
+                    # USAMOS TU VARIABLE: st.session_state.user
+                    nombre_real = st.session_state.get("user", "Infiltrado")
+                    
                     # A. Guardar mensaje del USUARIO en Excel
-                    guardar_mensaje_global(st.session_state.usuario, prompt_user)
+                    guardar_mensaje_global(nombre_real, prompt_user)
                     
                     # B. Generar respuesta de la IA
                     with st.chat_message("assistant"):
-                        with st.spinner("ChatG-O-L está dictando sentencia pública..."):
+                        with st.spinner("ChatG-O-L está afilando los colmillos..."):
                             try:
-                                # Contexto fresco (puntos y VAR)
                                 contexto = preparar_contexto_ia(df_hero, df_logs_all.head(5))
                                 
-                                # Pedimos a la IA que sea breve para el chat global
-                                prompt_ia = f"{contexto}\n\nOJO: Estás en un CHAT GLOBAL. Sé breve y humilla al usuario '{st.session_state.usuario}' delante de todos.\nPregunta: {prompt_user}"
+                                # Le pasamos el nombre real para que el zasca sea personalizado
+                                prompt_ia = f"""
+                                {contexto}
+                                USUARIO ACTUAL: {nombre_real}. 
+                                INSTRUCCIÓN: Estás en un chat público. Responde a su mensaje humillándole 
+                                un poco si va mal en la liga o alabando su suerte si va bien. 
+                                Sé breve.
+                                
+                                PREGUNTA DE {nombre_real}: {prompt_user}
+                                """
                                 
                                 respuesta_ia = model_ia.generate_content(prompt_ia)
                                 texto_ia = respuesta_ia.text
@@ -925,14 +936,11 @@ else:
                                 # C. Guardar respuesta de la IA en Excel
                                 guardar_mensaje_global("ChatG-O-L", texto_ia)
                                 
-                                # Forzar recarga para que aparezca el mensaje recién guardado
+                                # Recargamos para que todos vean la "magia"
                                 st.rerun()
                                 
                             except Exception as e:
-                                st.error(f"Error de cuota/IA: {e}")
-    
-            except Exception as e:
-                st.error(f"Error crítico: {e}")
+                                st.error(f"Error de cuota: Espera un momento, la IA está saturada. {e}")
 
     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
