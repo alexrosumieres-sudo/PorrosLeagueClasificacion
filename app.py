@@ -1067,7 +1067,7 @@ else:
     
     with tabs[4]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
         # Creamos las sub-pestañas dentro de Stats PRO
-        sub_tabs = st.tabs(["👤 Análisis Individual", "🔥 Power Ranking (L3J)"])
+        sub_tabs = st.tabs(["👤 Análisis Individual", "🔥 Power Ranking (L3J)", "📉 Evolución de Puesto"])
 
         with sub_tabs[0]: # --- SUB-PESTAÑA 1: LO QUE YA TENÍAS ---
             u_sel = st.selectbox("Analizar:", u_jugadores, key="sb_stats_pro")
@@ -1169,6 +1169,76 @@ else:
                     m_p.at[p, u] = calcular_puntos(up.iloc[0]['P_L'], up.iloc[0]['P_V'], inf['R_L'], inf['R_V'], inf['Tipo']) if not up.empty else 0.0
             st.dataframe(m_p.astype(float), use_container_width=True)
         else: st.info("Sin partidos finalizados.")
+
+        with sub_tabs[2]: # --- NUEVA SUB-PESTAÑA: EVOLUCIÓN ---
+            st.subheader("📉 Carrera por el Trono")
+            st.caption("Evolución de la posición en la tabla general jornada tras jornada.")
+
+            # 1. Preparar datos históricos (J1 a J24 + las nuevas del Excel)
+            # Como los datos J1-J24 no están en tu Excel de resultados, 
+            # vamos a usar un diccionario de "Puntos por Jornada" históricos aproximados 
+            # o centrarnos en las jornadas que tenemos datos reales.
+            
+            # Para hacerlo bien, calculamos la evolución basada en TODO lo que hay en Predicciones/Resultados
+            todas_j = [f"Jornada {i}" for i in range(25, 39)] # Las jornadas del simulador
+            
+            # Lista para guardar la historia
+            historia_puestos = []
+
+            # Puntos iniciales (Base)
+            puntos_acum = {u: safe_float(df_base[df_base['Usuario'] == u]['Puntos'].values[0]) if not df_base[df_base['Usuario'] == u].empty else 0.0 for u in u_jugadores}
+
+            # Añadir punto de partida (J24 o Inicio)
+            for u, p in puntos_acum.items():
+                historia_puestos.append({"Jornada": "J24", "Usuario": u, "Puntos": p})
+
+            # Recorrer jornadas para ver evolución
+            j_finalizadas = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()
+            
+            for j in j_finalizadas:
+                res_j = df_r_all[(df_r_all['Jornada'] == j) & (df_r_all['Finalizado'] == "SI")]
+                for u in u_jugadores:
+                    u_p_j = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j)]
+                    pts_ganados = sum(calcular_puntos(r.P_L, r.P_V, res_j[res_j['Partido']==r.Partido].iloc[0]['R_L'], res_j[res_j['Partido']==r.Partido].iloc[0]['R_V'], res_j[res_j['Partido']==r.Partido].iloc[0]['Tipo']) for r in u_p_j.itertuples() if not res_j[res_j['Partido']==r.Partido].empty)
+                    puntos_acum[u] += pts_ganados
+                    historia_puestos.append({"Jornada": j, "Usuario": u, "Puntos": puntos_acum[u]})
+
+            if historia_puestos:
+                df_evol = pd.DataFrame(historia_puestos)
+                
+                # 2. Calcular el Ranking en cada jornada
+                # Esto transforma los puntos en "Puesto 1, 2, 3..."
+                df_evol['Puesto'] = df_evol.groupby('Jornada')['Puntos'].rank(ascending=False, method='min')
+
+                # 3. Crear el Gráfico con Plotly
+                fig_evol = px.line(
+                    df_evol, 
+                    x="Jornada", 
+                    y="Puesto", 
+                    color="Usuario",
+                    markers=True,
+                    category_orders={"Jornada": ["J24"] + list(j_finalizadas)},
+                    title="Evolución del Puesto (Top = #1)",
+                    color_discrete_sequence=px.colors.qualitative.Safe
+                )
+
+                # 4. TRUCO VISUAL: Invertir el eje Y
+                # En una gráfica de puestos, el 1 debe estar ARRIBA, no abajo.
+                fig_evol.update_yaxes(autorange="reversed", dtick=1, title="Posición en la General")
+                fig_evol.update_xaxes(title="Jornadas Finalizadas")
+                
+                fig_evol.update_layout(
+                    hovermode="x unified",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+
+                st.plotly_chart(fig_evol, use_container_width=True)
+                
+                # Mensaje de "La Sotanita"
+                ganador_actual = df_evol[df_evol['Jornada'] == df_evol['Jornada'].max()].sort_values('Puesto').iloc[0]['Usuario']
+                st.info(f"💡 **Dato:** Mientras {ganador_actual} domina con mano de hierro, otros están bajando más rápido que las acciones de una empresa de carbón. ¡Espabilad!")
+            else:
+                st.info("Necesitamos que termine al menos una jornada (J25+) para empezar a trazar las líneas del destino.")
 
     with tabs[6]: # SIMULADOR
         usr_sim = st.selectbox("Simular LaLiga según apuestas de:", u_jugadores)
