@@ -1238,136 +1238,88 @@ else:
                 marcador_top = u_p_stats.groupby(['P_L', 'P_V']).size().idxmax()
                 st.info(f"💡 Tu resultado fetiche es el **{int(marcador_top[0])}-{int(marcador_top[1])}**")
 
-        with sub_tabs[1]: # --- 🔥 POWER RANKING DINÁMICO ---
+        with sub_tabs[1]: # --- 🔥 POWER RANKING OPTIMIZADO (3 o 5 JORNADAS) ---
             st.subheader("🔥 Power Ranking: Estado de Forma")
-            st.caption("Analiza quién es el jugador más peligroso en el periodo seleccionado.")
-
-            # 1. DEFINICIÓN DEL UNIVERSO DE JORNADAS CON DATOS
-            # Jornadas manuales (Imagen)
+            
+            # 1. PREPARACIÓN DE DATOS (Fuera del bucle para ganar velocidad)
             jor_manuales = ["J22", "J23", "J24"]
-            
-            # Jornadas en Excel con resultados finalizados
             jor_excel = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique().tolist()
-            
-            # Lista maestra ordenada (Manuales + Excel)
             todas_con_datos = jor_manuales + [j for j in jor_excel if j not in jor_manuales]
             
-            if not todas_con_datos:
-                st.info("Aún no hay suficientes jornadas finalizadas para generar un Power Ranking.")
-            else:
-                # 2. SELECTORES DE RANGO
-                c_sel1, c_sel2 = st.columns(2)
-                
-                with c_sel1:
-                    modo_pwr = st.radio("Modo de cálculo:", ["Últimas X jornadas", "Rango específico"], horizontal=True)
-                
-                with c_sel2:
-                    if modo_pwr == "Últimas X jornadas":
-                        # Slider para elegir cuántas jornadas atrás mirar
-                        num_x = st.slider("¿Cuántas jornadas?", 1, len(todas_con_datos), min(3, len(todas_con_datos)))
-                        jor_seleccionadas = todas_con_datos[-num_x:]
+            # 2. SELECTOR RÁPIDO
+            opcion_rango = st.radio("Ver rendimiento de:", ["Últimas 3 jornadas", "Últimas 5 jornadas"], horizontal=True)
+            num_x = 3 if "3" in opcion_rango else 5
+            
+            # Seleccionamos las jornadas (si hay menos de las pedidas, coge todas)
+            jor_seleccionadas = todas_con_datos[-num_x:]
+            st.caption(f"Análisis de: {', '.join(jor_seleccionadas)}")
+
+            # 3. LÓGICA DE PUNTOS (Cargamos ConfigJornadas una sola vez aquí)
+            try:
+                df_conf_pwr = conn.read(worksheet="ConfigJornadas", ttl=300) # Caché de 5 min
+            except:
+                df_conf_pwr = pd.DataFrame(columns=["Jornada", "Es_Vuelta"])
+
+            stats_imagen = {
+                "Alex": {"J22": 2.0, "J23": 3.5, "J24": 3.5},
+                "Pachuco67": {"J22": 2.25, "J23": 3.5, "J24": 2.5},
+                "EstafadorJudío": {"J22": 5.5, "J23": 4.25, "J24": 1.75},
+                "Lagartoputero": {"J22": 1.5, "J23": 5.5, "J24": 2.25},
+                "Cidon": {"J22": 3.75, "J23": 4.0, "J24": 2.0},
+                "Alec206301": {"J22": 4.75, "J23": 5.25, "J24": 3.25},
+                "Pablo Riera": {"J22": 4.0, "J23": 3.5, "J24": 1.5}
+            }
+
+            # 4. CÁLCULO VELOZ
+            ranking_pwr = []
+            for u in u_jugadores:
+                pts_total = 0.0
+                for j in jor_seleccionadas:
+                    # Caso A: Datos de la imagen
+                    if u in stats_imagen and j in stats_imagen[u]:
+                        pts_total += stats_imagen[u][j]
+                    # Caso B: Datos del Excel
                     else:
-                        # Selectbox para elegir desde qué jornada empezar
-                        j_desde = st.selectbox("Desde la jornada:", todas_con_datos, index=todas_con_datos.index("J24") if "J24" in todas_con_datos else 0)
-                        idx_inicio = todas_con_datos.index(j_desde)
-                        jor_seleccionadas = todas_con_datos[idx_inicio:]
-
-                st.info(f"📊 Analizando: {', '.join(jor_seleccionadas)}")
-
-                # 3. LÓGICA DE CÁLCULO DE PUNTOS
-                stats_imagen = {
-                    "Alex": {"J22": 2.0, "J23": 3.5, "J24": 3.5},
-                    "Pachuco67": {"J22": 2.25, "J23": 3.5, "J24": 2.5},
-                    "EstafadorJudío": {"J22": 5.5, "J23": 4.25, "J24": 1.75},
-                    "Lagartoputero": {"J22": 1.5, "J23": 5.5, "J24": 2.25},
-                    "Cidon": {"J22": 3.75, "J23": 4.0, "J24": 2.0},
-                    "Alec206301": {"J22": 4.75, "J23": 5.25, "J24": 3.25},
-                    "Pablo Riera": {"J22": 4.0, "J23": 3.5, "J24": 1.5}
-                }
-
-                ranking_pwr = []
-                # Para el Power Ranking usamos a todos los jugadores detectados en la App
-                for u in u_jugadores:
-                    puntos_periodo = 0.0
-                    for j in jor_seleccionadas:
-                        # A. Si está en los datos manuales
-                        if u in stats_imagen and j in stats_imagen[u]:
-                            puntos_periodo += stats_imagen[u][j]
-                        # B. Si está en el Excel
-                        else:
-                            u_p_j = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j)]
-                            res_j = df_r_all[(df_r_all['Jornada'] == j) & (df_r_all['Finalizado'] == "SI")]
+                        u_p_j = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j)]
+                        res_j = df_r_all[(df_r_all['Jornada'] == j) & (df_r_all['Finalizado'] == "SI")]
+                        
+                        if not u_p_j.empty and not res_j.empty:
+                            # Detectamos si esa jornada fue de vuelta
+                            es_v = (df_conf_pwr[df_conf_pwr['Jornada'] == j]['Es_Vuelta'].values[0] == "SI") if not df_conf_pwr[df_conf_pwr['Jornada'] == j].empty else False
                             
-                            # Calculamos puntos usando la lógica oficial (Normal/Doble/Esquizo/Champions)
-                            total_j = 0.0
                             for r in u_p_j.itertuples():
                                 m = res_j[res_j['Partido'] == r.Partido]
                                 if not m.empty:
                                     pb = calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-                                    # Incluimos regla de Champions si existe la función
-                                    try:
-                                        df_c = conn.read(worksheet="ConfigJornadas", ttl=0)
-                                        es_v = (df_c[df_c['Jornada'] == j]['Es_Vuelta'].values[0] == "SI") if not df_c[df_c['Jornada'] == j].empty else False
-                                        total_j += calcular_puntos_champions(u, r.Partido, j, pb, df_p_all, df_r_all, es_v)
-                                    except:
-                                        total_j += pb
-                            puntos_periodo += total_j
+                                    # Sumamos puntos Champions si aplica
+                                    pts_total += calcular_puntos_champions(u, r.Partido, j, pb, df_p_all, df_r_all, es_v)
+                
+                ranking_pwr.append({"Usuario": u, "Puntos": pts_total})
+
+            df_pwr = pd.DataFrame(ranking_pwr).sort_values("Puntos", ascending=False).reset_index(drop=True)
+
+            # 5. RENDERIZADO VISUAL COMPACTO
+            col_t, col_c = st.columns([1.2, 1])
+            with col_t:
+                st.dataframe(df_pwr, use_container_width=True, hide_index=True,
+                            column_config={"Puntos": st.column_config.ProgressColumn("Pts", format="%.2f", min_value=0, max_value=max(float(df_pwr["Puntos"].max()), 1.0))})
+            
+            with col_c:
+                if not df_pwr.empty:
+                    ganador = df_pwr.iloc[0]
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 15px; border-radius: 12px; text-align: center;">
+                        <small>EL MÁS PELIGROSO 🔥</small><br><b style="font-size: 1.4em;">{ganador['Usuario']}</b><br>
+                        <span>{ganador['Puntos']:.2f} pts</span>
+                    </div>""", unsafe_allow_html=True)
                     
-                    ranking_pwr.append({"Usuario": u, "Puntos (Periodo)": puntos_periodo})
+                    pecho_frio = df_pwr.iloc[-1]
+                    st.markdown(f"""
+                    <div style="background: #fff1f2; color: #be123c; padding: 10px; border-radius: 12px; text-align: center; margin-top: 10px; border: 1px solid #fda4af;">
+                        <small>🧊 PECHOFRÍO: {pecho_frio['Usuario']} ({pecho_frio['Puntos']:.2f})</small>
+                    </div>""", unsafe_allow_html=True)
 
-                df_pwr = pd.DataFrame(ranking_pwr).sort_values("Puntos (Periodo)", ascending=False).reset_index(drop=True)
-
-                # 4. RENDERIZADO VISUAL
-                col_tabla, col_top = st.columns([1.5, 1])
-                
-                with col_tabla:
-                    st.dataframe(
-                        df_pwr, 
-                        use_container_width=True, 
-                        hide_index=True,
-                        column_config={
-                            "Puntos (Periodo)": st.column_config.ProgressColumn(
-                                "Puntos Totales", 
-                                format="%.2f", 
-                                min_value=0, 
-                                max_value=float(df_pwr["Puntos (Periodo)"].max()) if not df_pwr.empty else 10
-                            )
-                        }
-                    )
-                
-                with col_top:
-                    if not df_pwr.empty:
-                        # El que más puntos ha sacado en el periodo
-                        ganador = df_pwr.iloc[0]
-                        st.markdown(f"""
-                        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                            <small style="text-transform: uppercase; letter-spacing: 1px;">🔥 ON FIRE</small><br>
-                            <b style="font-size: 1.8em;">{ganador['Usuario']}</b><br>
-                            <span style="font-size: 1.2em; opacity: 0.9;">{ganador['Puntos (Periodo)']:.2f} Puntos</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                        # El que menos (Pechofrío)
-                        perdedor = df_pwr.iloc[-1]
-                        st.markdown(f"""
-                        <div style="background: #fff1f2; color: #be123c; padding: 12px; border-radius: 10px; text-align: center; margin-top: 15px; border: 1px solid #fda4af;">
-                            <small>❄️ PECHOFRÍO: {perdedor['Usuario']} ({perdedor['Puntos (Periodo)']:.2f} pts)</small>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                # Gráfico de barras estilizado
-                st.plotly_chart(
-                    px.bar(
-                        df_pwr, 
-                        x='Usuario', 
-                        y='Puntos (Periodo)', 
-                        color='Puntos (Periodo)',
-                        color_continuous_scale='Blues',
-                        labels={'Puntos (Periodo)': 'Puntos'},
-                        title="Comparativa de Rendimiento"
-                    ), 
-                    use_container_width=True
-                )
+            st.plotly_chart(px.bar(df_pwr, x='Usuario', y='Puntos', color='Puntos', color_continuous_scale='Blues', height=300), use_container_width=True)
     
         with sub_tabs[2]: # --- 📉 EVOLUCIÓN (PUNTOS Y PUESTO) ---
             st.subheader("📉 El Gráfico de la Verdad")
