@@ -1238,28 +1238,22 @@ else:
                 marcador_top = u_p_stats.groupby(['P_L', 'P_V']).size().idxmax()
                 st.info(f"💡 Tu resultado fetiche es el **{int(marcador_top[0])}-{int(marcador_top[1])}**")
 
-        with sub_tabs[1]: # --- 🔥 POWER RANKING OPTIMIZADO (3 o 5 JORNADAS) ---
+        with sub_tabs[1]: # --- 🔥 POWER RANKING (SÓLO GOLES) ---
             st.subheader("🔥 Power Ranking: Estado de Forma")
             
-            # 1. PREPARACIÓN DE DATOS (Fuera del bucle para ganar velocidad)
+            # 1. IDENTIFICACIÓN DE JORNADAS
             jor_manuales = ["J22", "J23", "J24"]
             jor_excel = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique().tolist()
             todas_con_datos = jor_manuales + [j for j in jor_excel if j not in jor_manuales]
             
-            # 2. SELECTOR RÁPIDO
+            # 2. SELECTOR DE RANGO
             opcion_rango = st.radio("Ver rendimiento de:", ["Últimas 3 jornadas", "Últimas 5 jornadas"], horizontal=True)
             num_x = 3 if "3" in opcion_rango else 5
-            
-            # Seleccionamos las jornadas (si hay menos de las pedidas, coge todas)
             jor_seleccionadas = todas_con_datos[-num_x:]
-            st.caption(f"Análisis de: {', '.join(jor_seleccionadas)}")
+            
+            st.caption(f"Calculando puntos de: {', '.join(jor_seleccionadas)}")
 
-            # 3. LÓGICA DE PUNTOS (Cargamos ConfigJornadas una sola vez aquí)
-            try:
-                df_conf_pwr = conn.read(worksheet="ConfigJornadas", ttl=300) # Caché de 5 min
-            except:
-                df_conf_pwr = pd.DataFrame(columns=["Jornada", "Es_Vuelta"])
-
+            # 3. DATOS HISTÓRICOS (DICCIONARIO MANUAL)
             stats_imagen = {
                 "Alex": {"J22": 2.0, "J23": 3.5, "J24": 3.5},
                 "Pachuco67": {"J22": 2.25, "J23": 3.5, "J24": 2.5},
@@ -1270,53 +1264,44 @@ else:
                 "Pablo Riera": {"J22": 4.0, "J23": 3.5, "J24": 1.5}
             }
 
-            # 4. CÁLCULO VELOZ
+            # 4. BUCLE DE CÁLCULO
             ranking_pwr = []
             for u in u_jugadores:
-                pts_total = 0.0
+                pts_periodo = 0.0
                 for j in jor_seleccionadas:
-                    # Caso A: Datos de la imagen
+                    # Si es una de las jornadas antiguas de la imagen
                     if u in stats_imagen and j in stats_imagen[u]:
-                        pts_total += stats_imagen[u][j]
-                    # Caso B: Datos del Excel
+                        pts_periodo += stats_imagen[u][j]
+                    # Si es una jornada nueva del Excel
                     else:
                         u_p_j = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j)]
                         res_j = df_r_all[(df_r_all['Jornada'] == j) & (df_r_all['Finalizado'] == "SI")]
                         
-                        if not u_p_j.empty and not res_j.empty:
-                            # Detectamos si esa jornada fue de vuelta
-                            es_v = (df_conf_pwr[df_conf_pwr['Jornada'] == j]['Es_Vuelta'].values[0] == "SI") if not df_conf_pwr[df_conf_pwr['Jornada'] == j].empty else False
-                            
-                            for r in u_p_j.itertuples():
-                                m = res_j[res_j['Partido'] == r.Partido]
-                                if not m.empty:
-                                    pb = calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-                                    # Sumamos puntos Champions si aplica
-                                    pts_total += calcular_puntos_champions(u, r.Partido, j, pb, df_p_all, df_r_all, es_v)
+                        for r in u_p_j.itertuples():
+                            m = res_j[res_j['Partido'] == r.Partido]
+                            if not m.empty:
+                                # Usamos solo la función normal de puntos por goles
+                                pts_periodo += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
                 
-                ranking_pwr.append({"Usuario": u, "Puntos": pts_total})
+                ranking_pwr.append({"Usuario": u, "Puntos": pts_periodo})
 
             df_pwr = pd.DataFrame(ranking_pwr).sort_values("Puntos", ascending=False).reset_index(drop=True)
 
-            # 5. RENDERIZADO VISUAL COMPACTO
-            col_t, col_c = st.columns([1.2, 1])
-            with col_t:
+            # 5. VISUALIZACIÓN
+            c_tab, c_top = st.columns([1.2, 1])
+            with c_tab:
                 st.dataframe(df_pwr, use_container_width=True, hide_index=True,
                             column_config={"Puntos": st.column_config.ProgressColumn("Pts", format="%.2f", min_value=0, max_value=max(float(df_pwr["Puntos"].max()), 1.0))})
             
-            with col_c:
+            with c_top:
                 if not df_pwr.empty:
-                    ganador = df_pwr.iloc[0]
                     st.markdown(f"""
-                    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 15px; border-radius: 12px; text-align: center;">
-                        <small>EL MÁS PELIGROSO 🔥</small><br><b style="font-size: 1.4em;">{ganador['Usuario']}</b><br>
-                        <span>{ganador['Puntos']:.2f} pts</span>
-                    </div>""", unsafe_allow_html=True)
-                    
-                    pecho_frio = df_pwr.iloc[-1]
-                    st.markdown(f"""
+                    <div style="background: #1e3a8a; color: white; padding: 15px; border-radius: 12px; text-align: center;">
+                        <small>EL MÁS PELIGROSO 🔥</small><br><b style="font-size: 1.4em;">{df_pwr.iloc[0]['Usuario']}</b><br>
+                        <span>{df_pwr.iloc[0]['Puntos']:.2f} pts</span>
+                    </div>
                     <div style="background: #fff1f2; color: #be123c; padding: 10px; border-radius: 12px; text-align: center; margin-top: 10px; border: 1px solid #fda4af;">
-                        <small>🧊 PECHOFRÍO: {pecho_frio['Usuario']} ({pecho_frio['Puntos']:.2f})</small>
+                        <small>🧊 PECHOFRÍO: {df_pwr.iloc[-1]['Usuario']} ({df_pwr.iloc[-1]['Puntos']:.2f})</small>
                     </div>""", unsafe_allow_html=True)
 
             st.plotly_chart(px.bar(df_pwr, x='Usuario', y='Puntos', color='Puntos', color_continuous_scale='Blues', height=300), use_container_width=True)
