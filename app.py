@@ -383,7 +383,7 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=1000)
                 "std": max(m['pts'].std(), 0.8)
             }
         else:
-            perfiles[u] = {"media": 0.45, "std": 0.3}
+            perfiles[u] = {"media": 0.45, "std": 0.9}
 
     # 3. Simulación de Montecarlo
     puestos_sim = {u: [] for u in df_hero['Usuario']}
