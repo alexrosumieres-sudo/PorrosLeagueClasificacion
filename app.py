@@ -380,7 +380,7 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=1000)
             m['pts'] = m.apply(lambda x: calcular_puntos(x.P_L, x.P_V, x.R_L, x.R_V, "Normal"), axis=1)
             perfiles[u] = {
                 "media": m['pts'].mean(),
-                "std": max(m['pts'].std(), 0.15)
+                "std": max(m['pts'].std(), 0.8)
             }
         else:
             perfiles[u] = {"media": 0.45, "std": 0.3}
@@ -395,11 +395,11 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=1000)
             pts_actuales = df_hero[df_hero['Usuario'] == u]['Puntos'].values[0]
             
             # Puntos en jornadas normales (J25-J37)
-            sim_normal = np.random.normal(perfiles[u]['media'], perfiles[u]['std'], num_partidos_normales)
-            
-            # Puntos en la J38 (Multiplicador Esquizo: el triple que una normal)
-            # Aplicamos un factor de 3x a la media y aumentamos la volatilidad (más riesgo)
-            sim_esquizo = np.random.normal(perfiles[u]['media'] * 3, perfiles[u]['std'] * 2.5, num_partidos_esquizo)
+            sim_normal = np.random.normal(perfiles[u]['media'], perfiles[u]['std'] * 2.0, num_partidos_normales)
+    
+            # J38 Esquizo: aquí es donde se decide la vida. Subimos el caos a lo bestia.
+            # Un acierto en Esquizo vale por 3, así que la desviación debe ser enorme.
+            sim_esquizo = np.random.normal(perfiles[u]['media'] * 3, perfiles[u]['std'] * 5.0, num_partidos_esquizo)
             
             puntos_finales[u] = pts_actuales + max(sum(sim_normal), 0) + max(sum(sim_esquizo), 0)
         
