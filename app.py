@@ -359,6 +359,73 @@ def analizar_adn_pro(usuario, df_p, df_r):
         "avg_g": (df_m['P_L']+df_m['P_V']).mean(), "real_g": (df_m['R_L']+df_m['R_V']).mean()
     }
 
+def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=1000):
+    # 1. Identificar jornadas y partidos restantes
+    todas_j = list(JORNADAS.keys())
+    j_finalizadas = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()
+    j_restantes = [j for j in todas_j if j not in j_finalizadas and "Champions" not in j]
+    
+    # Separamos la J38 del resto para aplicar el "Efecto Esquizo"
+    tiene_j38 = "Jornada 38" in j_restantes
+    num_partidos_normales = (len(j_restantes) - (1 if tiene_j38 else 0)) * 10
+    num_partidos_esquizo = 10 if tiene_j38 else 0
+    
+    # 2. Calcular "Perfil de Apostador" (Media y Volatilidad histórica)
+    perfiles = {}
+    for u in df_hero['Usuario']:
+        u_p = df_p_all[df_p_all['Usuario'] == u]
+        m = pd.merge(u_p, df_r_all[df_r_all['Finalizado'] == "SI"], on=['Jornada', 'Partido'])
+        if not m.empty:
+            # Calculamos su rendimiento en puntos "estándar"
+            m['pts'] = m.apply(lambda x: calcular_puntos(x.P_L, x.P_V, x.R_L, x.R_V, "Normal"), axis=1)
+            perfiles[u] = {
+                "media": m['pts'].mean(),
+                "std": max(m['pts'].std(), 0.15)
+            }
+        else:
+            perfiles[u] = {"media": 0.45, "std": 0.3}
+
+    # 3. Simulación de Montecarlo
+    puestos_sim = {u: [] for u in df_hero['Usuario']}
+    
+    progreso = st.progress(0)
+    for i in range(n_simulaciones):
+        puntos_finales = {}
+        for u in df_hero['Usuario']:
+            pts_actuales = df_hero[df_hero['Usuario'] == u]['Puntos'].values[0]
+            
+            # Puntos en jornadas normales (J25-J37)
+            sim_normal = np.random.normal(perfiles[u]['media'], perfiles[u]['std'], num_partidos_normales)
+            
+            # Puntos en la J38 (Multiplicador Esquizo: el triple que una normal)
+            # Aplicamos un factor de 3x a la media y aumentamos la volatilidad (más riesgo)
+            sim_esquizo = np.random.normal(perfiles[u]['media'] * 3, perfiles[u]['std'] * 2.5, num_partidos_esquizo)
+            
+            puntos_finales[u] = pts_actuales + max(sum(sim_normal), 0) + max(sum(sim_esquizo), 0)
+        
+        # Ranking de esta simulación
+        sorted_sim = sorted(puntos_finales.items(), key=lambda x: x[1], reverse=True)
+        for rank, (u, pts) in enumerate(sorted_sim):
+            puestos_sim[u].append(rank + 1)
+        
+        if i % 100 == 0: progreso.progress(i / n_simulaciones)
+    
+    progreso.empty()
+
+    # 4. Resultados
+    resumen = []
+    for u in df_hero['Usuario']:
+        p = puestos_sim[u]
+        resumen.append({
+            "Usuario": u,
+            "Prob. Ganar 🏆": (p.count(1) / n_simulaciones) * 100,
+            "Prob. Podio 🥉": (len([x for x in p if x <= 3]) / n_simulaciones) * 100,
+            "Prob. Lagarto 🦎": (len([x for x in p if x >= len(df_hero)-1]) / n_simulaciones) * 100,
+            "Puesto Medio": np.mean(p)
+        })
+    
+    return pd.DataFrame(resumen).sort_values("Prob. Ganar 🏆", ascending=False)
+
 @st.cache_data(ttl=60)
 def simular_oraculo(usuarios, df_p_all, df_r_all, jornada_sel):
     res_sim = [(0,0), (1,0), (0,1), (1,1), (2,1), (1,2), (2,2), (2,0), (0,2)]
@@ -1414,19 +1481,75 @@ else:
         else: st.info("Sin partidos finalizados.")
 
     with tabs[7]: # SIMULADOR
-        usr_sim = st.selectbox("Simular LaLiga según apuestas de:", u_jugadores)
-        if st.button("Generar Clasificación Simulada"):
-            sim = {k: v.copy() for k, v in STATS_LALIGA_BASE.items()}
-            for p in df_p_all[df_p_all['Usuario']==usr_sim].itertuples():
-                try:
-                    tl, tv = p.Partido.split('-')
-                    if tl in sim and tv in sim:
-                        sim[tl]["PJ"]+=1; sim[tv]["PJ"]+=1
-                        if p.P_L > p.P_V: sim[tl]["Pts"]+=3; sim[tl]["V"]+=1; sim[tv]["D"]+=1
-                        elif p.P_V > p.P_L: sim[tv]["Pts"]+=3; sim[tv]["V"]+=1; sim[tl]["D"]+=1
-                        else: sim[tl]["Pts"]+=1; sim[tv]["Pts"]+=1; sim[tl]["E"]+=1; sim[tv]["E"]+=1
-                except: continue
-            st.dataframe(pd.DataFrame.from_dict(sim, orient='index').sort_values("Pts", ascending=False), use_container_width=True)
+        sub_tabs = st.tabs(["📉 Supercomputadora: Destino Final", "🏟️ LaLiga según mis Porros"])
+        
+        with sub_tabs[0]:
+            st.header("📉 Supercomputadora: Destino Final")
+            st.caption("Predicción probabilística basada en Montecarlo (1.000 iteraciones) analizando tu media de puntos y volatilidad.")
+            
+            if st.button("🚀 Lanzar Simulación de Temporada", use_container_width=True):
+                with st.spinner("🔮 Consultando los hilos del destino..."):
+                    df_sim = simular_temporada_completa(df_hero, df_p_all, df_r_all)
+                
+                st.success("✅ Simulación completada con éxito.")
+                
+                c1, c2 = st.columns([2, 1])
+                with c1:
+                    st.dataframe(df_sim.style.format({
+                        "Prob. Ganar 🏆": "{:.1f}%",
+                        "Prob. Podio 🥉": "{:.1f}%",
+                        "Prob. Lagarto 🦎": "{:.1f}%",
+                        "Puesto Medio": "{:.1f}"
+                    }).background_gradient(subset=["Prob. Ganar 🏆"], cmap="Greens"), 
+                    use_container_width=True, hide_index=True)
+                
+                with c2:
+                    favorito = df_sim.iloc[0]['Usuario']
+                    st.markdown(f"""
+                    <div style="background:#f0f7ff; padding:15px; border-radius:10px; border-left:5px solid #007bff;">
+                        <small>EL ELEGIDO</small><br>
+                        <b style="font-size:1.2em;">🏆 {favorito}</b><br>
+                        <small>Es el que más veces levanta el trofeo en las simulaciones.</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    peor = df_sim.sort_values('Prob. Lagarto 🦎', ascending=False).iloc[0]['Usuario']
+                    st.markdown(f"""
+                    <div style="background:#fff5f5; padding:15px; border-radius:10px; border-left:5px solid #ff4b4b; margin-top:10px;">
+                        <small>PELIGRO DE EXTINCIÓN</small><br>
+                        <b style="font-size:1.2em;">🦎 {peor}</b><br>
+                        <small>Tiene todas las papeletas para acabar en el fango.</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+    
+                fig_sim = px.bar(df_sim, x="Usuario", y="Prob. Ganar 🏆", 
+                                 color="Prob. Ganar 🏆", color_continuous_scale="Viridis",
+                                 text_auto='.1f')
+                st.plotly_chart(fig_sim, use_container_width=True)
+    
+        with sub_tabs[1]:
+            st.header("🏟️ LaLiga según mis Porros")
+            st.write("¿Cómo quedaría la tabla de Primera División si se cumplieran todos tus pronósticos?")
+            usr_sim = st.selectbox("Calcular tabla basada en:", u_jugadores)
+            
+            if st.button("📊 Generar Tabla Real Simulada", use_container_width=True):
+                sim = {k: v.copy() for k, v in STATS_LALIGA_BASE.items()}
+                for p in df_p_all[df_p_all['Usuario']==usr_sim].itertuples():
+                    try:
+                        tl, tv = p.Partido.split('-')
+                        if tl in sim and tv in sim:
+                            sim[tl]["PJ"]+=1; sim[tv]["PJ"]+=1
+                            # Actualizamos goles también para que sea más real
+                            sim[tl]["GF"]+=p.P_L; sim[tl]["GC"]+=p.P_V
+                            sim[tv]["GF"]+=p.P_V; sim[tv]["GC"]+=p.P_L
+                            
+                            if p.P_L > p.P_V: sim[tl]["Pts"]+=3; sim[tl]["V"]+=1; sim[tv]["D"]+=1
+                            elif p.P_V > p.P_L: sim[tv]["Pts"]+=3; sim[tv]["V"]+=1; sim[tl]["D"]+=1
+                            else: sim[tl]["Pts"]+=1; sim[tv]["Pts"]+=1; sim[tl]["E"]+=1; sim[tv]["E"]+=1
+                    except: continue
+                
+                df_laliga = pd.DataFrame.from_dict(sim, orient='index').sort_values(["Pts", "GF"], ascending=False)
+                st.table(df_laliga) # O st.dataframe si prefieres
 
     with tabs[8]: # --- 🎲 ORÁCULO ---
         if usa_oraculo:
