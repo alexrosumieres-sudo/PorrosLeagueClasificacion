@@ -1263,9 +1263,9 @@ else:
             
             cronologia.append({
                 "Jornada": jor,
-                "Héroe (🏆)": " & ".join(g),
-                "Líder (👑)": " & ".join(l),
-                "Lagarto (🦎)": " & ".join(p)
+                "Héroe (🏆)": " & ".join(map(str, g)),
+                "Líder (👑)": " & ".join(map(str, l)),
+                "Lagarto (🦎)": " & ".join(map(str, p))
             })
         
         st.table(pd.DataFrame(cronologia))
