@@ -9,7 +9,6 @@ import itertools
 import numpy as np
 import time
 import pytz
-import google.generativeai as genai
 
 # --- 1. CONFIGURACIONES GENERALES ---
 PERFILES_DIR = "perfiles/"
@@ -272,19 +271,14 @@ LOGROS_DATA = {
     "pleno": {"icon": "💯", "name": "Pleno", "desc": "Puntuado en los 10."}
 }
 
-# --- 2. FUNCIONES DE APOYO --- 
-@st.cache_data(ttl=60) # <--- Dale aire a la CPU, pon 60
+# --- 2. FUNCIONES DE APOYO ---
+@st.cache_data(ttl=10) # TTL bajo para que los cambios del admin se vean rápido
 def leer_datos(pestaña):
     try:
-        # Usamos la conexión oficial que ya definiste (conn)
-        df = conn.read(worksheet=pestaña, ttl=0)
-        if df is not None:
-            if 'Usuario' in df.columns:
-                df['Usuario'] = df['Usuario'].astype(str)
-            return df
-        return pd.DataFrame()
-    except Exception as e:
-        return pd.DataFrame()
+        sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
+        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
+        return pd.read_csv(url)
+    except: return pd.DataFrame()
 
 def preparar_contexto_ia(df_hero, df_logs):
     # Resumen de la clasificación
@@ -492,16 +486,9 @@ if not st.session_state.autenticado:
                 st.success("✅ Hecho")
 else:
     # 1. CARGA DE DATOS
-    # --- CARGA DE DATOS ---
     df_perf = leer_datos("ImagenesPerfil")
+    # Cargamos también los logs para que ChatG-O-L los vea
     df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase"), leer_datos("Logs")
-
-    # --- 🛡️ PEGA ESTE MURO DE CONTENCIÓN AQUÍ ---
-    if df_r_all.empty or df_p_all.empty or df_u_all.empty:
-        st.info("⌛ El VAR está revisando las imágenes... (Cargando datos)")
-        st.stop() # Detiene la app aquí si no hay datos
-    # --------------------------------------------
-
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
@@ -557,30 +544,22 @@ else:
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False; st.rerun()
 
-  # --- CÁLCULO DE DASHBOARD HERO (BLINDADO Y RÁPIDO) ---
-    df_res_fin = df_r_all[df_r_all['Finalizado'] == "SI"]
-    # Unimos todo de golpe para no usar bucles pesados
-    df_master = pd.merge(df_p_all, df_res_fin, on=['Jornada', 'Partido'], suffixes=('_p', '_r'))
-    
+    # --- CÁLCULO DE DASHBOARD HERO ---
     stats_hero = []
     for u in u_jugadores:
         pb_row = df_base[df_base['Usuario'] == u]
-        p_acum = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
-        
-        u_puntos = df_master[df_master['Usuario'] == u]
-        if not u_puntos.empty:
-            p_acum += u_puntos.apply(lambda x: calcular_puntos(x.P_L, x.P_V, x.R_L, x.R_V, x.Tipo), axis=1).sum()
-        
+        p_base = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
+        u_p_hist = df_p_all[df_p_all['Usuario'] == u]
+        p_acum = p_base
+        for r in u_p_hist.itertuples():
+            m = df_r_all[(df_r_all['Jornada'] == r.Jornada) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
+            if not m.empty:
+                p_acum += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
         stats_hero.append({"Usuario": u, "Puntos": p_acum})
     
     df_hero = pd.DataFrame(stats_hero).sort_values("Puntos", ascending=False).reset_index(drop=True)
     df_hero['Posicion'] = range(1, len(df_hero) + 1)
-
-    # 🛡️ Acceso seguro al Líder
-    if not df_hero.empty:
-        lider = df_hero.iloc[0]
-    else:
-        lider = {"Usuario": "Nadie", "Puntos": 0.0}
+    lider = df_hero.iloc[0] if not df_hero.empty else {"Usuario": "Nadie", "Puntos": 0.0}
 
     es_admin = st.session_state.rol == "admin"
     if es_admin:
@@ -615,22 +594,17 @@ else:
         for u in u_jugadores:
             u_p_last = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == nombre_ultima_j)]
             pts_j = 0.0
-            # Solo calculamos si hay predicciones
-            if not u_p_last.empty:
-                for r in u_p_last.itertuples():
-                    m_res = df_r_all[(df_r_all['Jornada'] == nombre_ultima_j) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
-                    if not m_res.empty:
-                        pts_j += calcular_puntos(r.P_L, r.P_V, m_res.iloc[0]['R_L'], m_res.iloc[0]['R_V'], m_res.iloc[0]['Tipo'])
+            for r in u_p_last.itertuples():
+                m_res = df_r_all[(df_r_all['Jornada'] == nombre_ultima_j) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
+                if not m_res.empty:
+                    pts_j += calcular_puntos(r.P_L, r.P_V, m_res.iloc[0]['R_L'], m_res.iloc[0]['R_V'], m_res.iloc[0]['Tipo'])
             puntos_last_j.append({"Usuario": u, "Puntos": pts_j})
         
-        # Solo calculamos el lagarto si tenemos puntos
         if puntos_last_j:
             df_last_j = pd.DataFrame(puntos_last_j)
             puntos_lagarto = df_last_j['Puntos'].min()
+            # Obtenemos todos los que tengan la puntuación mínima (por si hay empate)
             lagartos_nombres = df_last_j[df_last_j['Puntos'] == puntos_lagarto]['Usuario'].tolist()
-        else:
-            lagartos_nombres = []
-            puntos_lagarto = 0.0
 
     # --- 2. DISEÑO VISUAL DE LA CABECERA ---
     with st.container():
@@ -665,7 +639,7 @@ else:
             elif len(lagartos_nombres) > 1:
                 # Si hay empate, mostramos icono de plaga y los nombres
                 st.markdown("<h1 style='margin:10px 0;'>🦎🦎</h1>", unsafe_allow_html=True)
-                nombres_fmt = " & ".join(map(str, lagartos_nombres))
+                nombres_fmt = " & ".join(lagartos_nombres)
                 st.markdown(f"<div style='line-height:1.1; margin-bottom:5px;'><small><b>{nombres_fmt}</b></small></div>", unsafe_allow_html=True)
             else:
                 st.markdown("<h1 style='margin:10px 0;'>-</h1>", unsafe_allow_html=True)
@@ -701,7 +675,7 @@ else:
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     # Busca esta línea y añade "📜 VAR" al final
-    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "🤖IA", "📊 Clasificación", "🏅 Palmarés", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
+    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏅 Palmarés", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
 
     with tabs[0]: # --- ✍️ PESTAÑA APUESTAS (REDISEÑO TOTAL) ---
         # 1. CSS EXCLUSIVO PARA LAS TARJETAS DE APUESTAS
@@ -963,101 +937,9 @@ else:
             for u in p_futuras['Usuario'].unique():
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
+
     
-    with tabs[2]:
-        st.header("⚽ ChatG-O-L: El Muro de la Infamia")
-        st.caption("Chat Global: Aquí las verdades duelen el doble porque las lee todo el mundo.")
-
-        # --- 1. FUNCIÓN DE GUARDADO (Corregida con datetime y update) ---
-        def guardar_mensaje_global(usuario, mensaje):
-            """Lee el Excel, añade la fila y actualiza sin crear pestañas nuevas"""
-            try:
-                # Leemos lo que hay ahora (ttl=0 para no leer datos viejos de la caché)
-                try:
-                    df_actual = conn.read(worksheet="Chat_Global", ttl=0)
-                except:
-                    df_actual = pd.DataFrame(columns=["Fecha", "Usuario", "Mensaje"])
-
-                # Hora exacta de Madrid
-                fecha_f = datetime.datetime.now(pytz.timezone('Europe/Madrid')).strftime("%d/%m %H:%M")
-                
-                # Nueva fila
-                nueva_fila = pd.DataFrame([{
-                    "Fecha": fecha_f,
-                    "Usuario": usuario,
-                    "Mensaje": str(mensaje)
-                }])
-
-                # Unimos y subimos
-                df_final = pd.concat([df_actual, nueva_fila], ignore_index=True)
-                conn.update(worksheet="Chat_Global", data=df_final)
-            except Exception as e:
-                st.error(f"Error al escribir en el acta: {e}")
-
-        # --- 2. CONFIGURACIÓN IA ---
-        if "GEMINI_API_KEY" not in st.secrets:
-            st.error("🚨 Falta la clave GEMINI_API_KEY.")
-        else:
-            try:
-                api_key_ia = st.secrets["GEMINI_API_KEY"]
-                genai.configure(api_key=api_key_ia)
-                model_ia = genai.GenerativeModel('gemini-flash-latest')
-
-                # --- 3. MOSTRAR EL HISTORIAL DEL EXCEL ---
-                # Leemos los últimos 20 mensajes para que se vea la conversación
-                try:
-                    df_chat = conn.read(worksheet="Chat_Global", ttl=2) # 2 segundos de caché
-                    if not df_chat.empty:
-                        for _, fila in df_chat.tail(20).iterrows():
-                            # Si el usuario es ChatG-O-L, icono de bot, si no, de persona
-                            es_ia = fila["Usuario"] == "ChatG-O-L"
-                            role = "assistant" if es_ia else "user"
-                            with st.chat_message(role):
-                                # Mostramos: "Nombre (Fecha): Mensaje"
-                                st.markdown(f"**{fila['Usuario']}** <small style='color:gray;'>{fila['Fecha']}</small>", unsafe_allow_html=True)
-                                st.write(fila["Mensaje"])
-                except:
-                    st.info("El muro está limpio... por ahora. Sé el primero en ensuciarlo.")
-
-                # --- 4. ENTRADA DE MENSAJE (EL DOBLE REGISTRO) ---
-                if prompt_user := st.chat_input("Dime algo, valiente..."):
-                    nombre_autor = st.session_state.get("user", "Desconocido")
-                    
-                    # PASO A: Guardar la PREGUNTA del usuario
-                    guardar_mensaje_global(nombre_autor, prompt_user)
-                    
-                    # PASO B: Generar respuesta de la IA
-                    with st.chat_message("assistant"):
-                        with st.spinner("ChatG-O-L está preparando el hacha..."):
-                            try:
-                                # Contexto dinámico
-                                contexto = preparar_contexto_ia(df_hero, df_logs_all.head(5))
-                                
-                                prompt_final = f"""
-                                {contexto}
-                                ---
-                                ESTÁS EN UN CHAT GLOBAL. 
-                                EL USUARIO '{nombre_autor}' TE HA PREGUNTADO ESTO DELANTE DE TODOS.
-                                INSTRUCCIÓN: Sé breve, muy sarcástico y nómbrale por su nombre.
-                                PREGUNTA: {prompt_user}
-                                """
-                                
-                                response = model_ia.generate_content(prompt_final)
-                                texto_ia = response.text
-                                
-                                # PASO C: Guardar la RESPUESTA de la IA
-                                guardar_mensaje_global("ChatG-O-L", texto_ia)
-                                
-                                # PASO D: Rerún para que aparezcan ambos mensajes
-                                st.rerun()
-                                
-                            except Exception as e:
-                                st.error(f"Error de la IA: {e}")
-
-            except Exception as e:
-                st.error(f"Error crítico: {e}")
-    
-    with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
+    with tabs[2]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
         pts_l = []
         
@@ -1146,7 +1028,7 @@ else:
 
             st.markdown('</div>', unsafe_allow_html=True)
 
-    with tabs[4]: # --- 🏅 PALMARÉS (GLORIA, PODER Y HUMILLACIÓN) ---
+    with tabs[3]: # --- 🏅 PALMARÉS (GLORIA, PODER Y HUMILLACIÓN) ---
         st.header("🏅 El Palmarés de la Porra")
         
         # --- 1. DATOS HISTÓRICOS J1-J24 (Líderes extraídos de tu imagen) ---
@@ -1288,14 +1170,14 @@ else:
             
             cronologia.append({
                 "Jornada": jor,
-                "Héroe (🏆)": " & ".join(map(str, g)),
-                "Líder (👑)": " & ".join(map(str, l)),
-                "Lagarto (🦎)": " & ".join(map(str, p))
+                "Héroe (🏆)": " & ".join(g),
+                "Líder (👑)": " & ".join(l),
+                "Lagarto (🦎)": " & ".join(p)
             })
         
         st.table(pd.DataFrame(cronologia))
     
-    with tabs[5]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
+    with tabs[4]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
         # Creamos las sub-pestañas dentro de Stats PRO
         sub_tabs = st.tabs(["👤 Análisis Individual", "🔥 Power Ranking (L3J)", "📉 Evolución de Puesto"])
 
@@ -1499,7 +1381,7 @@ else:
                 st.info("Esperando a que termine la Jornada 25 para mostrar la carnicería...")
 
     
-    with tabs[6]: # DETALLES
+    with tabs[5]: # DETALLES
         df_rf = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
         if not df_rf.empty:
             m_p = pd.DataFrame(index=df_rf['Partido'].unique(), columns=u_jugadores)
@@ -1511,7 +1393,7 @@ else:
             st.dataframe(m_p.astype(float), use_container_width=True)
         else: st.info("Sin partidos finalizados.")
 
-    with tabs[7]: # SIMULADOR
+    with tabs[6]: # SIMULADOR
         sub_tabs = st.tabs(["📉 Supercomputadora: Destino Final", "🏟️ LaLiga según mis Porros"])
         
         with sub_tabs[0]:
@@ -1582,7 +1464,7 @@ else:
                 df_laliga = pd.DataFrame.from_dict(sim, orient='index').sort_values(["Pts", "GF"], ascending=False)
                 st.table(df_laliga) # O st.dataframe si prefieres
 
-    with tabs[8]: # --- 🎲 ORÁCULO ---
+    with tabs[7]: # --- 🎲 ORÁCULO ---
         if usa_oraculo:
             with st.spinner("🔮 El Oráculo está analizando el futuro..."):
                 st.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmNrNjVlaW0xZzM0MWxubDQyZGhla3V4eXVnMHU5eHcwN3NxamRtMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Jap1tdjahS0rm/giphy.gif", width=300)
@@ -1685,7 +1567,7 @@ else:
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
     
     
-    with tabs[9]: # --- PESTAÑA ADMIN ACTUALIZADA ---
+    with tabs[8]: # --- PESTAÑA ADMIN ACTUALIZADA ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
             
@@ -1873,7 +1755,8 @@ else:
         else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
-    with tabs[10]: # --- PESTAÑA VAR MEJORADA ---
+    
+    with tabs[9]: # --- PESTAÑA VAR MEJORADA ---
         st.header("🏁 El VAR de la Porra")
         st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczF4bGVvbmQ3eTVuam44dzExbXl4MDU5cmVsY24zMGdyb2dvNnpjdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4DdzRe7wJP0aPI1Pa/giphy.gif", width=300)
         st.caption("Transparencia total: aquí se registra cada movimiento clave de la liga.")
