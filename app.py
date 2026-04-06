@@ -640,7 +640,7 @@ else:
             elif len(lagartos_nombres) > 1:
                 # Si hay empate, mostramos icono de plaga y los nombres
                 st.markdown("<h1 style='margin:10px 0;'>🦎🦎</h1>", unsafe_allow_html=True)
-                nombres_fmt = " & ".join(lagartos_nombres)
+                nombres_fmt = " & ".join(map(str, lagartos_nombres))
                 st.markdown(f"<div style='line-height:1.1; margin-bottom:5px;'><small><b>{nombres_fmt}</b></small></div>", unsafe_allow_html=True)
             else:
                 st.markdown("<h1 style='margin:10px 0;'>-</h1>", unsafe_allow_html=True)
