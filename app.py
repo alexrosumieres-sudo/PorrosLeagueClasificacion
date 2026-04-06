@@ -273,12 +273,20 @@ LOGROS_DATA = {
 
 # --- 2. FUNCIONES DE APOYO ---
 @st.cache_data(ttl=10) # TTL bajo para que los cambios del admin se vean rápido
+@st.cache_data(ttl=10)
 def leer_datos(pestaña):
     try:
         sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
-        return pd.read_csv(url)
-    except: return pd.DataFrame()
+        df = pd.read_csv(url)
+        
+        # Blindaje: Forzamos Usuario a texto si existe la columna
+        if not df.empty and 'Usuario' in df.columns:
+            df['Usuario'] = df['Usuario'].astype(str)
+        
+        return df
+    except: 
+        return pd.DataFrame()
 
 def preparar_contexto_ia(df_hero, df_logs):
     # Resumen de la clasificación
@@ -489,6 +497,10 @@ else:
     df_perf = leer_datos("ImagenesPerfil")
     # Cargamos también los logs para que ChatG-O-L los vea
     df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase"), leer_datos("Logs")
+    # --- 🛡️ MURO DE SEGURIDAD (Añade esto aquí) ---
+    if df_r_all.empty or df_p_all.empty or df_u_all.empty:
+        st.info("⌛ El VAR está conectando con los satélites... (Cargando datos)")
+        st.stop()
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
@@ -576,7 +588,9 @@ else:
                 mi_puntos_hoy += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
 
     prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
-
+    # Verificamos si hay partidos antes de calcular el tiempo
+    hay_proximo = not prox_p.empty
+    
     st.title(f"Hola, {st.session_state.user} 👋")
 
     # --- RENDER DASHBOARD HERO ---
@@ -654,7 +668,7 @@ else:
                 st.markdown(f'<div class="kpi-box"><span class="kpi-label">Tu Puesto</span><span class="kpi-value">{mi_pos}</span></div>', unsafe_allow_html=True)
             
             with c3:
-                if not prox_p.empty:
+                if hay_proximo:
                     ahora_madrid = get_now_madrid()
                     diff = datetime.datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - ahora_madrid
                     ts = int(diff.total_seconds())
