@@ -405,7 +405,7 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=5000)
         res_doble = np.random.choice(VALORES_DOBLE, size=(n_simulaciones, n_doble), p=p_dist).sum(axis=1)
         res_esquizo = np.random.choice(VALORES_ESQU_J38, size=(n_simulaciones, n_esquizo), p=p_dist).sum(axis=1)
         # Factor suerte para evitar el 100% fijo si hay margen
-        suerte = np.random.normal(0, 1.2, n_simulaciones)
+        suerte = np.random.normal(0, 4.5, n_simulaciones)
         matriz_puntos_finales[:, i] = pts_actuales + res_std + res_doble + res_esquizo + suerte
 
     # Calculamos los puestos (1 a 7)
