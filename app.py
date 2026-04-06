@@ -366,64 +366,68 @@ def analizar_adn_pro(usuario, df_p, df_r):
         "avg_g": (df_m['P_L']+df_m['P_V']).mean(), "real_g": (df_m['R_L']+df_m['R_V']).mean()
     }
 
-def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=50000):
-    # 1. Definir los valores de puntos posibles por tipo
+def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=5000):
     VALORES_STD = [1.0, 0.75, 0.5, 0.0]
     VALORES_DOBLE = [2.0, 1.5, 1.0, 0.0]
     VALORES_ESQU_J38 = [3.0, 1.5, 1.0, 0.0]
 
-    # 2. Identificar partidos restantes
     todas_j = list(JORNADAS.keys())
     j_finalizadas = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()
     j_restantes = [j for j in todas_j if j not in j_finalizadas and "Champions" not in j]
     
-    n_std = 0
-    n_doble = 0
-    n_esquizo = 0
-    
-    for j in j_restantes:
-        partidos_j = df_r_all[df_r_all['Jornada'] == j]
-        n_std += len(partidos_j[partidos_j['Tipo'] == "Normal"])
-        n_doble += len(partidos_j[partidos_j['Tipo'] == "Doble"])
-        n_esquizo += len(partidos_j[partidos_j['Tipo'] == "Esquizo"])
+    partidos_restantes = df_r_all[df_r_all['Jornada'].isin(j_restantes)]
+    n_std = len(partidos_restantes[partidos_restantes['Tipo'] == "Normal"])
+    n_doble = len(partidos_restantes[partidos_restantes['Tipo'] == "Doble"])
+    n_esquizo = len(partidos_restantes[partidos_restantes['Tipo'] == "Esquizo"])
 
-    # 3. Generar perfiles de probabilidad REALES para cada jugador
+    # --- MEJORA 1: PERFILES MÁS ELÁSTICOS ---
     perfiles = {}
-    for u in df_hero['Usuario']:
+    usuarios_lista = df_hero['Usuario'].tolist()
+    
+    # Probabilidad base de la liga (para que nadie sea un 0 absoluto)
+    # [1.0 pts, 0.75 pts, 0.5 pts, 0.0 pts]
+    PROB_GLOBAL = [0.10, 0.15, 0.25, 0.50] 
+
+    for u in usuarios_lista:
         u_p = df_p_all[df_p_all['Usuario'] == u]
         m = pd.merge(u_p, df_r_all[df_r_all['Finalizado'] == "SI"], on=['Jornada', 'Partido'])
         
-        if not m.empty:
-            # Calculamos qué puntos sacó en el pasado (normalizados a escala 1.0)
-            puntos_pasados = m.apply(lambda x: calcular_puntos(x.P_L, x.P_V, x.R_L, x.R_V, "Normal"), axis=1)
+        if len(m) > 5: # Necesitamos al menos 5 partidos para creer en su historial
+            pts_pasados = m.apply(lambda x: calcular_puntos(x.P_L, x.P_V, x.R_L, x.R_V, "Normal"), axis=1)
+            counts = pts_pasados.value_counts(normalize=True)
             
-            # Contamos frecuencias de [1.0, 0.75, 0.5, 0.0]
-            counts = puntos_pasados.value_counts(normalize=True)
-            probs = [counts.get(v, 0.01) for v in VALORES_STD] # 0.01 mínimo para no dar 0% absoluto
-            # Normalizar para que sumen 1
+            # Mezclamos su historial (70%) con la probabilidad global (30%) 
+            # Esto se llama "Suavizado" y evita los 100% y 0% irreales
+            probs = []
+            for v in VALORES_STD:
+                personal = counts.get(v, 0)
+                suavizado = (personal * 0.7) + (PROB_GLOBAL[VALORES_STD.index(v)] * 0.3)
+                probs.append(suavizado)
+            
             sum_p = sum(probs)
             perfiles[u] = [p/sum_p for p in probs]
         else:
-            perfiles[u] = [0.1, 0.2, 0.3, 0.4] # Perfil por defecto si no hay datos
+            perfiles[u] = PROB_GLOBAL
 
-    # 4. SIMULACIÓN VECTORIZADA (EL CORAZÓN DEL TURBO)
-    n_jugadores = len(df_hero)
-    matriz_puntos_finales = np.zeros((n_simulaciones, n_jugadores))
-    usuarios_lista = df_hero['Usuario'].tolist()
+    # --- MEJORA 2: SIMULACIÓN CON "VARIANZA" ---
+    matriz_puntos_finales = np.zeros((n_simulaciones, len(usuarios_lista)))
 
     for i, u in enumerate(usuarios_lista):
         pts_actuales = df_hero[df_hero['Usuario'] == u]['Puntos'].values[0]
         p_dist = perfiles[u]
         
-        # Tiramos los dados para todos los partidos restantes a la vez
+        # Simulamos los partidos
         res_std = np.random.choice(VALORES_STD, size=(n_simulaciones, n_std), p=p_dist).sum(axis=1)
         res_doble = np.random.choice(VALORES_DOBLE, size=(n_simulaciones, n_doble), p=p_dist).sum(axis=1)
         res_esquizo = np.random.choice(VALORES_ESQU_J38, size=(n_simulaciones, n_esquizo), p=p_dist).sum(axis=1)
         
-        matriz_puntos_finales[:, i] = pts_actuales + res_std + res_doble + res_esquizo
+        # Añadimos un pequeño "Factor Suerte" aleatorio (un error de +/- 1 punto)
+        suerte = np.random.normal(0, 1.5, n_simulaciones)
+        
+        matriz_puntos_finales[:, i] = pts_actuales + res_std + res_doble + res_esquizo + suerte
 
-    # 5. CÁLCULO DE POSICIONES
-    # Esto genera el ranking para cada una de las 50.000 simulaciones
+    # --- MEJORA 3: RANKING ---
+    # Calculamos posiciones (1 es mejor)
     rankings = np.argsort(np.argsort(-matriz_puntos_finales, axis=1), axis=1) + 1
     
     resumen = []
@@ -433,7 +437,7 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=50000
             "Usuario": u,
             "Prob. Ganar 🏆": (np.sum(posiciones_u == 1) / n_simulaciones) * 100,
             "Prob. Podio 🥉": (np.sum(posiciones_u <= 3) / n_simulaciones) * 100,
-            "Prob. Lagarto 🦎": (np.sum(posiciones_u >= n_jugadores - 1) / n_simulaciones) * 100,
+            "Prob. Lagarto 🦎": (np.sum(posiciones_u >= len(usuarios_lista) - 1) / n_simulaciones) * 100,
             "Puesto Medio": np.mean(posiciones_u)
         })
 
