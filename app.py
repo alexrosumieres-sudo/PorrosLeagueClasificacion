@@ -380,68 +380,49 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=5000)
     n_doble = len(partidos_restantes[partidos_restantes['Tipo'] == "Doble"])
     n_esquizo = len(partidos_restantes[partidos_restantes['Tipo'] == "Esquizo"])
 
-    # --- MEJORA 1: PERFILES MÁS ELÁSTICOS ---
     perfiles = {}
     usuarios_lista = df_hero['Usuario'].tolist()
-    
-    # Probabilidad base de la liga (para que nadie sea un 0 absoluto)
-    # [1.0 pts, 0.75 pts, 0.5 pts, 0.0 pts]
+    n_jugadores = len(usuarios_lista)
     PROB_GLOBAL = [0.10, 0.15, 0.25, 0.50] 
 
     for u in usuarios_lista:
         u_p = df_p_all[df_p_all['Usuario'] == u]
         m = pd.merge(u_p, df_r_all[df_r_all['Finalizado'] == "SI"], on=['Jornada', 'Partido'])
-        
-        if len(m) > 5: # Necesitamos al menos 5 partidos para creer en su historial
+        if len(m) > 5:
             pts_pasados = m.apply(lambda x: calcular_puntos(x.P_L, x.P_V, x.R_L, x.R_V, "Normal"), axis=1)
             counts = pts_pasados.value_counts(normalize=True)
-            
-            # Mezclamos su historial (70%) con la probabilidad global (30%) 
-            # Esto se llama "Suavizado" y evita los 100% y 0% irreales
-            probs = []
-            for v in VALORES_STD:
-                personal = counts.get(v, 0)
-                suavizado = (personal * 0.7) + (PROB_GLOBAL[VALORES_STD.index(v)] * 0.3)
-                probs.append(suavizado)
-            
+            probs = [(counts.get(v, 0) * 0.7) + (PROB_GLOBAL[VALORES_STD.index(v)] * 0.3) for v in VALORES_STD]
             sum_p = sum(probs)
             perfiles[u] = [p/sum_p for p in probs]
         else:
             perfiles[u] = PROB_GLOBAL
 
-    # --- MEJORA 2: SIMULACIÓN CON "VARIANZA" ---
-    matriz_puntos_finales = np.zeros((n_simulaciones, len(usuarios_lista)))
-
+    matriz_puntos_finales = np.zeros((n_simulaciones, n_jugadores))
     for i, u in enumerate(usuarios_lista):
         pts_actuales = df_hero[df_hero['Usuario'] == u]['Puntos'].values[0]
         p_dist = perfiles[u]
-        
-        # Simulamos los partidos
         res_std = np.random.choice(VALORES_STD, size=(n_simulaciones, n_std), p=p_dist).sum(axis=1)
         res_doble = np.random.choice(VALORES_DOBLE, size=(n_simulaciones, n_doble), p=p_dist).sum(axis=1)
         res_esquizo = np.random.choice(VALORES_ESQU_J38, size=(n_simulaciones, n_esquizo), p=p_dist).sum(axis=1)
-        
-        # Añadimos un pequeño "Factor Suerte" aleatorio (un error de +/- 1 punto)
-        suerte = np.random.normal(0, 1.5, n_simulaciones)
-        
+        # Factor suerte para evitar el 100% fijo si hay margen
+        suerte = np.random.normal(0, 1.2, n_simulaciones)
         matriz_puntos_finales[:, i] = pts_actuales + res_std + res_doble + res_esquizo + suerte
 
-    # --- MEJORA 3: RANKING ---
-    # Calculamos posiciones (1 es mejor)
+    # Calculamos los puestos (1 a 7)
     rankings = np.argsort(np.argsort(-matriz_puntos_finales, axis=1), axis=1) + 1
     
-    resumen = []
+    # --- NUEVA LÓGICA: CONTEO POR PUESTO ---
+    datos_prob = []
     for i, u in enumerate(usuarios_lista):
         posiciones_u = rankings[:, i]
-        resumen.append({
-            "Usuario": u,
-            "Prob. Ganar 🏆": (np.sum(posiciones_u == 1) / n_simulaciones) * 100,
-            "Prob. Podio 🥉": (np.sum(posiciones_u <= 3) / n_simulaciones) * 100,
-            "Prob. Lagarto 🦎": (np.sum(posiciones_u >= len(usuarios_lista) - 1) / n_simulaciones) * 100,
-            "Puesto Medio": np.mean(posiciones_u)
-        })
+        row = {"Usuario": u}
+        for p in range(1, n_jugadores + 1):
+            prob_puesto = (np.sum(posiciones_u == p) / n_simulaciones) * 100
+            row[f"P{p}"] = prob_puesto
+        row["Puesto Medio"] = np.mean(posiciones_u)
+        datos_prob.append(row)
 
-    return pd.DataFrame(resumen).sort_values("Prob. Ganar 🏆", ascending=False)
+    return pd.DataFrame(datos_prob).sort_values("Puesto Medio")
 
 @st.cache_data(ttl=60)
 def simular_oraculo(usuarios, df_p_all, df_r_all, jornada_sel):
@@ -1416,47 +1397,84 @@ else:
         
         with sub_tabs[0]:
             st.header("📉 Supercomputadora: Destino Final")
-            st.caption("Predicción probabilística basada en Montecarlo (1.000 iteraciones) analizando tu media de puntos y volatilidad.")
+            st.caption("Predicción probabilística basada en Montecarlo (5.000 iteraciones). Analiza tu media de acierto, la dificultad de los partidos restantes y la varianza de la liga.")
             
-            if st.button("🚀 Lanzar Simulación de Temporada", use_container_width=True):
-                with st.spinner("🔮 Consultando los hilos del destino..."):
+            # --- BOTÓN DE EJECUCIÓN (ON DEMAND) ---
+            if st.button("🚀 LANZAR SIMULACIÓN DE TEMPORADA", use_container_width=True, type="primary"):
+                with st.spinner("🔮 El Oráculo está procesando 5.000 futuros posibles..."):
+                    # Ejecutamos la función (asegúrate de tener la última versión que calcula P1, P2...)
                     df_sim = simular_temporada_completa(df_hero, df_p_all, df_r_all)
                 
-                st.success("✅ Simulación completada con éxito.")
+                st.success("✅ Simulación completada.")
+
+                # --- 1. TABLA DE PROBABILIDADES (MAPA DE CALOR) ---
+                st.subheader("🎯 Matriz de Posiciones Finales")
+                st.markdown("Esta tabla muestra la probabilidad (%) de acabar en cada puesto exacto:")
                 
-                c1, c2 = st.columns([2, 1])
+                # Identificamos dinámicamente las columnas de puestos (P1, P2, P3...)
+                cols_puestos = [c for c in df_sim.columns if c.startswith("P") and c != "Puesto Medio"]
+                
+                # Aplicamos estilo de "Mapa de Calor"
+                st.dataframe(
+                    df_sim.style.format({c: "{:.1f}%" for c in cols_puestos})
+                    .format({"Puesto Medio": "{:.2f}"})
+                    .background_gradient(subset=cols_puestos, cmap="YlGn") # Verde para lo más probable
+                    .highlight_max(subset=cols_puestos, color="#1e3a8a", axis=0), # Azul para el máximo de cada columna
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+                st.divider()
+
+                # --- 2. DASHBOARD DE PREVISIONES ---
+                c1, c2 = st.columns(2)
+                
                 with c1:
-                    st.dataframe(df_sim.style.format({
-                        "Prob. Ganar 🏆": "{:.1f}%",
-                        "Prob. Podio 🥉": "{:.1f}%",
-                        "Prob. Lagarto 🦎": "{:.1f}%",
-                        "Puesto Medio": "{:.1f}"
-                    }).background_gradient(subset=["Prob. Ganar 🏆"], cmap="Greens"), 
-                    use_container_width=True, hide_index=True)
-                
+                    favorito = df_sim.sort_values("P1", ascending=False).iloc[0]
+                    st.markdown(f"""
+                    <div style="background:#f0f7ff; padding:20px; border-radius:15px; border-left:8px solid #007bff;">
+                        <small style="color:#007bff; font-weight:bold;">🏆 EL FAVORITO AL TÍTULO</small><br>
+                        <b style="font-size:1.5em; color:#1e293b;">{favorito['Usuario']}</b><br>
+                        <span style="font-size:1.1em; color:#1e293b;">{favorito['P1']:.1f}% de opciones de ganar.</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
                 with c2:
-                    favorito = df_sim.iloc[0]['Usuario']
+                    # El lagarto es el que tiene más probabilidad de quedar en la última posición (la P más alta)
+                    col_ultimo = f"P{len(df_sim)}" 
+                    lagarto_potencial = df_sim.sort_values(col_ultimo, ascending=False).iloc[0]
                     st.markdown(f"""
-                    <div style="background:#f0f7ff; padding:15px; border-radius:10px; border-left:5px solid #007bff;">
-                        <small>EL ELEGIDO</small><br>
-                        <b style="font-size:1.2em;">🏆 {favorito}</b><br>
-                        <small>Es el que más veces levanta el trofeo en las simulaciones.</small>
+                    <div style="background:#fff5f5; padding:20px; border-radius:15px; border-left:8px solid #ff4b4b;">
+                        <small style="color:#ff4b4b; font-weight:bold;">🦎 CANDIDATO AL LAGARTO</small><br>
+                        <b style="font-size:1.5em; color:#1e293b;">{lagarto_potencial['Usuario']}</b><br>
+                        <span style="font-size:1.1em; color:#1e293b;">{lagarto_potencial[col_ultimo]:.1f}% de acabar último.</span>
                     </div>
                     """, unsafe_allow_html=True)
-                    
-                    peor = df_sim.sort_values('Prob. Lagarto 🦎', ascending=False).iloc[0]['Usuario']
-                    st.markdown(f"""
-                    <div style="background:#fff5f5; padding:15px; border-radius:10px; border-left:5px solid #ff4b4b; margin-top:10px;">
-                        <small>PELIGRO DE EXTINCIÓN</small><br>
-                        <b style="font-size:1.2em;">🦎 {peor}</b><br>
-                        <small>Tiene todas las papeletas para acabar en el fango.</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-    
-                fig_sim = px.bar(df_sim, x="Usuario", y="Prob. Ganar 🏆", 
-                                 color="Prob. Ganar 🏆", color_continuous_scale="Viridis",
-                                 text_auto='.1f')
+
+                # --- 3. GRÁFICO VISUAL DE OPCIONES DE VICTORIA ---
+                st.markdown("---")
+                st.subheader("🥇 Probabilidades de Campeonato (P1)")
+                fig_sim = px.bar(
+                    df_sim, 
+                    x="Usuario", 
+                    y="P1", 
+                    color="P1", 
+                    color_continuous_scale="Viridis",
+                    labels={"P1": "Probabilidad de ser Campeón (%)"},
+                    text_auto='.1f'
+                )
+                fig_sim.update_layout(height=400, showlegend=False)
                 st.plotly_chart(fig_sim, use_container_width=True)
+            
+            else:
+                # Mensaje cuando aún no se ha pulsado el botón
+                st.markdown("""
+                <div style="text-align:center; padding:50px; border:2px dashed #ddd; border-radius:20px;">
+                    <h2 style="color:#ccc;">⚡ Simulador en Reposo</h2>
+                    <p style="color:#999;">Pulsa el botón superior para poner a trabajar a la IA.<br>
+                    Advertencia: Los resultados pueden herir sensibilidades (especialmente si vas último).</p>
+                </div>
+                """, unsafe_allow_html=True)
     
         with sub_tabs[1]:
             st.header("🏟️ LaLiga según mis Porros")
