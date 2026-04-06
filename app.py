@@ -278,6 +278,11 @@ def leer_datos(pestaña):
     try:
         sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
+        
+        df = pd.read_csv(url)
+        if not df.empty and 'Usuario' in df.columns:
+            df['Usuario'] = df['Usuario'].astype(str)
+            
         return pd.read_csv(url)
     except: return pd.DataFrame()
 
