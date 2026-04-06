@@ -15,10 +15,18 @@ PERFILES_DIR = "perfiles/"
 LOGOS_DIR = "logos/"
 
 NIVEL_EQUIPOS = {
-    "Real Madrid": 1, "Barcelona": 1, "Villarreal": 1, "Atlético": 1,
-    "Betis": 2, "Espanyol": 2, "Celta": 2, "R. Sociedad": 2, "Athletic": 2,
-    "Osasuna": 3, "Getafe": 3, "Girona": 3, "Sevilla": 3, "Alavés": 3, "Valencia": 3, "Elche": 3, "Rayo": 3,
-    "Mallorca": 4, "Levante": 4, "Oviedo": 4
+    # NIVEL 1: La Élite (Champions y los que mandan)
+    "Barcelona": 1, "Real Madrid": 1, "Villarreal": 1, "Atlético": 1,
+
+    # NIVEL 2: Clase Media-Alta (Peleando Europa League / Conference)
+    "Betis": 2, "Celta": 2, "R. Sociedad": 2, "Getafe": 2,
+
+    # NIVEL 3: Clase Media-Baja (Zona tranquila pero sin alardes)
+    "Osasuna": 3, "Espanyol": 3, "Athletic": 3, "Rayo": 3, 
+    "Valencia": 3, "Girona": 3, "Alavés": 3,
+
+    # NIVEL 4: El Barrizal (Peleando el descenso y colistas)
+    "Mallorca": 4, "Sevilla": 4, "Elche": 4, "Levante": 4, "Oviedo": 4
 }
 
 # Datos oficiales tras la Jornada 24 (Base para el simulador)
