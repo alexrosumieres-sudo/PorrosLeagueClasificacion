@@ -273,13 +273,21 @@ LOGROS_DATA = {
 }
 
 # --- 2. FUNCIONES DE APOYO ---
-@st.cache_data(ttl=10) # TTL bajo para que los cambios del admin se vean rápido
+@st.cache_data(ttl=10) 
 def leer_datos(pestaña):
     try:
         sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
-        return pd.read_csv(url)
-    except: return pd.DataFrame()
+        
+        df = pd.read_csv(url)
+        
+        # Blindaje: Forzamos que la columna Usuario sea texto si existe
+        if not df.empty and 'Usuario' in df.columns:
+            df['Usuario'] = df['Usuario'].astype(str)
+            
+        return df  # <--- ANTES TENÍAS: return pd.read_csv(url). ¡ESO ERA EL ERROR!
+    except: 
+        return pd.DataFrame()
 
 def preparar_contexto_ia(df_hero, df_logs):
     # Resumen de la clasificación
@@ -560,7 +568,12 @@ else:
     
     df_hero = pd.DataFrame(stats_hero).sort_values("Puntos", ascending=False).reset_index(drop=True)
     df_hero['Posicion'] = range(1, len(df_hero) + 1)
-    lider = df_hero.iloc[0] if not df_hero.empty else {"Usuario": "Nadie", "Puntos": 0.0}
+
+    # BLINDAJE: Si la tabla está vacía (por fallo de red), ponemos valores por defecto
+    if not df_hero.empty:
+        lider = df_hero.iloc[0]
+    else:
+        lider = {"Usuario": "Cargando...", "Puntos": 0.0}
 
     es_admin = st.session_state.rol == "admin"
     if es_admin:
@@ -595,17 +608,22 @@ else:
         for u in u_jugadores:
             u_p_last = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == nombre_ultima_j)]
             pts_j = 0.0
-            for r in u_p_last.itertuples():
-                m_res = df_r_all[(df_r_all['Jornada'] == nombre_ultima_j) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
-                if not m_res.empty:
-                    pts_j += calcular_puntos(r.P_L, r.P_V, m_res.iloc[0]['R_L'], m_res.iloc[0]['R_V'], m_res.iloc[0]['Tipo'])
+            # Solo calculamos si hay predicciones
+            if not u_p_last.empty:
+                for r in u_p_last.itertuples():
+                    m_res = df_r_all[(df_r_all['Jornada'] == nombre_ultima_j) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
+                    if not m_res.empty:
+                        pts_j += calcular_puntos(r.P_L, r.P_V, m_res.iloc[0]['R_L'], m_res.iloc[0]['R_V'], m_res.iloc[0]['Tipo'])
             puntos_last_j.append({"Usuario": u, "Puntos": pts_j})
         
+        # Solo calculamos el lagarto si tenemos puntos
         if puntos_last_j:
             df_last_j = pd.DataFrame(puntos_last_j)
             puntos_lagarto = df_last_j['Puntos'].min()
-            # Obtenemos todos los que tengan la puntuación mínima (por si hay empate)
             lagartos_nombres = df_last_j[df_last_j['Puntos'] == puntos_lagarto]['Usuario'].tolist()
+        else:
+            lagartos_nombres = []
+            puntos_lagarto = 0.0
 
     # --- 2. DISEÑO VISUAL DE LA CABECERA ---
     with st.container():
@@ -640,7 +658,7 @@ else:
             elif len(lagartos_nombres) > 1:
                 # Si hay empate, mostramos icono de plaga y los nombres
                 st.markdown("<h1 style='margin:10px 0;'>🦎🦎</h1>", unsafe_allow_html=True)
-                nombres_fmt = " & ".join(lagartos_nombres)
+                nombres_fmt = " & ".join(map(str, lagartos_nombres))
                 st.markdown(f"<div style='line-height:1.1; margin-bottom:5px;'><small><b>{nombres_fmt}</b></small></div>", unsafe_allow_html=True)
             else:
                 st.markdown("<h1 style='margin:10px 0;'>-</h1>", unsafe_allow_html=True)
@@ -1263,9 +1281,9 @@ else:
             
             cronologia.append({
                 "Jornada": jor,
-                "Héroe (🏆)": " & ".join(g),
-                "Líder (👑)": " & ".join(l),
-                "Lagarto (🦎)": " & ".join(p)
+                "Héroe (🏆)": " & ".join(map(str, g)),
+                "Líder (👑)": " & ".join(map(str, l)),
+                "Lagarto (🦎)": " & ".join(map(str, p))
             })
         
         st.table(pd.DataFrame(cronologia))
