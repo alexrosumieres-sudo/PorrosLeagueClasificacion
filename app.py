@@ -274,6 +274,7 @@ LOGROS_DATA = {
 
 # --- 2. FUNCIONES DE APOYO ---
 @st.cache_data(ttl=10) 
+@st.cache_data(ttl=10)
 def leer_datos(pestaña):
     try:
         sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
@@ -281,11 +282,11 @@ def leer_datos(pestaña):
         
         df = pd.read_csv(url)
         
-        # Blindaje: Forzamos que la columna Usuario sea texto si existe
+        # Blindaje de nombres
         if not df.empty and 'Usuario' in df.columns:
             df['Usuario'] = df['Usuario'].astype(str)
             
-        return df  # <--- ANTES TENÍAS: return pd.read_csv(url). ¡ESO ERA EL ERROR!
+        return df # <--- ANTES TENÍAS OTRA LÍNEA AQUÍ QUE LO ROMPÍA
     except: 
         return pd.DataFrame()
 
@@ -498,6 +499,13 @@ else:
     df_perf = leer_datos("ImagenesPerfil")
     # Cargamos también los logs para que ChatG-O-L los vea
     df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase"), leer_datos("Logs")
+
+    # --- 🛡️ AÑADE ESTO AQUÍ (EL MURO) ---
+    if df_r_all.empty or df_p_all.empty or df_u_all.empty:
+        st.warning("⏳ El VAR está procesando los datos... un segundo.")
+        st.stop() # Esto evita que la pantalla se ponga en blanco
+    # -----------------------------------
+
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
