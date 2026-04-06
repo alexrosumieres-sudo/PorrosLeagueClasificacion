@@ -272,22 +272,18 @@ LOGROS_DATA = {
     "pleno": {"icon": "💯", "name": "Pleno", "desc": "Puntuado en los 10."}
 }
 
-# --- 2. FUNCIONES DE APOYO ---
-@st.cache_data(ttl=10) 
-@st.cache_data(ttl=10)
+# --- 2. FUNCIONES DE APOYO --- 
+@st.cache_data(ttl=60) # <--- Dale aire a la CPU, pon 60
 def leer_datos(pestaña):
     try:
-        sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
-        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
-        
-        df = pd.read_csv(url)
-        
-        # Blindaje de nombres
-        if not df.empty and 'Usuario' in df.columns:
-            df['Usuario'] = df['Usuario'].astype(str)
-            
-        return df # <--- ANTES TENÍAS OTRA LÍNEA AQUÍ QUE LO ROMPÍA
-    except: 
+        # Usamos la conexión oficial que ya definiste (conn)
+        df = conn.read(worksheet=pestaña, ttl=0)
+        if df is not None:
+            if 'Usuario' in df.columns:
+                df['Usuario'] = df['Usuario'].astype(str)
+            return df
+        return pd.DataFrame()
+    except Exception as e:
         return pd.DataFrame()
 
 def preparar_contexto_ia(df_hero, df_logs):
@@ -496,15 +492,15 @@ if not st.session_state.autenticado:
                 st.success("✅ Hecho")
 else:
     # 1. CARGA DE DATOS
+    # --- CARGA DE DATOS ---
     df_perf = leer_datos("ImagenesPerfil")
-    # Cargamos también los logs para que ChatG-O-L los vea
     df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase"), leer_datos("Logs")
 
-    # --- 🛡️ AÑADE ESTO AQUÍ (EL MURO) ---
+    # --- 🛡️ PEGA ESTE MURO DE CONTENCIÓN AQUÍ ---
     if df_r_all.empty or df_p_all.empty or df_u_all.empty:
-        st.warning("⏳ El VAR está procesando los datos... un segundo.")
-        st.stop() # Esto evita que la pantalla se ponga en blanco
-    # -----------------------------------
+        st.info("⌛ El VAR está revisando las imágenes... (Cargando datos)")
+        st.stop() # Detiene la app aquí si no hay datos
+    # --------------------------------------------
 
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
@@ -561,27 +557,30 @@ else:
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
             st.session_state.autenticado = False; st.rerun()
 
-    # --- CÁLCULO DE DASHBOARD HERO ---
+  # --- CÁLCULO DE DASHBOARD HERO (BLINDADO Y RÁPIDO) ---
+    df_res_fin = df_r_all[df_r_all['Finalizado'] == "SI"]
+    # Unimos todo de golpe para no usar bucles pesados
+    df_master = pd.merge(df_p_all, df_res_fin, on=['Jornada', 'Partido'], suffixes=('_p', '_r'))
+    
     stats_hero = []
     for u in u_jugadores:
         pb_row = df_base[df_base['Usuario'] == u]
-        p_base = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
-        u_p_hist = df_p_all[df_p_all['Usuario'] == u]
-        p_acum = p_base
-        for r in u_p_hist.itertuples():
-            m = df_r_all[(df_r_all['Jornada'] == r.Jornada) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
-            if not m.empty:
-                p_acum += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+        p_acum = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
+        
+        u_puntos = df_master[df_master['Usuario'] == u]
+        if not u_puntos.empty:
+            p_acum += u_puntos.apply(lambda x: calcular_puntos(x.P_L, x.P_V, x.R_L, x.R_V, x.Tipo), axis=1).sum()
+        
         stats_hero.append({"Usuario": u, "Puntos": p_acum})
     
     df_hero = pd.DataFrame(stats_hero).sort_values("Puntos", ascending=False).reset_index(drop=True)
     df_hero['Posicion'] = range(1, len(df_hero) + 1)
 
-    # BLINDAJE: Si la tabla está vacía (por fallo de red), ponemos valores por defecto
+    # 🛡️ Acceso seguro al Líder
     if not df_hero.empty:
         lider = df_hero.iloc[0]
     else:
-        lider = {"Usuario": "Cargando...", "Puntos": 0.0}
+        lider = {"Usuario": "Nadie", "Puntos": 0.0}
 
     es_admin = st.session_state.rol == "admin"
     if es_admin:
