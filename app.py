@@ -299,7 +299,8 @@ def leer_datos(tabla):
                 'p_l': 'P_L', 'p_v': 'P_V', 'r_l': 'R_L', 'r_v': 'R_V',
                 'tipo': 'Tipo', 'finalizado': 'Finalizado', 'publica': 'Publica',
                 'fecha': 'Fecha', 'accion': 'Accion', 'imagenpath': 'ImagenPath',
-                'probabilidad': 'Probabilidad'
+                'probabilidad': 'Probabilidad',
+                'hora_inicio': 'Hora_Inicio'  # <-- Asegúrate de que esta línea esté exacta
             }
             # Renombramos solo las columnas que existan en el DataFrame actual
             columnas_a_renombrar = {k: v for k, v in mapeo.items() if k in df.columns}
@@ -455,13 +456,13 @@ if not st.session_state.autenticado:
         
         # --- BOTÓN ENTRAR (LOGIN) ---
         if c1.button("Entrar", use_container_width=True):
-            df_u = leer_datos("usuarios") # Nuestra función ya traduce de SQL a DataFrame
-            # Verificamos credenciales
-            user = df_u[(df_u['usuario'].astype(str) == u_in) & (df_u['password'].astype(str) == p_in)]
+            df_u = leer_datos("usuarios") 
+            # CAMBIO: 'usuario' -> 'Usuario' y 'password' -> 'Password'
+            user = df_u[(df_u['Usuario'].astype(str) == u_in) & (df_u['Password'].astype(str) == p_in)]
             if not user.empty:
                 st.session_state.autenticado = True
                 st.session_state.user = u_in
-                st.session_state.rol = user.iloc[0]['Rol']
+                st.session_state.rol = user.iloc[0]['Rol'] # 'Rol' con R mayúscula según tu mapeo
                 st.rerun()
             else:
                 st.error("❌ Credenciales incorrectas")
@@ -680,7 +681,7 @@ else:
                 if hay_proximo:
                    ahora_madrid = get_now_madrid()
                    # Usamos pd.to_datetime para que nos de igual si viene de Excel (string) o SQL (datetime)
-                   hora_p = pd.to_datetime(prox_p.iloc[0]['Hora_Inicio']) 
+                   hora_p = pd.to_datetime(prox_p.iloc[0]['Hora_Inicio'])
                    diff = hora_p - ahora_madrid
                    
                    ts = int(diff.total_seconds())
