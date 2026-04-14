@@ -455,7 +455,7 @@ if not st.session_state.autenticado:
         
         # --- BOTÓN ENTRAR (LOGIN) ---
         if c1.button("Entrar", use_container_width=True):
-            df_u = leer_datos("Usuarios") # Nuestra función ya traduce de SQL a DataFrame
+            df_u = leer_datos("usuarios") # Nuestra función ya traduce de SQL a DataFrame
             # Verificamos credenciales
             user = df_u[(df_u['usuario'].astype(str) == u_in) & (df_u['password'].astype(str) == p_in)]
             if not user.empty:
@@ -468,7 +468,7 @@ if not st.session_state.autenticado:
         
         # --- BOTÓN REGISTRARSE ---
         if c2.button("Registrarse", use_container_width=True):
-            df_u = leer_datos("Usuarios")
+            df_u = leer_datos("usuarios")
             if u_in in df_u['Usuario'].values:
                 st.error("❌ Usuario ya existe")
             elif u_in == "" or p_in == "":
