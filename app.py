@@ -457,7 +457,7 @@ if not st.session_state.autenticado:
         if c1.button("Entrar", use_container_width=True):
             df_u = leer_datos("Usuarios") # Nuestra función ya traduce de SQL a DataFrame
             # Verificamos credenciales
-            user = df_u[(df_u['Usuario'].astype(str) == u_in) & (df_u['Password'].astype(str) == p_in)]
+            user = df_u[(df_u['usuario'].astype(str) == u_in) & (df_u['password'].astype(str) == p_in)]
             if not user.empty:
                 st.session_state.autenticado = True
                 st.session_state.user = u_in
