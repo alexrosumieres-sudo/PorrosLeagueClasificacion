@@ -9,7 +9,7 @@ import itertools
 import numpy as np
 import time
 import pytz
-
+ 
 # --- 1. CONFIGURACIONES GENERALES ---
 PERFILES_DIR = "perfiles/"
 LOGOS_DIR = "logos/"
