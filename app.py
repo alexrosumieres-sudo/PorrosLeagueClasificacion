@@ -455,17 +455,25 @@ if not st.session_state.autenticado:
         c1, c2 = st.columns(2)
         
         # --- BOTÓN ENTRAR (LOGIN) ---
+        # --- BOTÓN ENTRAR (LOGIN) Corregido ---
         if c1.button("Entrar", use_container_width=True):
             df_u = leer_datos("usuarios") 
-            # CAMBIO: 'usuario' -> 'Usuario' y 'password' -> 'Password'
-            user = df_u[(df_u['Usuario'].astype(str) == u_in) & (df_u['Password'].astype(str) == p_in)]
-            if not user.empty:
-                st.session_state.autenticado = True
-                st.session_state.user = u_in
-                st.session_state.rol = user.iloc[0]['Rol'] # 'Rol' con R mayúscula según tu mapeo
-                st.rerun()
+            
+            # --- 🛡️ Blindaje anti-caídas ---
+            if df_u.empty:
+                st.error("🚫 No se han podido cargar los usuarios. Revisa la conexión en los Secrets.")
+            elif 'Usuario' not in df_u.columns:
+                st.error(f"❌ Error de estructura: Columnas encontradas: {df_u.columns.tolist()}")
             else:
-                st.error("❌ Credenciales incorrectas")
+                # Verificamos credenciales (Usamos Usuario y Password con mayúsculas por tu mapeo)
+                user = df_u[(df_u['Usuario'].astype(str) == u_in) & (df_u['Password'].astype(str) == p_in)]
+                if not user.empty:
+                    st.session_state.autenticado = True
+                    st.session_state.user = u_in
+                    st.session_state.rol = user.iloc[0]['Rol']
+                    st.rerun()
+                else:
+                    st.error("❌ Credenciales incorrectas")
         
         # --- BOTÓN REGISTRARSE ---
         if c2.button("Registrarse", use_container_width=True):
