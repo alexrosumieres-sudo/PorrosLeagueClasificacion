@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection
+from sqlalchemy import text
 import datetime
 import os
 import plotly.express as px
@@ -282,58 +282,36 @@ LOGROS_DATA = {
 }
 
 # --- 2. FUNCIONES DE APOYO ---
-@st.cache_data(ttl=10) # TTL bajo para que los cambios del admin se vean rápido
+conn = st.connection("postgresql", type="sql")
+
 @st.cache_data(ttl=10)
-def leer_datos(pestaña):
+@st.cache_data(ttl=10)
+def leer_datos(tabla):
     try:
-        sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
-        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
-        df = pd.read_csv(url)
+        tabla_sql = tabla.lower()
+        df = conn.query(f"SELECT * FROM {tabla_sql};", ttl=10)
         
-        # Blindaje: Forzamos Usuario a texto si existe la columna
-        if not df.empty and 'Usuario' in df.columns:
-            df['Usuario'] = df['Usuario'].astype(str)
-        
+        if not df.empty:
+            # Mapeo universal de nombres SQL (minúsculas) a nombres App (Mayúsculas/Originales)
+            mapeo = {
+                'usuario': 'Usuario', 'password': 'Password', 'rol': 'Rol', 
+                'puntos': 'Puntos', 'jornada': 'Jornada', 'partido': 'Partido',
+                'p_l': 'P_L', 'p_v': 'P_V', 'r_l': 'R_L', 'r_v': 'R_V',
+                'tipo': 'Tipo', 'finalizado': 'Finalizado', 'publica': 'Publica',
+                'fecha': 'Fecha', 'accion': 'Accion', 'imagenpath': 'ImagenPath',
+                'probabilidad': 'Probabilidad'
+            }
+            # Renombramos solo las columnas que existan en el DataFrame actual
+            columnas_a_renombrar = {k: v for k, v in mapeo.items() if k in df.columns}
+            df = df.rename(columns=columnas_a_renombrar)
+            
+            # Forzamos Usuario a texto si existe
+            if 'Usuario' in df.columns:
+                df['Usuario'] = df['Usuario'].astype(str)
         return df
-    except: 
+    except Exception as e:
+        st.error(f"Error en el VAR (DB): {e}")
         return pd.DataFrame()
-
-def preparar_contexto_ia(df_hero, df_logs):
-    # Resumen de la clasificación
-    top_3 = df_hero.head(3)
-    ultimo = df_hero.iloc[-1]
-    
-    resumen_clasificacion = "CLASIFICACIÓN ACTUAL:\n"
-    for _, fila in df_hero.iterrows():
-        resumen_clasificacion += f"- {fila['Usuario']}: {fila['Puntos']} pts (Puesto {fila['Posicion']})\n"
-    
-    # Resumen del VAR (últimos 5 movimientos)
-    ultimos_logs = df_logs.head(5)
-    resumen_var = "ÚLTIMOS EVENTOS DEL VAR:\n"
-    for _, log in ultimos_logs.iterrows():
-        resumen_var += f"- {log['Usuario']} hizo: {log['Accion']}\n"
-
-    # El "Prompt" Maestro
-    contexto = f"""
-    Eres 'ChatG-O-L', la IA oficial y más 'faltosa' de la Porros League 2026.
-    Tu personalidad: Eres un híbrido entre un analista de datos de la NASA y un ultra del fútbol de los 90.
-    Sarcástico, ácido, fanático del fútbol, un poco 'cuñao' y usas el sarcasmo de 'La Sotana', odias a los 'tibios' y no perdonas un fallo..
-    
-    {resumen_clasificacion}
-    
-    {resumen_var}
-    
-    Instrucciones: 
-    1. Preséntate siempre como ChatG-O-L si te preguntan quién eres.
-    2. Si alguien te pregunta por tácticas, responde que 'lo importante es que corran y sientan los colores'.
-    3. Si el líder pregunta, dile que tiene una flor en el culo.
-    4. Si el 'Lagarto' (último) pregunta, dile que se dedique al ganchillo.
-    5. Si alguien va último, búrlate de su falta de visión futbolística.
-    6. Si el Admin ha sancionado a alguien, apoya la dictadura del Admin.
-    7. Habla de los usuarios por sus nombres.
-    8. Usa expresiones como 'vender humo', 'pechofrío', 'manta' o 'robo histórico'.
-    """
-    return contexto
 
 def safe_float(valor):
     try:
@@ -409,7 +387,7 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, n_simulaciones=5000)
 
     matriz_puntos_finales = np.zeros((n_simulaciones, n_jugadores))
     for i, u in enumerate(usuarios_lista):
-        pts_actuales = df_hero[df_hero['Usuario'] == u]['Puntos'].values[0]
+        pts_actuales = float(df_hero[df_hero['Usuario'] == u]['Puntos'].values[0])
         p_dist = perfiles[u]
         res_std = np.random.choice(VALORES_STD, size=(n_simulaciones, n_std), p=p_dist).sum(axis=1)
         res_doble = np.random.choice(VALORES_DOBLE, size=(n_simulaciones, n_doble), p=p_dist).sum(axis=1)
@@ -464,7 +442,7 @@ def get_now_madrid():
 
 # --- 3. APP ---
 st.set_page_config(page_title="Porros League 2026", page_icon="⚽", layout="wide")
-conn = st.connection("gsheets", type=GSheetsConnection)
+conn = st.connection("postgresql", type="sql")
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 
@@ -474,28 +452,59 @@ if not st.session_state.autenticado:
         st.title("🏆 Porros League 2026")
         u_in, p_in = st.text_input("Usuario"), st.text_input("Contraseña", type="password")
         c1, c2 = st.columns(2)
+        
+        # --- BOTÓN ENTRAR (LOGIN) ---
         if c1.button("Entrar", use_container_width=True):
-            df_u = leer_datos("Usuarios")
+            df_u = leer_datos("Usuarios") # Nuestra función ya traduce de SQL a DataFrame
+            # Verificamos credenciales
             user = df_u[(df_u['Usuario'].astype(str) == u_in) & (df_u['Password'].astype(str) == p_in)]
             if not user.empty:
-                st.session_state.autenticado, st.session_state.user, st.session_state.rol = True, u_in, user.iloc[0]['Rol']; st.rerun()
-            else: st.error("❌ Credenciales incorrectas")
+                st.session_state.autenticado = True
+                st.session_state.user = u_in
+                st.session_state.rol = user.iloc[0]['Rol']
+                st.rerun()
+            else:
+                st.error("❌ Credenciales incorrectas")
+        
+        # --- BOTÓN REGISTRARSE ---
         if c2.button("Registrarse", use_container_width=True):
             df_u = leer_datos("Usuarios")
-            if u_in in df_u['Usuario'].values: st.error("❌ Usuario ya existe")
+            if u_in in df_u['Usuario'].values:
+                st.error("❌ Usuario ya existe")
+            elif u_in == "" or p_in == "":
+                st.warning("⚠️ Rellena ambos campos, no seas 'pechofrío'.")
             else:
-                nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
-                conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
-                st.success("✅ Hecho")
+                # CAMBIO CLAVE: Usamos SQL para insertar, no conn.update
+                try:
+                    with conn.session as s:
+                        s.execute(
+                            text("INSERT INTO usuarios (usuario, password, rol) VALUES (:u, :p, :r)"),
+                            params={"u": u_in, "p": p_in, "r": "user"}
+                        )
+                        s.commit()
+                    
+                    # También le creamos su entrada en Puntos Base con 0 puntos
+                    with conn.session as s:
+                        s.execute(
+                            text("INSERT INTO puntos_base (usuario, puntos) VALUES (:u, 0.0)"),
+                            params={"u": u_in}
+                        )
+                        s.commit()
+                        
+                    st.success("✅ ¡Fichaje completado! Ya puedes entrar.")
+                    st.cache_data.clear() # Limpiamos caché para que lea al nuevo usuario
+                except Exception as e:
+                    st.error(f"Error al registrar: {e}")
+                 
 else:
     # 1. CARGA DE DATOS
     df_perf = leer_datos("ImagenesPerfil")
     # Cargamos también los logs para que ChatG-O-L los vea
-    df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase"), leer_datos("Logs")
-    # --- 🛡️ MURO DE SEGURIDAD (Añade esto aquí) ---
-    if df_r_all.empty or df_p_all.empty or df_u_all.empty:
-        st.info("⌛ El VAR está conectando con los satélites... (Cargando datos)")
-        st.stop()
+    df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("resultados"), leer_datos("predicciones"), leer_datos("usuarios"), leer_datos("puntos_base"), leer_datos("logs")
+    # --- 🛡️ MURO DE SEGURIDAD ---
+   if df_r_all is None or df_r_all.empty or df_u_all is None or df_u_all.empty:
+       st.info("⌛ El VAR está conectando con los satélites de Supabase... (Cargando datos)")
+       st.stop()
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
@@ -591,7 +600,8 @@ else:
     # --- RENDER DASHBOARD HERO ---
     # --- 1. LÓGICA DE CÁLCULO: LÍDER Y LAGARTO(S) ---
     # Buscamos la última jornada que tenga partidos finalizados
-    jornadas_con_finalizados = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()
+    # Ordenamos para que la última jornada (-1) sea siempre la mayor
+    jornadas_con_finalizados = sorted(df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique())
     lagartos_nombres = []
     puntos_lagarto = 0.0
     nombre_ultima_j = "-"
@@ -664,16 +674,19 @@ else:
             
             with c3:
                 if hay_proximo:
-                    ahora_madrid = get_now_madrid()
-                    diff = datetime.datetime.strptime(str(prox_p.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S") - ahora_madrid
-                    ts = int(diff.total_seconds())
-                    if ts > 0:
-                        h = (ts % 86400) // 3600
-                        m = (ts % 3600) // 60
-                        color = "#ff4b4b" if ts < 7200 else "#2baf2b"
-                        st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{color}; font-size: 1.2em;">{h:02d}h {m:02d}m</span></div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="kpi-box"><span class="kpi-label">Mercado</span><span class="kpi-value" style="color:#6c757d;">Cerrado</span></div>', unsafe_allow_html=True)
+                   ahora_madrid = get_now_madrid()
+                   # Usamos pd.to_datetime para que nos de igual si viene de Excel (string) o SQL (datetime)
+                   hora_p = pd.to_datetime(prox_p.iloc[0]['Hora_Inicio']) 
+                   diff = hora_p - ahora_madrid
+                   
+                   ts = int(diff.total_seconds())
+                   if ts > 0:
+                       h = (ts % 86400) // 3600
+                       m = (ts % 3600) // 60
+                       color = "#ff4b4b" if ts < 7200 else "#2baf2b"
+                       st.markdown(f'<div class="kpi-box"><span class="kpi-label">Cierre en</span><span class="kpi-value" style="color:{color}; font-size: 1.2em;">{h:02d}h {m:02d}m</span></div>', unsafe_allow_html=True)
+                   else:
+                       st.markdown('<div class="kpi-box"><span class="kpi-label">Mercado</span><span class="kpi-value" style="color:#6c757d;">Cerrado</span></div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="kpi-box"><span class="kpi-label">Jornada</span><span class="kpi-value">Finalizada</span></div>', unsafe_allow_html=True)
             
@@ -752,7 +765,7 @@ else:
                 hora_partido = ""
                 if not res_info.empty:
                     hora_partido = res_info.iloc[0]['Hora_Inicio']
-                    lock = get_now_madrid() > datetime.datetime.strptime(str(hora_partido), "%Y-%m-%d %H:%M:%S")
+                    lock = get_now_madrid() > pd.to_datetime(hora_partido)
 
                 # --- RENDER DE LA TARJETA ---
                 card_class = "bet-card-locked" if lock else "bet-card"
@@ -803,7 +816,7 @@ else:
             # --- BOTÓN DE GUARDADO Y LÓGICA VAR ---
             st.markdown("---")
             if st.button("💾 GUARDAR MIS PRONÓSTICOS", use_container_width=True, type="primary"):
-                # 1. Comparar con lo anterior para el log del VAR
+                # 1. Lógica del VAR: Detectar cambios (la mantenemos igual, es buena)
                 preds_viejas = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
                 
                 if preds_viejas.empty:
@@ -815,32 +828,47 @@ else:
                         if not m_viejo.empty:
                             if r_nuevo['P_L'] != int(m_viejo.iloc[0]['P_L']) or r_nuevo['P_V'] != int(m_viejo.iloc[0]['P_V']):
                                 cambios.append(r_nuevo['Partido'])
-                    
-                    if cambios:
-                        log_msg = f"🔄 Modificó {len(cambios)} partidos: {', '.join(cambios)}"
-                    else:
-                        log_msg = f"📝 Re-guardó predicciones sin cambios ({j_global})"
+                    log_msg = f"🔄 Modificó {len(cambios)} partidos: {', '.join(cambios)}" if cambios else f"📝 Re-guardó predicciones ({j_global})"
 
-                # 2. Actualizar base de datos
-                otras_preds = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
-                df_final_p = pd.concat([otras_preds, pd.DataFrame(env)], ignore_index=True)
-                conn.update(worksheet="Predicciones", data=df_final_p)
-                
-                # 3. Escribir en el VAR (Logs)
-                log_entry = pd.DataFrame([{
-                    "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Usuario": st.session_state.user,
-                    "Accion": log_msg
-                }])
-                df_l_existente = conn.read(worksheet="Logs", ttl=0)
-                conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_entry], ignore_index=True))
-                
-                # 4. Feedback y Refresco
-                st.cache_data.clear()
-                st.cache_resource.clear()
-                st.success(f"✅ ¡Hecho! El VAR ha registrado: {log_msg}")
-                time.sleep(1.2)
-                st.rerun()
+                # 2. ACTUALIZAR BASE DE DATOS (ESTILO SQL)
+                try:
+                    with conn.session as s:
+                        # A. Borramos las apuestas anteriores de este usuario para esta jornada
+                        s.execute(
+                            text("DELETE FROM predicciones WHERE usuario = :u AND jornada = :j"),
+                            params={"u": st.session_state.user, "j": j_global}
+                        )
+                        # B. Insertamos las nuevas (las 10 del tirón)
+                        for p in env:
+                            s.execute(
+                                text("""
+                                    INSERT INTO predicciones (usuario, jornada, partido, p_l, p_v, publica) 
+                                    VALUES (:usuario, :jornada, :partido, :p_l, :p_v, :publica)
+                                """),
+                                params={
+                                    "usuario": p["Usuario"], "jornada": p["Jornada"], 
+                                    "partido": p["Partido"], "p_l": p["P_L"], 
+                                    "p_v": p["P_V"], "publica": p["Publica"]
+                                }
+                            )
+                        s.commit()
+
+                    # 3. ESCRIBIR EN EL VAR (LOGS) - TAMBIÉN EN SQL
+                    with conn.session as s:
+                        s.execute(
+                            text("INSERT INTO logs (usuario, accion) VALUES (:u, :a)"),
+                            params={"u": st.session_state.user, "a": log_msg}
+                        )
+                        s.commit()
+
+                    # 4. Feedback y Refresco
+                    st.cache_data.clear()
+                    st.success(f"✅ ¡Hecho! El VAR ha registrado: {log_msg}")
+                    time.sleep(1)
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Error al guardar en el VAR: {e}")
 
     with tabs[1]: # --- 🔮 PESTAÑA OTROS (TENDENCIAS + REVELACIONES) ---
         st.header("👀 Qué han puesto los demás")
@@ -1232,7 +1260,8 @@ else:
             
             # 1. IDENTIFICACIÓN DE JORNADAS
             jor_manuales = ["J22", "J23", "J24"]
-            jor_excel = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique().tolist()
+            # Forzamos el orden para que el "Estado de forma" sea de las VERDADERAS últimas jornadas
+            jor_excel = sorted(df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique().tolist())
             todas_con_datos = jor_manuales + [j for j in jor_excel if j not in jor_manuales]
             
             # 2. SELECTOR DE RANGO
@@ -1302,7 +1331,8 @@ else:
             metrica = st.radio("Visualizar evolución por:", ["Puntos Acumulados", "Puesto en la General"], horizontal=True)
 
             # 2. Preparar datos históricos
-            j_finalizadas = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()
+            # Sin el sorted, el gráfico de líneas podría cruzar fechas hacia atrás y hacia adelante
+            j_finalizadas = sorted(df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique())
             historia_data = []
 
             # Puntos iniciales (Base J24)
@@ -1524,20 +1554,21 @@ else:
 
                 with col_izq:
                     # --- GRÁFICO DE EVOLUCIÓN (Eje X Compacto) ---
-                    df_hist = leer_datos("HistoricoOraculo")
+                    df_hist = leer_datos("historico_oraculo")
                     
                     if not df_hist.empty and 'Jornada' in df_hist.columns:
                         df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
                         
                         if not df_hist_j.empty:
-                            # Limpieza de decimales y fechas
-                            df_hist_j['Probabilidad'] = df_hist_j['Probabilidad'].astype(str).str.replace(',', '.')
-                            df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
-                            df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M:%S', errors='coerce')
-                            if df_hist_j['Fecha_DT'].isna().all():
-                                df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M', errors='coerce')
-                            
-                            df_hist_j = df_hist_j.sort_values('Fecha_DT')
+                           # 1. Aseguramos que la probabilidad sea numérica (SQL ya la da limpia)
+                           df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
+                           
+                           # 2. La fecha en SQL es un objeto nativo, pd.to_datetime la entiende a la primera
+                           df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'])
+                           
+                           # Ordenamos cronológicamente
+                           df_hist_j = df_hist_j.sort_values('Fecha_DT')
+
 
                             fig_evo = px.line(
                                 df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
@@ -1639,11 +1670,20 @@ else:
                     upd_b.append({"Usuario": u, "Puntos": nuevo_val})
                 
                 if st.button("💾 Guardar Todos los Puntos Base", use_container_width=True):
-                    conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
-                    st.cache_data.clear()
-                    st.success("✅ Puntos base actualizados.")
-                    time.sleep(1)
-                    st.rerun()
+                    try:
+                        with conn.session as s:
+                            for row in upd_b:
+                                s.execute(
+                                    text("UPDATE puntos_base SET puntos = :p WHERE usuario = :u"),
+                                    params={"p": row["Puntos"], "u": row["Usuario"]}
+                                )
+                        s.commit()
+                        st.cache_data.clear()
+                        st.success("✅ Puntos base actualizados.")
+                        time.sleep(1)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error SQL: {e}")
 
             with t_ajustes:
                 st.subheader("⚖️ Sanciones y Bonificaciones")
@@ -1659,51 +1699,33 @@ else:
 
                 if submit_ajuste:
                     if concepto.strip() == "":
-                        st.error("❌ Debes indicar un concepto para el ajuste.")
+                        st.error("❌ Debes indicar un concepto.")
                     elif pts_ajuste == 0:
-                        st.warning("⚠️ El ajuste es 0, no se han realizado cambios.")
+                        st.warning("⚠️ El ajuste es 0.")
                     else:
-                        # 1. Copiamos y ASEGURAMOS que la columna sea numérica
-                        df_base_copy = df_base.copy()
-                        
-                        # Limpiamos la columna de puntos: pasamos a string, cambiamos coma por punto y convertimos a número
-                        df_base_copy['Puntos'] = pd.to_numeric(
-                            df_base_copy['Puntos'].astype(str).str.replace(',', '.'), 
-                            errors='coerce'
-                        ).fillna(0.0)
-
-                        # 2. Aplicamos el ajuste
-                        if u_target in df_base_copy['Usuario'].values:
-                            # Filtramos la fila y sumamos
-                            idx = df_base_copy[df_base_copy['Usuario'] == u_target].index
-                            df_base_copy.loc[idx, 'Puntos'] += float(pts_ajuste)
-                        else:
-                            # Si el usuario no estaba en PuntosBase, lo creamos
-                            nueva_fila = pd.DataFrame([{"Usuario": u_target, "Puntos": float(pts_ajuste)}])
-                            df_base_copy = pd.concat([df_base_copy, nueva_fila], ignore_index=True)
-                        
-                        # 3. Subimos a GSheets
-                        conn.update(worksheet="PuntosBase", data=df_base_copy)
-
-                        # 4. Registrar en el VAR (Logs)
-                        ahora_madrid = get_now_madrid()
-                        simbolo = "+" if pts_ajuste > 0 else ""
-                        txt_log = f"⚖️ AJUSTE: {simbolo}{pts_ajuste} pts a {u_target}. Motivo: {concepto}"
-                        
-                        nuevo_log = pd.DataFrame([{
-                            "Fecha": ahora_madrid.strftime("%Y-%m-%d %H:%M:%S"),
-                            "Usuario": "🛡️ ADMIN",
-                            "Accion": txt_log
-                        }])
-                        
-                        # Leer logs frescos para no borrar lo anterior
-                        df_logs_actual = leer_datos("Logs")
-                        conn.update(worksheet="Logs", data=pd.concat([df_logs_actual, nuevo_log], ignore_index=True))
-
-                        st.cache_data.clear()
-                        st.success(f"✅ Ajuste aplicado con éxito: {txt_log}")
-                        time.sleep(1.5)
-                        st.rerun()
+                        try:
+                            with conn.session as s:
+                                # 1. Actualizamos puntos
+                                s.execute(
+                                    text("UPDATE puntos_base SET puntos = puntos + :a WHERE usuario = :u"),
+                                    params={"a": pts_ajuste, "u": u_target}
+                                )
+                                # 2. Registramos en el VAR (Logs)
+                                ahora_madrid = get_now_madrid()
+                                simbolo = "+" if pts_ajuste > 0 else ""
+                                txt_log = f"⚖️ AJUSTE: {simbolo}{pts_ajuste} pts a {u_target}. Motivo: {concepto}"
+                                
+                                s.execute(
+                                    text("INSERT INTO logs (fecha, usuario, accion) VALUES (:f, :u, :a)"),
+                                    params={"f": ahora_madrid, "u": "🛡️ ADMIN", "a": txt_log}
+                                )
+                            s.commit()
+                            st.cache_data.clear()
+                            st.success(f"✅ Ajuste aplicado: {txt_log}")
+                            time.sleep(1.5)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error en el ajuste: {e}")
 
             with t_fotos:
                 st.subheader("Asignar Imágenes a Usuarios")
@@ -1724,12 +1746,21 @@ else:
                         upd_f.append({"Usuario": u, "ImagenPath": path_final})
                     
                     if st.button("🖼️ Actualizar Todas las Fotos", use_container_width=True):
-                        conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(upd_f))
-                        st.cache_data.clear()
-                        st.success("✅ Fotos actualizadas correctamente.")
-                        st.rerun()
-                else:
-                    st.error(f"⚠️ La carpeta '{PERFILES_DIR}' no existe.")
+                        try:
+                            with conn.session as s:
+                                # Usamos un enfoque de "borrar y reinsertar" o UPSERT
+                                s.execute(text("DELETE FROM imagenesperfil"))
+                                for f in upd_f:
+                                    s.execute(
+                                        text("INSERT INTO imagenesperfil (usuario, imagenpath) VALUES (:u, :p)"),
+                                        params={"u": f["Usuario"], "p": f["ImagenPath"]}
+                                    )
+                            s.commit()
+                            st.cache_data.clear()
+                            st.success("✅ Fotos actualizadas.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error en fotos: {e}")
 
             with t_resultados:
                 st.subheader(f"Gestión de la {j_global}")
@@ -1771,33 +1802,37 @@ else:
                 
                 st.divider()
                 if st.button("🏟️ GUARDAR RESULTADOS JORNADA", use_container_width=True):
-                    ahora_fresca = get_now_madrid()
-                    logs_adm = []
-                    for r in r_env:
-                        match_previo = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r['Partido'])]
-                        registrar = False
-                        if not match_previo.empty:
-                            was_fin = match_previo.iloc[0]['Finalizado'] == "SI"
-                            if r['Finalizado'] == "SI" and not was_fin: registrar = True
-                        
-                        if registrar:
-                            logs_adm.append({
-                                "Fecha": ahora_fresca.strftime("%Y-%m-%d %H:%M:%S"),
-                                "Usuario": "🛡️ ADMIN",
-                                "Accion": f"⚽ OFICIAL: {r['Partido']} ({r['R_L']}-{r['R_V']})"
-                            })
+                    try:
+                        ahora_fresca = get_now_madrid()
+                        with conn.session as s:
+                            # 1. Detectar partidos finalizados para el LOG
+                            for r in r_env:
+                                prev_m = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r['Partido'])]
+                                if not prev_m.empty and r['Finalizado'] == "SI" and prev_m.iloc[0]['Finalizado'] == "NO":
+                                    s.execute(
+                                        text("INSERT INTO logs (fecha, usuario, accion) VALUES (:f, :u, :a)"),
+                                        params={"f": ahora_fresca, "u": "🛡️ ADMIN", "a": f"⚽ OFICIAL: {r['Partido']} ({r['R_L']}-{r['R_V']})"}
+                                    )
 
-                    if logs_adm:
-                        df_l_existente = leer_datos("Logs")
-                        conn.update(worksheet="Logs", data=pd.concat([df_l_existente, pd.DataFrame(logs_adm)], ignore_index=True))
-
-                    otros = df_r_all[df_r_all['Jornada'] != j_global]
-                    df_resultados_new = pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)
-                    conn.update(worksheet="Resultados", data=df_resultados_new)
-                    
-                    st.cache_data.clear()
-                    st.success(f"✅ Datos guardados.")
-                    st.rerun()
+                            # 2. Borrar resultados antiguos de ESTA jornada e insertar nuevos
+                            s.execute(text("DELETE FROM resultados WHERE jornada = :j"), params={"j": j_global})
+                            for res in r_env:
+                                s.execute(
+                                    text("""
+                                        INSERT INTO resultados (jornada, partido, tipo, r_l, r_v, hora_inicio, finalizado)
+                                        VALUES (:j, :p, :t, :rl, :rv, :h, :f)
+                                    """),
+                                    params={
+                                        "j": res["Jornada"], "p": res["Partido"], "t": res["Tipo"],
+                                        "rl": res["R_L"], "rv": res["R_V"], "h": res["Hora_Inicio"], "f": res["Finalizado"]
+                                    }
+                                )
+                        s.commit()
+                        st.cache_data.clear()
+                        st.success("✅ Datos guardados en Supabase.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error al guardar jornada: {e}")
         else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
@@ -1807,7 +1842,7 @@ else:
         st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczF4bGVvbmQ3eTVuam44dzExbXl4MDU5cmVsY24zMGdyb2dvNnpjdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4DdzRe7wJP0aPI1Pa/giphy.gif", width=300)
         st.caption("Transparencia total: aquí se registra cada movimiento clave de la liga.")
         
-        df_logs = conn.read(worksheet="Logs", ttl=0)
+        df_logs = leer_datos("logs")
         if not df_logs.empty:
             df_logs["Fecha"] = pd.to_datetime(df_logs["Fecha"])
             df_logs = df_logs.sort_values("Fecha", ascending=False)
