@@ -1564,16 +1564,16 @@ else:
                         df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
                         
                         if not df_hist_j.empty:
-                           # 1. Aseguramos que la probabilidad sea numérica (SQL ya la da limpia)
-                           df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
-                           
-                           # 2. La fecha en SQL es un objeto nativo, pd.to_datetime la entiende a la primera
-                           df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'])
-                           
-                           # Ordenamos cronológicamente
-                           df_hist_j = df_hist_j.sort_values('Fecha_DT')
+                            # 1. Aseguramos que la probabilidad sea numérica (SQL ya la da limpia)
+                            df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
+                            
+                            # 2. La fecha en SQL es un objeto nativo, pd.to_datetime la entiende a la primera
+                            df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'])
+                            
+                            # Ordenamos cronológicamente
+                            df_hist_j = df_hist_j.sort_values('Fecha_DT')
 
-
+                            # --- CREACIÓN DEL GRÁFICO ---
                             fig_evo = px.line(
                                 df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
                                 markers=True, line_shape="spline"
