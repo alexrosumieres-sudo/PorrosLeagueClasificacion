@@ -498,16 +498,20 @@ if not st.session_state.autenticado:
                  
 else:
     # 1. CARGA DE DATOS
-    df_perf = leer_datos("ImagenesPerfil")
+    # CAMBIO: Usamos minúsculas para que coincida con el estándar SQL que hemos creado
+    df_perf = leer_datos("imagenesperfil") 
+    
     # Cargamos también los logs para que ChatG-O-L los vea
     df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("resultados"), leer_datos("predicciones"), leer_datos("usuarios"), leer_datos("puntos_base"), leer_datos("logs")
+    
     # --- 🛡️ MURO DE SEGURIDAD ---
-   if df_r_all is None or df_r_all.empty or df_u_all is None or df_u_all.empty:
-       st.info("⌛ El VAR está conectando con los satélites de Supabase... (Cargando datos)")
-       st.stop()
+    # AJUSTE DE INDENTACIÓN: La línea del "if" tiene que estar exactamente debajo de las anteriores
+    if df_r_all is None or df_r_all.empty or df_u_all is None or df_u_all.empty:
+        st.info("⌛ El VAR está conectando con los satélites de Supabase... (Cargando datos)")
+        st.stop()
+        
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
-
     # --- CSS ---
     st.markdown("""
         <style>
