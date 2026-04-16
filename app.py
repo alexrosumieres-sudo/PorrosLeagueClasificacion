@@ -732,25 +732,24 @@ else:
             # Recuperar predicciones actuales del usuario
             u_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
             
-            # --- [NUEVA LÓGICA DE ORDENACIÓN] ---
-            # Obtenemos los partidos de la jornada seleccionada desde el DataFrame de Resultados para tener las horas
+            # --- [LÓGICA DE ORDENACIÓN] ---
             df_partidos_ordenados = df_r_all[df_r_all['Jornada'] == j_global].copy()
-            
-            # Convertimos a datetime para ordenar correctamente
             df_partidos_ordenados['Hora_DT'] = pd.to_datetime(df_partidos_ordenados['Hora_Inicio'])
             df_partidos_ordenados = df_partidos_ordenados.sort_values('Hora_DT', ascending=True)
             
-            # Creamos la lista de partidos a iterar basada en el orden cronológico
             lista_partidos_cronologica = []
             for _, row in df_partidos_ordenados.iterrows():
-                loc, vis = row['Partido'].split('-')
-                lista_partidos_cronologica.append((loc, vis))
-            env = []
+                try:
+                    loc, vis = row['Partido'].split('-')
+                    lista_partidos_cronologica.append((loc, vis))
+                except: continue 
             
+            env = []
             st.markdown(f"### 🗓️ Tu Hoja de Apuestas: {j_global}")
-            st.caption("Asegúrate de guardar antes de que empiece cada partido.")
+            st.caption("Partidos ordenados por hora de inicio (los más cercanos arriba).")
 
-            for i, (loc, vis) in enumerate(JORNADAS[j_global]):
+            # --- CAMBIO CLAVE AQUÍ: Usamos 'lista_partidos_cronologica' ---
+            for i, (loc, vis) in enumerate(lista_partidos_cronologica):
                 m_id = f"{loc}-{vis}"
                 
                 # Cargar datos guardados si existen
@@ -772,7 +771,6 @@ else:
                 card_class = "bet-card-locked" if lock else "bet-card"
                 st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
                 
-                # Columnas: Logo L (1), Input L (2), VS (1), Input V (2), Logo V (1), Pub (1.5)
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 1, 2, 1, 1.5])
                 
                 with c1: # Escudo Local
@@ -783,12 +781,10 @@ else:
                     st.markdown(f'<p class="team-label">{loc}</p>', unsafe_allow_html=True)
                     pl = st.number_input("G", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
                 
-                with c3: # Separador VS
+                with c3: # VS
                     st.markdown('<div class="vs-box">VS</div>', unsafe_allow_html=True)
-                    if lock: 
-                        st.markdown('<p style="text-align:center;" title="Partido en juego o finalizado">🔒</p>', unsafe_allow_html=True)
-                    else:
-                        st.markdown(f'<p style="text-align:center; font-size:0.65em; color:#64748b;">{str(hora_partido)[11:16]}</p>', unsafe_allow_html=True)
+                    if lock: st.markdown('<p style="text-align:center;">🔒</p>', unsafe_allow_html=True)
+                    else: st.markdown(f'<p style="text-align:center; font-size:0.65em; color:#64748b;">{str(hora_partido)[11:16]}</p>', unsafe_allow_html=True)
 
                 with c4: # Marcador Visitante
                     st.markdown(f'<p class="team-label">{vis}</p>', unsafe_allow_html=True)
@@ -804,7 +800,7 @@ else:
                 
                 st.markdown('</div>', unsafe_allow_html=True)
                 
-                # Recopilar datos para el envío
+                # --- FILTRO DE GUARDADO ---
                 tiene_prediccion_previa = not u_preds[u_preds['Partido'] == m_id].empty if not u_preds.empty else False
 
                 if not lock or tiene_prediccion_previa:
