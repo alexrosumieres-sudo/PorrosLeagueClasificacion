@@ -781,10 +781,21 @@ else:
                     st.markdown(f'<p class="team-label">{loc}</p>', unsafe_allow_html=True)
                     pl = st.number_input("G", 0, 9, dl, key=f"pl_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
                 
-                with c3: # VS
+                with c3: # Separador VS con Fecha y Hora
                     st.markdown('<div class="vs-box">VS</div>', unsafe_allow_html=True)
-                    if lock: st.markdown('<p style="text-align:center;">🔒</p>', unsafe_allow_html=True)
-                    else: st.markdown(f'<p style="text-align:center; font-size:0.65em; color:#64748b;">{str(hora_partido)[11:16]}</p>', unsafe_allow_html=True)
+                    if lock: 
+                        st.markdown('<p style="text-align:center;" title="Partido en juego o finalizado">🔒</p>', unsafe_allow_html=True)
+                    else:
+                        # Convertimos la cadena de texto a un objeto datetime para darle formato
+                        try:
+                            dt_partido = datetime.datetime.strptime(str(hora_partido), "%Y-%m-%d %H:%M:%S")
+                            # Formato: "16/04 21:00" (Día/Mes Hora)
+                            fecha_hora_fmt = dt_partido.strftime("%d/%m %H:%M")
+                        except:
+                            # Por si el formato en el Excel falla, mostramos el texto tal cual
+                            fecha_hora_fmt = str(hora_partido)[5:16] 
+
+                        st.markdown(f'<p style="text-align:center; font-size:0.65em; color:#64748b; font-weight:bold;">{fecha_hora_fmt}</p>', unsafe_allow_html=True)
 
                 with c4: # Marcador Visitante
                     st.markdown(f'<p class="team-label">{vis}</p>', unsafe_allow_html=True)
