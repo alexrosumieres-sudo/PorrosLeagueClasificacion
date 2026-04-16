@@ -731,6 +731,20 @@ else:
         else:
             # Recuperar predicciones actuales del usuario
             u_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
+            
+            # --- [NUEVA LÓGICA DE ORDENACIÓN] ---
+            # Obtenemos los partidos de la jornada seleccionada desde el DataFrame de Resultados para tener las horas
+            df_partidos_ordenados = df_r_all[df_r_all['Jornada'] == j_global].copy()
+            
+            # Convertimos a datetime para ordenar correctamente
+            df_partidos_ordenados['Hora_DT'] = pd.to_datetime(df_partidos_ordenados['Hora_Inicio'])
+            df_partidos_ordenados = df_partidos_ordenados.sort_values('Hora_DT', ascending=True)
+            
+            # Creamos la lista de partidos a iterar basada en el orden cronológico
+            lista_partidos_cronologica = []
+            for _, row in df_partidos_ordenados.iterrows():
+                loc, vis = row['Partido'].split('-')
+                lista_partidos_cronologica.append((loc, vis))
             env = []
             
             st.markdown(f"### 🗓️ Tu Hoja de Apuestas: {j_global}")
