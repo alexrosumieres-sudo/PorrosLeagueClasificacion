@@ -791,14 +791,17 @@ else:
                 st.markdown('</div>', unsafe_allow_html=True)
                 
                 # Recopilar datos para el envío
-                env.append({
-                    "Usuario": st.session_state.user, 
-                    "Jornada": j_global, 
-                    "Partido": m_id, 
-                    "P_L": pl, 
-                    "P_V": pv, 
-                    "Publica": "SI" if pub else "NO"
-                })
+                tiene_prediccion_previa = not u_preds[u_preds['Partido'] == m_id].empty if not u_preds.empty else False
+
+                if not lock or tiene_prediccion_previa:
+                    env.append({
+                        "Usuario": st.session_state.user, 
+                        "Jornada": j_global, 
+                        "Partido": m_id, 
+                        "P_L": pl, 
+                        "P_V": pv, 
+                        "Publica": "SI" if pub else "NO"
+                    })
 
             # --- BOTÓN DE GUARDADO Y LÓGICA VAR ---
             st.markdown("---")
