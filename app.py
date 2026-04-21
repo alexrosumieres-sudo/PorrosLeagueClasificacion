@@ -9,10 +9,12 @@ import itertools
 import numpy as np
 import time
 import pytz
+from streamlit_gsheets import GSheetsConnection
  
 # --- 1. CONFIGURACIONES GENERALES ---
 PERFILES_DIR = "perfiles/"
 LOGOS_DIR = "logos/"
+
 
 NIVEL_EQUIPOS = {}
 JORNADAS = {}
@@ -232,8 +234,23 @@ CONTINENTES = {
     # ...
 }
 
+GRUPOS_2026 = {
+    "Grupo A": ["México", "Sudáfrica", "Corea del Sur", "Chequia"],
+    "Grupo B": ["Canadá", "Bosnia y Hezegovina", "Qatar", "Suiza"],
+    "Grupo C": ["Brasil", "Marruecos", "Haití", "Escocia"],
+    "Grupo D": ["Estados Unidos", "Paraguay", "Australia", "Turquía"],
+    "Grupo E": ["Alemania", "Curazao", "Costa de Marfil", "Ecuador"],
+    "Grupo F": ["Países Bajos", "Japón", "Suecia", "Túnez"],
+    "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
+    "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
+    "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
+    "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
+    "Grupo K": ["Portugal", "R.D. Congo", "Uzbekistán", "Colombia"],
+    "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
+}
+
 # --- 2. FUNCIONES DE APOYO ---
-conn = st.connection("postgresql", type="sql")
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 @st.cache_data(ttl=10)
 def leer_datos(pestaña):
@@ -307,10 +324,92 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo="Normal", p_pasa=None, r_pasa=No
             
     return puntos_totales
 
+def simular_temporada_completa(df_hero, df_p_all, df_r_all):
+    """
+    Simulación de Montecarlo: Proyecta el final de la porra 5.000 veces.
+    Considera: Puntos actuales, partidos pendientes (Normal/Esquizo) y 
+    una estimación de puntos de Bracket.
+    """
+    # 1. Puntos actuales de cada usuario
+    usuarios = df_hero['Usuario'].tolist()
+    puntos_actuales = df_hero.set_index('Usuario')['Puntos'].to_dict()
+    
+    # 2. Identificar partidos que faltan por jugar
+    pendientes = df_r_all[df_r_all['Finalizado'] == "NO"]
+    num_pend_normal = len(pendientes[pendientes['Tipo'] != "Esquizo"])
+    num_pend_esquizo = len(pendientes[pendientes['Tipo'] == "Esquizo"])
+    
+    # 3. Calcular el "ADN de acierto" de cada usuario (puntos medios por tipo)
+    # Si el usuario es nuevo, le asignamos una media estándar
+    perfil_usuario = {}
+    df_terminados = df_r_all[df_r_all['Finalizado'] == "SI"]
+    
+    for u in usuarios:
+        # Puntos conseguidos en partidos normales y esquizos para sacar su media
+        u_p = df_p_all[df_p_all['Usuario'] == u]
+        m_fin = pd.merge(u_p, df_terminados, on=['Jornada', 'Partido'])
+        
+        if not m_fin.empty:
+            m_fin['Pts'] = m_fin.apply(lambda x: calcular_puntos_wc(
+                x.P_L, x.P_V, x.R_L, x.R_V, x.Tipo, 
+                getattr(x, 'P_Pasa', None), x.get('R_Pasa'), x.get('Hubo_Prorroga') == "SI"
+            ), axis=1)
+            
+            media_n = m_fin[m_fin['Tipo'] != "Esquizo"]['Pts'].mean() if not m_fin[m_fin['Tipo'] != "Esquizo"].empty else 0.4
+            media_e = m_fin[m_fin['Tipo'] == "Esquizo"]['Pts'].mean() if not m_fin[m_fin['Tipo'] == "Esquizo"].empty else 0.8
+            desvio = m_fin['Pts'].std() if len(m_fin) > 1 else 0.2
+        else:
+            media_n, media_e, desvio = 0.45, 0.9, 0.25 # Valores promedio base
+            
+        perfil_usuario[u] = {'n': media_n, 'e': media_e, 'std': desvio}
+
+    # 4. Bucle de Simulación (5.000 iteraciones)
+    conteo_puestos = {u: [0] * len(usuarios) for u in usuarios}
+    suma_puestos = {u: 0 for u in usuarios}
+    
+    for _ in range(5000):
+        resultados_iteracion = []
+        
+        for u in usuarios:
+            # Puntos por partidos Normales
+            pts_n = np.random.normal(perfil_usuario[u]['n'], perfil_usuario[u]['std'], num_pend_normal).sum()
+            # Puntos por partidos Esquizos
+            pts_e = np.random.normal(perfil_usuario[u]['e'], perfil_usuario[u]['std'] * 1.5, num_pend_esquizo).sum()
+            
+            # Estimación de Puntos de Bracket (esto es azaroso pero basado en competencia)
+            # Acertar campeón, pichichi, y avances da picos de puntos
+            pts_bracket = random.uniform(0, 5.0) if num_pend_normal > 10 else random.uniform(0, 1.5)
+            
+            total_sim = puntos_actuales[u] + max(0, pts_n) + max(0, pts_e) + pts_bracket
+            resultados_iteracion.append((u, total_sim))
+            
+        # Ordenar por puntos de mayor a menor
+        resultados_iteracion.sort(key=lambda x: x[1], reverse=True)
+        
+        # Registrar posiciones
+        for i, (u, pts) in enumerate(resultados_iteracion):
+            conteo_puestos[u][i] += 1
+            suma_puestos[u] += (i + 1)
+
+    # 5. Formatear resultados para la tabla
+    data_final = []
+    for u in usuarios:
+        fila = {"Usuario": u}
+        fila["Puesto Medio"] = suma_puestos[u] / 5000
+        # Convertir conteos a porcentajes
+        for i in range(len(usuarios)):
+            fila[f"P{i+1}"] = (conteo_puestos[u][i] / 5000) * 100
+        data_final.append(fila)
+        
+    df_sim = pd.DataFrame(data_final).sort_values("Puesto Medio")
+    return df_sim
+
+
+
 def analizar_adn_pro(usuario, df_p, df_r):
     df_m = pd.merge(df_p[df_p['Usuario'] == usuario], df_r[df_r['Finalizado'] == "SI"], on=['Jornada', 'Partido'])
     if df_m.empty: return None
-    df_m['Pts'] = df_m.apply(lambda x: calcular_puntos(x.P_L, x.P_V, x.R_L, x.R_V, x.Tipo), axis=1)
+    df_m['Pts'] = df_m.apply(lambda x: calcular_puntos_wc(x.P_L, x.P_V, x.R_L, x.R_V, x.Tipo), axis=1)
     pts_eq = {}
     for _, r in df_m.iterrows():
         l, v = r['Partido'].split('-')
@@ -417,6 +516,10 @@ def get_now_madrid():
     # para que sea compatible con las fechas de tu Excel (naive datetime)
     return datetime.datetime.now(tz).replace(tzinfo=None)
 
+# Fecha y hora del partido inaugural (Ejemplo: 11 de Junio a las 21:00)
+FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
+mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
+
 # --- 3. APP ---
 st.set_page_config(page_title="Porros League 2026", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -437,11 +540,37 @@ if not st.session_state.autenticado:
             else: st.error("❌ Credenciales incorrectas")
         if c2.button("Registrarse", use_container_width=True):
             df_u = leer_datos("Usuarios")
-            if u_in in df_u['Usuario'].values: st.error("❌ Usuario ya existe")
+            
+            # 1. Validaciones previas
+            if u_in == "" or p_in == "":
+                st.warning("⚠️ No seas 'pechofrío', pon un usuario y contraseña.")
+            elif u_in in df_u['Usuario'].values:
+                st.error("❌ Este usuario ya está en la convocatoria.")
             else:
-                nueva = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
-                conn.update(worksheet="Usuarios", data=pd.concat([df_u, nueva], ignore_index=True))
-                st.success("✅ Hecho")
+                try:
+                    # 2. Registro en la pestaña "Usuarios"
+                    nueva_cuenta = pd.DataFrame([{"Usuario": u_in, "Password": p_in, "Rol": "user"}])
+                    df_u_act = pd.concat([df_u, nueva_cuenta], ignore_index=True)
+                    conn.update(worksheet="Usuarios", data=df_u_act)
+
+                    # 3. CREACIÓN DE FILA EN PuntosBase (EL ARREGLO)
+                    # Leemos la tabla de puntos actual para no borrar a nadie
+                    df_pb_actual = leer_datos("PuntosBase")
+                    nueva_fila_puntos = pd.DataFrame([{"Usuario": u_in, "Puntos": 0.0}])
+                    df_pb_act = pd.concat([df_pb_actual, nueva_fila_puntos], ignore_index=True)
+                    conn.update(worksheet="PuntosBase", data=df_pb_act)
+
+                    # 4. Feedback y limpieza
+                    st.success(f"✅ ¡Fichado! {u_in}, ya puedes loguearte.")
+                    st.balloons()
+                    
+                    # Limpiamos caché para que el login reconozca al nuevo usuario inmediatamente
+                    st.cache_data.clear()
+                    time.sleep(1.5)
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"Error crítico en el registro: {e}")
 else:
     # 1. CARGA DE DATOS
     df_perf = leer_datos("ImagenesPerfil")
@@ -547,7 +676,7 @@ else:
         for r in u_p_hoy.itertuples():
             m = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
             if not m.empty:
-                mi_puntos_hoy += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                mi_puntos_hoy += calcular_puntos_wc(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
 
     prox_p = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")].sort_values("Hora_Inicio").head(1)
     # Verificamos si hay partidos antes de calcular el tiempo
@@ -820,7 +949,190 @@ else:
                 time.sleep(1.2)
                 st.rerun()
 
-    with tabs[1]: # --- 🔮 PESTAÑA OTROS (TENDENCIAS + REVELACIONES) ---
+    with tabs[1]: # --- 🌳 PESTAÑA SUPER BRACKET (MUNDIAL 2026) ---
+        st.header("🌳 El Súper Bracket del Mundial")
+        st.caption("Define el destino del mundo. Elige quién pasa en cada ronda y tus apuestas fijas.")
+
+        # --- 0. CONFIGURACIÓN DE SEGURIDAD Y CIERRE ---
+        FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
+        mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
+        
+        if not mercado_abierto:
+            st.error(f"🔒 **MERCADO CERRADO.** El Mundial ya ha comenzado ({FECHA_INAUGURAL.strftime('%d/%m %H:%M')}). Ya no se admiten cambios.")
+        else:
+            st.success(f"🔓 **MERCADO ABIERTO.** Tienes hasta el 11 de junio a las 21:00 para guardar tu cuadro definitivo.")
+
+        if es_admin:
+            st.warning("🛡️ Modo Admin: Solo puedes visualizar la estructura, no participar.")
+        
+        # --- 1. CARGA DE DATOS PREVIOS ---
+        df_b_all = leer_datos("Brackets")
+        b_prev = df_b_all[df_b_all['Usuario'] == st.session_state.user]
+        
+        # Diccionario de Grupos que pasaste
+        GRUPOS_2026 = {
+            "Grupo A": ["México", "Sudáfrica", "Corea del Sur", "Chequia"],
+            "Grupo B": ["Canadá", "Bosnia y Hezegovina", "Qatar", "Suiza"],
+            "Grupo C": ["Brasil", "Marruecos", "Haití", "Escocia"],
+            "Grupo D": ["Estados Unidos", "Paraguay", "Australia", "Turquía"],
+            "Grupo E": ["Alemania", "Curazao", "Costa de Marfil", "Ecuador"],
+            "Grupo F": ["Países Bajos", "Japón", "Suecia", "Túnez"],
+            "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
+            "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
+            "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
+            "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
+            "Grupo K": ["Portugal", "R.D. Congo", "Uzbekistán", "Colombia"],
+            "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
+        }
+
+        # --- 2. INTERFAZ: FASE DE GRUPOS ---
+        st.subheader("1️⃣ Posiciones de Grupo")
+        col_g1, col_g2, col_g3 = st.columns(3)
+        ganadores_grupos = {}
+
+        for idx, (nombre_g, equipos) in enumerate(GRUPOS_2026.items()):
+            target_col = [col_g1, col_g2, col_g3][idx % 3]
+            with target_col:
+                with st.container(border=True):
+                    st.markdown(f"**{nombre_g}**")
+                    # Valor por defecto desde DB o primero de la lista
+                    def_1 = b_prev.iloc[0][f"{nombre_g}_1"] if not b_prev.empty else equipos[0]
+                    sel_1 = st.selectbox(f"1º puesto", equipos, index=equipos.index(def_1) if def_1 in equipos else 0, key=f"sel1_{nombre_g}", disabled=not mercado_abierto)
+                    
+                    # Filtramos el 2º para que no sea igual al 1º
+                    opciones_2 = [e for e in equipos if e != sel_1]
+                    def_2 = b_prev.iloc[0][f"{nombre_g}_2"] if not b_prev.empty else opciones_2[0]
+                    sel_2 = st.selectbox(f"2º puesto", opciones_2, index=opciones_2.index(def_2) if def_2 in opciones_2 else 0, key=f"sel2_{nombre_g}", disabled=not mercado_abierto)
+                    
+                    ganadores_grupos[f"{nombre_g}_1"] = sel_1
+                    ganadores_grupos[f"{nombre_g}_2"] = sel_2
+
+        st.divider()
+
+        # --- 3. INTERFAZ: ELIMINATORIAS (CASCADA LÓGICA) ---
+        st.subheader("2️⃣ Camino a la Final")
+        st.caption("Los enfrentamientos se actualizan en tiempo real según tus selecciones anteriores.")
+
+        # Lógica de emparejamientos de Dieciseisavos (Cruces A-L)
+        cruces_base = [
+            ("Grupo A_1", "Grupo B_2"), ("Grupo C_1", "Grupo D_2"), ("Grupo E_1", "Grupo F_2"), ("Grupo G_1", "Grupo H_2"),
+            ("Grupo I_1", "Grupo J_2"), ("Grupo K_1", "Grupo L_2"), ("Grupo B_1", "Grupo A_2"), ("Grupo D_1", "Grupo C_2"),
+            ("Grupo F_1", "Grupo E_2"), ("Grupo H_1", "Grupo G_2"), ("Grupo J_1", "Grupo I_2"), ("Grupo L_1", "Grupo K_2")
+        ]
+
+        # --- DIECISEISAVOS ---
+        st.markdown("#### 🏟️ Dieciseisavos de Final")
+        cols_16 = st.columns(4)
+        ganadores_16 = []
+        for i, (t1_key, t2_key) in enumerate(cruces_base):
+            with cols_16[i % 4]:
+                eq_a, eq_b = ganadores_grupos[t1_key], ganadores_grupos[t2_key]
+                st.markdown(f"<small>Cruce {i+1}</small>", unsafe_allow_html=True)
+                def_16 = b_prev.iloc[0][f"G16_{i}"] if not b_prev.empty else eq_a
+                res_16 = st.radio(f"{eq_a} vs {eq_b}", [eq_a, eq_b], index=[eq_a, eq_b].index(def_16) if def_16 in [eq_a, eq_b] else 0, key=f"w16_{i}", disabled=not mercado_abierto, label_visibility="collapsed")
+                ganadores_16.append(res_16)
+
+        # --- OCTAVOS ---
+        st.markdown("#### 🛡️ Octavos de Final")
+        cols_8 = st.columns(3)
+        ganadores_8 = []
+        for i in range(0, len(ganadores_16), 2):
+            with cols_8[(i//2) % 3]:
+                e1, e2 = ganadores_16[i], ganadores_16[i+1]
+                def_8 = b_prev.iloc[0][f"G8_{i//2}"] if not b_prev.empty else e1
+                res_8 = st.radio(f"Octavo {(i//2)+1}", [e1, e2], index=[e1, e2].index(def_8) if def_8 in [e1, e2] else 0, key=f"w8_{i}", disabled=not mercado_abierto)
+                ganadores_8.append(res_8)
+
+        # --- CUARTOS Y SEMIS ---
+        c_cuartos, c_semis = st.columns(2)
+        with c_cuartos:
+            st.markdown("#### 📊 Cuartos")
+            ganadores_4 = []
+            for i in range(0, len(ganadores_8), 2):
+                e1, e2 = ganadores_8[i], ganadores_8[i+1]
+                def_4 = b_prev.iloc[0][f"G4_{i//2}"] if not b_prev.empty else e1
+                res_4 = st.radio(f"Cuarto {(i//2)+1}", [e1, e2], index=[e1, e2].index(def_4) if def_4 in [e1, e2] else 0, key=f"w4_{i}", disabled=not mercado_abierto)
+                ganadores_4.append(res_4)
+
+        with c_semis:
+            st.markdown("#### ⚔️ Semifinales")
+            ganadores_2 = []
+            for i in range(0, len(ganadores_4), 2):
+                e1, e2 = ganadores_4[i], ganadores_4[i+1]
+                def_2 = b_prev.iloc[0][f"G2_{i//2}"] if not b_prev.empty else e1
+                res_2 = st.radio(f"Semi {(i//2)+1}", [e1, e2], index=[e1, e2].index(def_2) if def_2 in [e1, e2] else 0, key=f"w2_{i}", disabled=not mercado_abierto)
+                ganadores_2.append(res_2)
+
+        # --- LA FINAL ---
+        st.divider()
+        st.markdown("<h3 style='text-align:center;'>🏆 GRAN FINAL DEL MUNDIAL</h3>", unsafe_allow_html=True)
+        f1, f2 = ganadores_2[0], ganadores_2[1]
+        col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
+        with col_f2:
+            def_c = b_prev.iloc[0]["Campeon"] if not b_prev.empty else f1
+            campeon_final = st.selectbox("CAMPEÓN DEL MUNDO", [f1, f2], index=[f1, f2].index(def_c) if def_c in [f1, f2] else 0, key="campeon_final", disabled=not mercado_abierto)
+            st.markdown(f"<h1 style='text-align:center; color:#ffd700;'>🥇 {campeon_final}</h1>", unsafe_allow_html=True)
+
+        # --- 4. MERCADO LARGO PLAZO ---
+        st.divider()
+        st.subheader("⏳ 3️⃣ Mercado de Largo Plazo (Pre-Mundial)")
+        # --- 4. MERCADO LARGO PLAZO (ACTUALIZADO CON MVP) ---
+        st.divider()
+        st.subheader("⚽ 3️⃣ Mercado Especial (Pre-Mundial)")
+        c_lp1, c_lp2, c_lp3 = st.columns(3) # Cambiamos a 3 columnas
+        
+        with c_lp1:
+            def_p = b_prev.iloc[0]["Pichichi"] if not b_prev.empty and "Pichichi" in b_prev.columns else ""
+            pichichi_sel = st.text_input("⚽ Pichichi", value=def_p, placeholder="Máximo Goleador", disabled=not mercado_abierto)
+        
+        with c_lp2:
+            def_z = b_prev.iloc[0]["Zamora"] if not b_prev.empty and "Zamora" in b_prev.columns else ""
+            zamora_sel = st.text_input("🧤 Zamora", value=def_z, placeholder="Mejor Portero", disabled=not mercado_abierto)
+            
+        with c_lp3:
+            # AÑADIMOS EL MVP AQUÍ
+            def_mvp = b_prev.iloc[0]["MVP"] if not b_prev.empty and "MVP" in b_prev.columns else ""
+            mvp_sel = st.text_input("⭐ MVP del Torneo", value=def_mvp, placeholder="Mejor Jugador", disabled=not mercado_abierto)
+        # --- 5. BOTÓN DE GUARDADO ---
+        st.markdown("---")
+        if not es_admin:
+            if st.button("💾 GUARDAR APUESTA MUNDIALISTA COMPLETA", use_container_width=True, type="primary", disabled=not mercado_abierto):
+                # Recopilación de datos
+                datos_bracket = {"Usuario": st.session_state.user}
+                datos_bracket.update(ganadores_grupos)
+                for i, v in enumerate(ganadores_16): datos_bracket[f"G16_{i}"] = v
+                for i, v in enumerate(ganadores_8): datos_bracket[f"G8_{i}"] = v
+                for i, v in enumerate(ganadores_4): datos_bracket[f"G4_{i}"] = v
+                for i, v in enumerate(ganadores_2): datos_bracket[f"G2_{i}"] = v
+                datos_bracket["Campeon"] = campeon_final
+                datos_bracket["Pichichi"] = pichichi_sel
+                datos_bracket["Zamora"] = zamora_sel
+
+                # Guardar en GSheets
+                df_b_actualizado = df_b_all[df_b_all['Usuario'] != st.session_state.user]
+                df_final_b = pd.concat([df_b_actualizado, pd.DataFrame([datos_bracket])], ignore_index=True)
+                
+                try:
+                    conn.update(worksheet="Brackets", data=df_final_b)
+                    
+                    # Log en el VAR
+                    log_entry = pd.DataFrame([{
+                        "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Usuario": st.session_state.user,
+                        "Accion": f"🌳 BRACKET: Registró su cuadro completo y apuestas fijas ({campeon_final})"
+                    }])
+                    df_l_existente = leer_datos("Logs")
+                    conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_entry], ignore_index=True))
+                    
+                    st.success("✅ ¡Hecho! Tus predicciones para el Mundial 2026 están a salvo en el servidor.")
+                    st.balloons()
+                    st.cache_data.clear()
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al conectar con la base de datos: {e}")
+ 
+    with tabs[2]: # --- 🔮 PESTAÑA OTROS (TENDENCIAS + REVELACIONES) ---
         st.header("👀 Qué han puesto los demás")
         ahora = get_now_madrid()
 
@@ -886,7 +1198,7 @@ else:
                     if not preds_match.empty:
                         resumen_partido = []
                         for _, p in preds_match.iterrows():
-                            pts = calcular_puntos(p['P_L'], p['P_V'], match['R_L'], match['R_V'], tipo_p) if es_final else 0.0
+                            pts = calcular_puntos_wc(p['P_L'], p['P_V'], match['R_L'], match['R_V'], tipo_p) if es_final else 0.0
                             
                             resumen_partido.append({
                                 "Jugador": p['Usuario'],
@@ -1037,7 +1349,7 @@ else:
                         if es_ronda_ko: cols_mostrar.append('P_Pasa')
                         st.table(p_futuras[p_futuras['Usuario'] == u][cols_mostrar])
 
-    with tabs[3]: # --- 🏅 PALMARÉS (EDICIÓN MUNDIAL 2026) ---
+    with tabs[4]: # --- 🏅 PALMARÉS (EDICIÓN MUNDIAL 2026) ---
         st.header("🏅 El Palmarés del Mundial")
         st.caption("Gloria, poder y humillación en el torneo más grande del mundo.")
         
@@ -1583,150 +1895,148 @@ else:
             st.info("🔮 El Oráculo está meditando... Se activará cuando queden entre 1 y 3 partidos para cerrar la fase.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", use_container_width=True)
     
-    with tabs[9]: # --- ⚙️ PANEL DE CONTROL ADMIN (EDICIÓN MUNDIAL) ---
+    with tabs[8]: # --- ⚙️ PANEL DE CONTROL ADMIN (MUNDIAL 2026) ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
             
-            # --- SUB-PESTAÑAS ACTUALIZADAS ---
+            # --- SUB-PESTAÑAS ---
             t_ajustes, t_fotos, t_resultados = st.tabs([
                 "⚖️ Ajustes y Bonos",
                 "📸 Fotos de Perfil", 
                 "⚽ Resultados Oficiales"
             ])
 
+            # --- 1. SUB-PESTAÑA: AJUSTES (Sustituye a Puntos Base) ---
             with t_ajustes:
-                st.subheader("⚖️ Sanciones, Bonos y Mercado Largo Plazo")
-                st.info("Usa esto para sumar los puntos del **Campeón, Pichichi, Zamora** o corregir errores.")
+                st.subheader("⚖️ Gestión de Puntos Extra y Sanciones")
+                st.info("Usa este formulario para sumar puntos del Bracket (Campeón, Pichichi) o aplicar sanciones.")
                 
-                with st.form("form_ajuste"):
+                with st.form("form_ajuste_pro"):
                     c1, c2 = st.columns(2)
-                    u_target = c1.selectbox("Jugador a ajustar:", u_jugadores)
-                    pts_ajuste = c2.number_input("Puntos (+/-):", value=0.0, step=0.25)
-                    concepto = st.text_input("Concepto del ajuste:", placeholder="Ej: Acierto Campeón del Mundo / Acierto Pichichi")
+                    u_target = c1.selectbox("Seleccionar Jugador:", u_jugadores)
+                    pts_ajuste = c2.number_input("Puntos a añadir/restar:", value=0.0, step=0.25, help="Valores negativos para sanciones.")
+                    concepto = st.text_input("Concepto del ajuste:", placeholder="Ej: Bono acierto Campeón del Mundo (+5pts)")
                     
-                    submit_ajuste = st.form_submit_button("⚖️ Aplicar Ajuste", use_container_width=True)
+                    submit_ajuste = st.form_submit_button("⚖️ Aplicar Cambio y Registrar en VAR", use_container_width=True)
 
                 if submit_ajuste:
                     if concepto.strip() == "" or pts_ajuste == 0:
-                        st.error("❌ Concepto vacío o puntos en 0.")
+                        st.error("❌ Indica un concepto y una cantidad distinta de 0.")
                     else:
-                        df_base_copy = df_base.copy()
-                        df_base_copy['Puntos'] = pd.to_numeric(df_base_copy['Puntos'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0.0)
+                        # Operación en PuntosBase
+                        df_b_copy = df_base.copy()
+                        # Asegurar limpieza de datos (comas por puntos)
+                        df_b_copy['Puntos'] = pd.to_numeric(df_b_copy['Puntos'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0.0)
 
-                        if u_target in df_base_copy['Usuario'].values:
-                            idx = df_base_copy[df_base_copy['Usuario'] == u_target].index
-                            df_base_copy.loc[idx, 'Puntos'] += float(pts_ajuste)
-                        else:
-                            nueva_f = pd.DataFrame([{"Usuario": u_target, "Puntos": float(pts_ajuste)}])
-                            df_base_copy = pd.concat([df_base_copy, nueva_f], ignore_index=True)
-                        
-                        conn.update(worksheet="PuntosBase", data=df_base_copy)
+                        if u_target in df_b_copy['Usuario'].values:
+                            idx = df_b_copy[df_b_copy['Usuario'] == u_target].index
+                            df_b_copy.loc[idx, 'Puntos'] += float(pts_ajuste)
+                            
+                            try:
+                                conn.update(worksheet="PuntosBase", data=df_b_copy)
+                                
+                                # Log de auditoría para el VAR
+                                log_entry = pd.DataFrame([{
+                                    "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
+                                    "Usuario": "🛡️ ADMIN",
+                                    "Accion": f"⚖️ AJUSTE: {pts_ajuste} pts a {u_target} ({concepto})"
+                                }])
+                                df_l_act = leer_datos("Logs")
+                                conn.update(worksheet="Logs", data=pd.concat([df_l_act, log_entry], ignore_index=True))
+                                
+                                st.success(f"✅ Aplicado: {u_target} ahora tiene {pts_ajuste} puntos extra.")
+                                st.cache_data.clear()
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error al actualizar GSheets: {e}")
 
-                        # Log en el VAR
-                        nuevo_log = pd.DataFrame([{
-                            "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
-                            "Usuario": "🛡️ ADMIN",
-                            "Accion": f"⚖️ AJUSTE: {pts_ajuste} pts a {u_target} ({concepto})"
-                        }])
-                        df_logs_act = leer_datos("Logs")
-                        conn.update(worksheet="Logs", data=pd.concat([df_logs_act, nuevo_log], ignore_index=True))
-
-                        st.cache_data.clear()
-                        st.success("✅ Ajuste aplicado.")
-                        st.rerun()
-
+            # --- 2. SUB-PESTAÑA: FOTOS DE PERFIL ---
             with t_fotos:
-                st.subheader("📸 Gestión de Avatares")
-                # (Mantenemos tu lógica de fotos que funciona bien)
+                st.subheader("📸 Asignación de Avatares")
                 if os.path.exists(PERFILES_DIR):
                     archivos = ["Ninguna"] + sorted([f for f in os.listdir(PERFILES_DIR) if f.endswith(('.jpeg', '.jpg', '.png', '.webp'))])
                     upd_f = []
                     for u in u_jugadores:
                         path_en_db = foto_dict.get(u, "")
-                        nombre_foto_actual = os.path.basename(path_en_db) if path_en_db != "" else "Ninguna"
-                        col_u2, col_f = st.columns([2, 1])
-                        idx_foto = archivos.index(nombre_foto_actual) if nombre_foto_actual in archivos else 0
-                        foto_sel = col_f.selectbox(f"Foto {u}", archivos, index=idx_foto, key=f"adm_f_{u}")
-                        upd_f.append({"Usuario": u, "ImagenPath": f"{PERFILES_DIR}{foto_sel}" if foto_sel != "Ninguna" else ""})
+                        nombre_actual = os.path.basename(path_en_db) if (isinstance(path_en_db, str) and path_en_db != "") else "Ninguna"
+                        
+                        col_u, col_sel = st.columns([2, 1])
+                        col_u.write(f"Jugador: **{u}**")
+                        idx_f = archivos.index(nombre_actual) if nombre_actual in archivos else 0
+                        f_sel = col_sel.selectbox(f"Foto para {u}", archivos, index=idx_f, key=f"f_adm_{u}", label_visibility="collapsed")
+                        
+                        upd_f.append({"Usuario": u, "ImagenPath": f"{PERFILES_DIR}{f_sel}" if f_sel != "Ninguna" else ""})
                     
-                    if st.button("🖼️ Actualizar Fotos", use_container_width=True):
+                    if st.button("🖼️ Guardar Cambios de Galería", use_container_width=True):
                         conn.update(worksheet="ImagenesPerfil", data=pd.DataFrame(upd_f))
                         st.cache_data.clear()
-                        st.success("✅ Fotos actualizadas.")
+                        st.success("✅ Galería actualizada.")
                         st.rerun()
 
+            # --- 3. SUB-PESTAÑA: RESULTADOS (LÓGICA WC) ---
             with t_resultados:
-                st.subheader(f"🏟️ Acta Oficial: {j_global}")
-                st.caption("Introduce el resultado a los 90' y marca si hubo prórroga/penaltis.")
+                st.subheader(f"🏟️ Acta de la Jornada: {j_global}")
+                st.caption("Gestiona goles, prórrogas y pases de ronda.")
                 
                 r_env = []
-                # Horarios ampliados para cubrir todas las franjas del Mundial
                 h_ops = [datetime.time(h, m).strftime("%H:%M") for h in range(0, 24) for m in [0, 15, 30, 45]]
+                # Detectamos si la jornada seleccionada en el sidebar es de eliminación
                 es_ko = any(x in j_global for x in ["Dieciseisavos", "Octavos", "Cuartos", "Semis", "Final"])
 
-                for i, (loc, vis) in enumerate(JORNADAS[j_global]):
+                for i, (loc, vis) in enumerate(JORNADAS.get(j_global, [])):
                     m_id = f"{loc}-{vis}"
                     prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                     
-                    # Valores por defecto
+                    # Carga de valores existentes
                     rl, rv, fin, tipo = 0, 0, False, "Normal"
-                    prorroga, pasa = "NO", loc
-                    fecha_v, hora_v = datetime.datetime(2026, 6, 11).date(), "21:00"
+                    pro, pasa = "NO", loc
+                    f_val, h_val = datetime.datetime(2026, 6, 11).date(), "21:00"
 
-                    if not prev.empty: 
-                        rl = int(prev.iloc[0]['R_L'])
-                        rv = int(prev.iloc[0]['R_V'])
+                    if not prev.empty:
+                        rl, rv = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V'])
                         fin = prev.iloc[0]['Finalizado'] == "SI"
                         tipo = prev.iloc[0]['Tipo']
-                        prorroga = prev.iloc[0].get('Hubo_Prorroga', "NO")
+                        pro = prev.iloc[0].get('Hubo_Prorroga', "NO")
                         pasa = prev.iloc[0].get('R_Pasa', loc)
                         try:
-                            dt_obj = datetime.datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
-                            fecha_v, hora_v = dt_obj.date(), dt_obj.strftime("%H:%M")
+                            dt = datetime.datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                            f_val, h_val = dt.date(), dt.strftime("%H:%M")
                         except: pass
 
-                    st.markdown(f"---")
-                    st.markdown(f"**⚽ {m_id}**")
-                    
-                    # Fila 1: Configuración básica
-                    c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
-                    ntipo = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(tipo), key=f"at_{i}")
-                    nfecha = c2.date_input("Día", value=fecha_v, key=f"adate_{i}")
-                    nhora = c3.selectbox("Hora", h_ops, index=h_ops.index(hora_v) if hora_v in h_ops else 0, key=f"aho_{i}")
-                    nfin = c4.checkbox("Finalizado ✅", value=fin, key=f"afi_{i}")
+                    with st.expander(f"⚽ {m_id}", expanded=not fin):
+                        c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
+                        n_tipo = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(tipo), key=f"at_{i}")
+                        n_fecha = c2.date_input("Día", value=f_val, key=f"adate_{i}")
+                        n_hora = c3.selectbox("Hora", h_ops, index=h_ops.index(h_val) if h_val in h_ops else 0, key=f"ah_{i}")
+                        n_fin = c4.checkbox("¿Finalizado?", value=fin, key=f"afi_{i}")
 
-                    # Fila 2: Resultado y Prórroga
-                    c5, c6, c7, c8 = st.columns([1, 1, 1.5, 1.5])
-                    nrl = c5.number_input("Goles Local", 0, 9, rl, key=f"arl_{i}")
-                    nrv = c6.number_input("Goles Visit.", 0, 9, rv, key=f"arv_{i}")
-                    
-                    npro = "NO"
-                    npasa = ""
-                    if es_ko:
-                        npro = c7.selectbox("¿Hubo Prórroga?", ["NO", "SI"], index=0 if prorroga == "NO" else 1, key=f"apro_{i}")
-                        lista_equipos = [loc, vis]
-                        idx_pasa = lista_equipos.index(pasa) if pasa in lista_equipos else 0
-                        npasa = c8.selectbox("¿Quién pasó?", lista_equipos, index=idx_pasa, key=f"apasa_{i}")
-                    
-                    r_env.append({
-                        "Jornada": j_global, "Partido": m_id, "Tipo": ntipo, 
-                        "R_L": nrl, "R_V": nrv, "Hora_Inicio": f"{nfecha} {nhora}:00", 
-                        "Finalizado": "SI" if nfin else "NO",
-                        "Hubo_Prorroga": npro, "R_Pasa": npasa
-                    })
+                        c5, c6, c7, c8 = st.columns([1, 1, 1.5, 1.5])
+                        n_rl = c5.number_input("L", 0, 9, rl, key=f"arl_{i}")
+                        n_rv = c6.number_input("V", 0, 9, rv, key=f"arv_{i}")
+                        
+                        n_pro, n_pasa = "NO", ""
+                        if es_ko:
+                            n_pro = c7.selectbox("¿Hubo Prórroga?", ["NO", "SI"], index=0 if pro == "NO" else 1, key=f"apr_{i}")
+                            n_pasa = c8.selectbox("¿Quién clasificó?", [loc, vis], index=[loc, vis].index(pasa) if pasa in [loc, vis] else 0, key=f"aps_{i}")
+                        
+                        r_env.append({
+                            "Jornada": j_global, "Partido": m_id, "Tipo": n_tipo, 
+                            "R_L": n_rl, "R_V": n_rv, "Hora_Inicio": f"{n_fecha} {n_hora}:00", 
+                            "Finalizado": "SI" if n_fin else "NO",
+                            "Hubo_Prorroga": n_pro, "R_Pasa": n_pasa
+                        })
 
-                if st.button("🏟️ GUARDAR RESULTADOS", use_container_width=True, type="primary"):
-                    # Lógica de logs y guardado...
+                if st.button("🏟️ PUBLICAR RESULTADOS OFICIALES", use_container_width=True, type="primary"):
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
-                    df_res_new = pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)
-                    conn.update(worksheet="Resultados", data=df_res_new)
+                    df_final = pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)
+                    conn.update(worksheet="Resultados", data=df_final)
                     
-                    # Log si se cierra un partido
                     st.cache_data.clear()
-                    st.success("✅ Resultados actualizados en la nube.")
+                    st.success("✅ ¡Acta guardada! Los puntos se han recalculado para todos.")
                     st.rerun()
         else:
-            st.error("⛔ Acceso denegado. Solo para el Administrador.")
+            st.error("⛔ Acceso restringido al Alto Mando.")
     
     with tabs[9]: # --- 📜 PESTAÑA VAR (EL OJO QUE TODO LO VE) ---
         st.header("🏁 El VAR de la Porra")
