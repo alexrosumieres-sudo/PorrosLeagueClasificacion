@@ -16,8 +16,118 @@ PERFILES_DIR = "perfiles/"
 LOGOS_DIR = "logos/"
 
 
-NIVEL_EQUIPOS = {}
-JORNADAS = {}
+NIVEL_EQUIPOS = {
+    "Francia": 1, "Argentina": 1, "Brasil": 1, "Inglaterra": 1, "España": 1, "Portugal": 1,
+    "Alemania": 2, "Países Bajos": 2, "Uruguay": 2, "Croacia": 2, "Bélgica": 2, "Colombia": 2,
+    "Italia": 2, "Marruecos": 2, "Suiza": 3, "Japón": 3, "México": 3, "Estados Unidos": 3, 
+    "Senegal": 3, "Corea del Sur": 3, "República Checa": 3, "Turquía": 3, "Suecia": 3, "Austria": 3,
+    "Dinamarca": 3, "Ecuador": 3, "Noruega": 4, "Canadá": 4, "Paraguay": 4, "Australia": 4, 
+    "Costa de Marfil": 4, "Argelia": 4, "Egipto": 4, "Irán": 4, "Ghana": 4, "Bosnia Herzegovina": 4,
+    "Sudáfrica": 5, "Qatar": 5, "Haití": 5, "Escocia": 5, "Curaçao": 5, "Túnez": 5,
+    "Cabo Verde": 5, "Arabia Saudí": 5, "Iraq": 5, "Nueva Zelanda": 5, "Jordania": 5, 
+    "Congo": 5, "Uzbekistán": 5, "Panamá": 5
+}
+CONTINENTES = {
+    "Francia": "UEFA", "España": "UEFA", "Inglaterra": "UEFA", "Alemania": "UEFA", "Países Bajos": "UEFA",
+    "Portugal": "UEFA", "Croacia": "UEFA", "Bélgica": "UEFA", "Suiza": "UEFA", "República Checa": "UEFA",
+    "Turquía": "UEFA", "Suecia": "UEFA", "Austria": "UEFA", "Bosnia Herzegovina": "UEFA", "Escocia": "UEFA",
+    "Argentina": "CONMEBOL", "Brasil": "CONMEBOL", "Uruguay": "CONMEBOL", "Colombia": "CONMEBOL", 
+    "Ecuador": "CONMEBOL", "Paraguay": "CONMEBOL",
+    "México": "CONCACAF", "Estados Unidos": "CONCACAF", "Canadá": "CONCACAF", "Panamá": "CONCACAF", 
+    "Haití": "CONCACAF", "Curaçao": "CONCACAF",
+    "Marruecos": "CAF", "Senegal": "CAF", "Costa de Marfil": "CAF", "Argelia": "CAF", "Egipto": "CAF", 
+    "Ghana": "CAF", "Sudáfrica": "CAF", "Cabo Verde": "CAF", "Congo": "CAF", "Túnez": "CAF",
+    "Japón": "AFC", "Corea del Sur": "AFC", "Irán": "AFC", "Arabia Saudí": "AFC", "Qatar": "AFC", 
+    "Iraq": "AFC", "Uzbekistán": "AFC", "Jordania": "AFC",
+    "Australia": "AFC", "Nueva Zelanda": "OFC"
+}
+
+COLORES_BANDERAS = {
+    "México": ["#006847", "#CE1126"], "Sudáfrica": ["#007A4D", "#FFCD00"], 
+    "Corea del Sur": ["#CD2E3A", "#0047A0"], "República Checa": ["#D7141A", "#11457E"],
+    "Canadá": ["#FF0000", "#FFFFFF"], "Bosnia Herzegovina": ["#002395", "#FECB00"], 
+    "Qatar": ["#8D1B3D", "#FFFFFF"], "Suiza": ["#FF0000", "#FFFFFF"],
+    "Brasil": ["#009739", "#FEDD00"], "Marruecos": ["#C1272D", "#006233"], 
+    "Haití": ["#00209F", "#D21034"], "Escocia": ["#0065BF", "#FFFFFF"],
+    "Estados Unidos": ["#B22234", "#3C3B6E"], "Paraguay": ["#D52B1E", "#0038A8"], 
+    "Australia": ["#00008B", "#FF0000"], "Turquía": ["#E30A17", "#FFFFFF"],
+    "Alemania": ["#000000", "#FFCE00"], "Curaçao": ["#002B7F", "#F9E814"], 
+    "Costa de Marfil": ["#FF8200", "#009E60"], "Ecuador": ["#FFDD00", "#0046AE"],
+    "Países Bajos": ["#AE1C28", "#21468B"], "Japón": ["#BC002D", "#FFFFFF"], 
+    "Suecia": ["#006AA7", "#FECC00"], "Túnez": ["#E70013", "#FFFFFF"],
+    "España": ["#AA151B", "#F1BF00"], "Cabo Verde": ["#003893", "#FFD700"], 
+    "Arabia Saudí": ["#006C35", "#FFFFFF"], "Uruguay": ["#0038A8", "#FFFFFF"],
+    "Bélgica": ["#000000", "#FFD935"], "Egipto": ["#CE1126", "#000000"], 
+    "Irán": ["#239F40", "#DA0000"], "Nueva Zelanda": ["#00247D", "#FFFFFF"],
+    "Francia": ["#002395", "#ED2939"], "Senegal": ["#00853F", "#E31B23"], 
+    "Iraq": ["#CE1126", "#007A3D"], "Noruega": ["#BA0C2F", "#00205B"],
+    "Argentina": ["#74ACDF", "#FFFFFF"], "Argelia": ["#006233", "#D21034"], 
+    "Austria": ["#ED2939", "#FFFFFF"], "Jordania": ["#000000", "#CE1126"],
+    "Portugal": ["#FF0000", "#006600"], "Congo": ["#002B7F", "#F7D117"], 
+    "Uzbekistán": ["#0099B5", "#1EB53A"], "Colombia": ["#FCD116", "#003893"],
+    "Inglaterra": ["#CE1126", "#FFFFFF"], "Croacia": ["#FF0000", "#171796"], 
+    "Ghana": ["#EF3340", "#FFCD00"], "Panamá": ["#DA121A", "#072357"]
+}
+
+GRUPOS_2026 = {
+    "Grupo A": ["México", "Sudáfrica", "Corea del Sur", "Chequia"],
+    "Grupo B": ["Canadá", "Bosnia y Hezegovina", "Qatar", "Suiza"],
+    "Grupo C": ["Brasil", "Marruecos", "Haití", "Escocia"],
+    "Grupo D": ["Estados Unidos", "Paraguay", "Australia", "Turquía"],
+    "Grupo E": ["Alemania", "Curazao", "Costa de Marfil", "Ecuador"],
+    "Grupo F": ["Países Bajos", "Japón", "Suecia", "Túnez"],
+    "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
+    "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
+    "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
+    "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
+    "Grupo K": ["Portugal", "R.D. Congo", "Uzbekistán", "Colombia"],
+    "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
+}
+
+JORNADAS = {
+    "Jornada 1": [
+        ("México", "Sudáfrica"), ("Corea del Sur", "República Checa"),
+        ("Canadá", "Bosnia Herzegovina"), ("Estados Unidos", "Paraguay"),
+        ("Qatar", "Suiza"), ("Brasil", "Marruecos"),
+        ("Haití", "Escocia"), ("Australia", "Turquía"),
+        ("Alemania", "Curaçao"), ("Países Bajos", "Japón"),
+        ("Costa de Marfil", "Ecuador"), ("Suecia", "Túnez"),
+        ("España", "Cabo Verde"), ("Bélgica", "Egipto"),
+        ("Arabia Saudí", "Uruguay"), ("Irán", "Nueva Zelanda"),
+        ("Francia", "Senegal"), ("Iraq", "Noruega"),
+        ("Argentina", "Argelia"), ("Austria", "Jordania"),
+        ("Portugal", "Congo"), ("Inglaterra", "Croacia"),
+        ("Ghana", "Panamá"), ("Uzbekistán", "Colombia")
+    ],
+    "Jornada 2": [
+        ("República Checa", "Sudáfrica"), ("Suiza", "Bosnia Herzegovina"),
+        ("Canadá", "Qatar"), ("México", "Corea del Sur"),
+        ("Estados Unidos", "Australia"), ("Escocia", "Marruecos"),
+        ("Brasil", "Haití"), ("Turquía", "Paraguay"),
+        ("Países Bajos", "Suecia"), ("Alemania", "Costa de Marfil"),
+        ("Ecuador", "Curaçao"), ("Túnez", "Japón"),
+        ("España", "Arabia Saudí"), ("Bélgica", "Irán"),
+        ("Uruguay", "Cabo Verde"), ("Nueva Zelanda", "Egipto"),
+        ("Argentina", "Austria"), ("Francia", "Iraq"),
+        ("Noruega", "Senegal"), ("Jordania", "Argelia"),
+        ("Portugal", "Uzbekistán"), ("Inglaterra", "Ghana"),
+        ("Panamá", "Croacia"), ("Colombia", "Congo")
+    ],
+    "Jornada 3": [
+        ("Bosnia Herzegovina", "Qatar"), ("Suiza", "Canadá"),
+        ("Marruecos", "Haití"), ("Escocia", "Brasil"),
+        ("República Checa", "México"), ("Sudáfrica", "Corea del Sur"),
+        ("Curaçao", "Costa de Marfil"), ("Ecuador", "Alemania"),
+        ("Japón", "Suecia"), ("Túnez", "Países Bajos"),
+        ("Paraguay", "Australia"), ("Turquía", "Estados Unidos"),
+        ("Noruega", "Francia"), ("Senegal", "Iraq"),
+        ("Cabo Verde", "Arabia Saudí"), ("Uruguay", "España"),
+        ("Egipto", "Irán"), ("Nueva Zelanda", "Bélgica"),
+        ("Croacia", "Ghana"), ("Panamá", "Inglaterra"),
+        ("Colombia", "Portugal"), ("Congo", "Uzbekistán"),
+        ("Argelia", "Austria"), ("Jordania", "Argentina")
+    ]
+}
 
 LOGOS = {
     "Athletic": f"{LOGOS_DIR}athletic.jpeg", "Elche": f"{LOGOS_DIR}elche.jpeg", "R. Sociedad": f"{LOGOS_DIR}sociedad.jpeg",
@@ -226,28 +336,6 @@ COLORES_BANDERAS = {
 }
 
 # Diccionario para las Stats por continente
-CONTINENTES = {
-    "España": "UEFA", "Francia": "UEFA", "Alemania": "UEFA",
-    "Argentina": "CONMEBOL", "Brasil": "CONMEBOL",
-    "México": "CONCACAF", "USA": "CONCACAF",
-    "Japón": "AFC", "Marruecos": "CAF",
-    # ...
-}
-
-GRUPOS_2026 = {
-    "Grupo A": ["México", "Sudáfrica", "Corea del Sur", "Chequia"],
-    "Grupo B": ["Canadá", "Bosnia y Hezegovina", "Qatar", "Suiza"],
-    "Grupo C": ["Brasil", "Marruecos", "Haití", "Escocia"],
-    "Grupo D": ["Estados Unidos", "Paraguay", "Australia", "Turquía"],
-    "Grupo E": ["Alemania", "Curazao", "Costa de Marfil", "Ecuador"],
-    "Grupo F": ["Países Bajos", "Japón", "Suecia", "Túnez"],
-    "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
-    "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
-    "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
-    "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
-    "Grupo K": ["Portugal", "R.D. Congo", "Uzbekistán", "Colombia"],
-    "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
-}
 
 # --- 2. FUNCIONES DE APOYO ---
 conn = st.connection("gsheets", type=GSheetsConnection)
