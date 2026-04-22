@@ -1113,55 +1113,69 @@ else:
         st.caption("Los enfrentamientos se actualizan en tiempo real según tus selecciones anteriores.")
 
         # Lógica de emparejamientos de Dieciseisavos (Cruces A-L)
+        # Definimos 16 cruces (32 equipos en total)
+        # Usamos 1º y 2º de cada grupo + 8 plazas para los "Mejores Terceros" (T3)
         cruces_base = [
-            ("Grupo A_1", "Grupo B_2"), ("Grupo C_1", "Grupo D_2"), ("Grupo E_1", "Grupo F_2"), ("Grupo G_1", "Grupo H_2"),
-            ("Grupo I_1", "Grupo J_2"), ("Grupo K_1", "Grupo L_2"), ("Grupo B_1", "Grupo A_2"), ("Grupo D_1", "Grupo C_2"),
-            ("Grupo F_1", "Grupo E_2"), ("Grupo H_1", "Grupo G_2"), ("Grupo J_1", "Grupo I_2"), ("Grupo L_1", "Grupo K_2")
+            ("Grupo A_1", "Grupo C_2"), ("Grupo B_1", "T3_1"), ("Grupo E_1", "Grupo F_2"), ("Grupo F_1", "Grupo E_2"),
+            ("Grupo C_1", "T3_2"), ("Grupo D_1", "T3_3"), ("Grupo G_1", "Grupo H_2"), ("Grupo H_1", "Grupo G_2"),
+            ("Grupo I_1", "T3_4"), ("Grupo J_1", "T3_5"), ("Grupo K_1", "Grupo L_2"), ("Grupo L_1", "Grupo K_2"),
+            ("Grupo B_2", "Grupo A_2"), ("Grupo D_2", "T3_6"), ("Grupo I_2", "T3_7"), ("Grupo J_2", "T3_8")
         ]
 
-        # --- DIECISEISAVOS ---
+        # --- DIECISEISAVOS (16 partidos -> 16 ganadores) ---
         st.markdown("#### 🏟️ Dieciseisavos de Final")
-        cols_16 = st.columns(4)
+        cols_16 = st.columns(4) # 4 columnas de 4 partidos cada una
         ganadores_16 = []
         for i, (t1_key, t2_key) in enumerate(cruces_base):
-            with cols_16[i % 4]:
-                eq_a, eq_b = ganadores_grupos[t1_key], ganadores_grupos[t2_key]
-                st.markdown(f"<small>Cruce {i+1}</small>", unsafe_allow_html=True)
-                def_16 = b_prev.iloc[0][f"G16_{i}"] if not b_prev.empty else eq_a
-                res_16 = st.radio(f"{eq_a} vs {eq_b}", [eq_a, eq_b], index=[eq_a, eq_b].index(def_16) if def_16 in [eq_a, eq_b] else 0, key=f"w16_{i}", disabled=not mercado_abierto, label_visibility="collapsed")
+            with cols_16[i // 4]: # Distribuye 16 partidos en 4 columnas
+                # Obtenemos el nombre del equipo (si es un T3 ponemos un placeholder)
+                eq_a = ganadores_grupos.get(t1_key, "Mejor 3º (A/B/C)")
+                eq_b = ganadores_grupos.get(t2_key, "Mejor 3º (D/E/F)")
+                
+                def_16 = b_prev.iloc[0][f"G16_{i}"] if not b_prev.empty and f"G16_{i}" in b_prev.columns else eq_a
+                res_16 = st.radio(f"Cruce {i+1}", [eq_a, eq_b], 
+                                  index=[eq_a, eq_b].index(def_16) if def_16 in [eq_a, eq_b] else 0, 
+                                  key=f"w16_{i}", disabled=not mercado_abierto)
                 ganadores_16.append(res_16)
-
-        # --- OCTAVOS ---
+        
+        # --- OCTAVOS (16 ganadores -> 8 partidos -> 8 ganadores) ---
         st.markdown("#### 🛡️ Octavos de Final")
-        cols_8 = st.columns(3)
+        cols_8 = st.columns(4)
         ganadores_8 = []
         for i in range(0, len(ganadores_16), 2):
-            with cols_8[(i//2) % 3]:
+            with cols_8[(i//2) // 2]: # Distribuye 8 partidos en 4 columnas
                 e1, e2 = ganadores_16[i], ganadores_16[i+1]
-                def_8 = b_prev.iloc[0][f"G8_{i//2}"] if not b_prev.empty else e1
-                res_8 = st.radio(f"Octavo {(i//2)+1}", [e1, e2], index=[e1, e2].index(def_8) if def_8 in [e1, e2] else 0, key=f"w8_{i}", disabled=not mercado_abierto)
+                def_8 = b_prev.iloc[0][f"G8_{i//2}"] if not b_prev.empty and f"G8_{i//2}" in b_prev.columns else e1
+                res_8 = st.radio(f"Octavo {(i//2)+1}", [e1, e2], 
+                                 index=[e1, e2].index(def_8) if def_8 in [e1, e2] else 0, 
+                                 key=f"w8_{i//2}", disabled=not mercado_abierto)
                 ganadores_8.append(res_8)
-
-        # --- CUARTOS Y SEMIS ---
-        c_cuartos, c_semis = st.columns(2)
-        with c_cuartos:
-            st.markdown("#### 📊 Cuartos")
-            ganadores_4 = []
-            for i in range(0, len(ganadores_8), 2):
+        
+        # --- CUARTOS (8 ganadores -> 4 partidos -> 4 ganadores) ---
+        st.markdown("#### 📊 Cuartos")
+        cols_4 = st.columns(2)
+        ganadores_4 = []
+        for i in range(0, len(ganadores_8), 2):
+            with cols_4[(i//2) // 2]:
                 e1, e2 = ganadores_8[i], ganadores_8[i+1]
-                def_4 = b_prev.iloc[0][f"G4_{i//2}"] if not b_prev.empty else e1
-                res_4 = st.radio(f"Cuarto {(i//2)+1}", [e1, e2], index=[e1, e2].index(def_4) if def_4 in [e1, e2] else 0, key=f"w4_{i}", disabled=not mercado_abierto)
+                def_4 = b_prev.iloc[0][f"G4_{i//2}"] if not b_prev.empty and f"G4_{i//2}" in b_prev.columns else e1
+                res_4 = st.radio(f"Cuarto {(i//2)+1}", [e1, e2], 
+                                 index=[e1, e2].index(def_4) if def_4 in [e1, e2] else 0, 
+                                 key=f"w4_{i//2}", disabled=not mercado_abierto)
                 ganadores_4.append(res_4)
-
-        with c_semis:
-            st.markdown("#### ⚔️ Semifinales")
-            ganadores_2 = []
-            for i in range(0, len(ganadores_4), 2):
-                e1, e2 = ganadores_4[i], ganadores_4[i+1]
-                def_2 = b_prev.iloc[0][f"G2_{i//2}"] if not b_prev.empty else e1
-                res_2 = st.radio(f"Semi {(i//2)+1}", [e1, e2], index=[e1, e2].index(def_2) if def_2 in [e1, e2] else 0, key=f"w2_{i}", disabled=not mercado_abierto)
+        
+        # --- SEMIFINALES (4 ganadores -> 2 partidos -> 2 ganadores) ---
+        st.markdown("#### ⚔️ Semifinales")
+        c_semi_cols = st.columns(2)
+        ganadores_2 = []
+        for i in range(0, len(ganadores_4), 2):
+            with c_semi_cols[i//2]:
+                e1, e2 = ganadores_4[i], ganadores_4[i+1] # AQUÍ YA NO DARÁ ERROR
+                def_2 = b_prev.iloc[0][f"G2_{i//2}"] if not b_prev.empty and f"G2_{i//2}" in b_prev.columns else e1
+                res_2 = st.radio(f"Semi {(i//2)+1}", [e1, e2], 
+                                 index=[e1, e2].index(def_2) if def_2 in [e1, e2] else 0, 
+                                 key=f"w2_{i//2}", disabled=not mercado_abierto)
                 ganadores_2.append(res_2)
-
         # --- LA FINAL ---
         st.divider()
         st.markdown("<h3 style='text-align:center;'>🏆 GRAN FINAL DEL MUNDIAL</h3>", unsafe_allow_html=True)
