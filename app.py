@@ -412,6 +412,69 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo="Normal", p_pasa=None, r_pasa=No
             
     return puntos_totales
 
+def calcular_puntos_bracket(user_bracket, real_bracket):
+    """
+    user_bracket: Fila del DataFrame del usuario (Series)
+    real_bracket: Fila del DataFrame con los resultados REALES (Admin)
+    """
+    pts = 0.0
+    
+    if user_bracket is None or real_bracket is None:
+        return 0.0
+
+    # --- 1. FASE DE GRUPOS (Puestos 1º y 2º) ---
+    for g in ["Grupo A", "Grupo B", "Grupo C", "Grupo D", "Grupo E", "Grupo F", 
+              "Grupo G", "Grupo H", "Grupo I", "Grupo J", "Grupo K", "Grupo L"]:
+        # Acertar 1º (0.5 pts)
+        if user_bracket.get(f"{g}_1") == real_bracket.get(f"{g}_1"):
+            pts += 0.5
+        # Acertar 2º (0.5 pts)
+        if user_bracket.get(f"{g}_2") == real_bracket.get(f"{g}_2"):
+            pts += 0.5
+
+    # --- 2. MEJORES TERCEROS (0.5 pts c/u) ---
+    u_terceros = set(str(user_bracket.get("MejoresTerceros", "")).split(","))
+    r_terceros = set(str(real_bracket.get("MejoresTerceros", "")).split(","))
+    aciertos_3ros = u_terceros.intersection(r_terceros)
+    pts += len(aciertos_3ros) * 0.5
+
+    # --- 3. AVANCE DE EQUIPOS (0.5 pts por ronda) ---
+    # Sacamos las listas de equipos que llegaron realmente a cada ronda
+    r_16 = [real_bracket.get(f"W16_{i}") for i in range(16)]
+    r_8 = [real_bracket.get(f"W8_{i}") for i in range(8)]
+    r_4 = [real_bracket.get(f"W4_{i}") for i in range(4)]
+    r_2 = [real_bracket.get(f"WS_{i}") for i in range(2)]
+    r_campeon = real_bracket.get("Campeon")
+
+    # Comparamos con lo que puso el usuario (Avance)
+    # Si el equipo que el usuario puso en 16vos está en la lista real de 16vos...
+    u_16 = [user_bracket.get(f"W16_{i}") for i in range(16)]
+    for eq in set(u_16):
+        if eq in r_16: pts += 0.5
+        
+    u_8 = [user_bracket.get(f"W8_{i}") for i in range(8)]
+    for eq in set(u_8):
+        if eq in r_8: pts += 0.5
+
+    u_4 = [user_bracket.get(f"W4_{i}") for i in range(4)]
+    for eq in set(u_4):
+        if eq in r_4: pts += 0.5
+
+    u_2 = [user_bracket.get(f"WS_{i}") for i in range(2)]
+    for eq in set(u_2):
+        if eq in r_2: pts += 0.5
+        
+    if user_bracket.get("Campeon") == r_campeon:
+        pts += 0.5
+
+    # --- 4. PARTIDO EXACTO (Cruces) ---
+    # Dieciseisavos (0.5 pts) - Aquí comparamos si los dos rivales coinciden
+    # Esta lógica es más compleja porque requiere saber quién jugaba contra quién en 16vos reales.
+    # Por ahora, si quieres simplificar, esta parte se puede calcular comparando 
+    # si los índices de los partidos coinciden en participantes.
+    
+    return pts
+
 def simular_temporada_completa(df_hero, df_p_all, df_r_all):
     """
     Simulación de Montecarlo: Proyecta el final de la porra 5.000 veces.
@@ -736,6 +799,11 @@ else:
 
     # --- CÁLCULO DE DASHBOARD HERO (Versión Mundial) ---
     stats_hero = []
+    df_b_all = leer_datos("Brackets") # Cargamos los brackets
+    # El bracket real es el que rellena el ADMIN
+    admin_b = df_b_all[df_b_all['Usuario'] == "ADMIN"] 
+    r_bracket = admin_b.iloc[0] if not admin_b.empty else None
+
     for u in u_jugadores:
         pb_row = df_base[df_base['Usuario'] == u]
         p_base = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
@@ -743,20 +811,24 @@ else:
         u_p_hist = df_p_all[df_p_all['Usuario'] == u]
         p_acum = p_base
         
+        # 1. PUNTOS POR PARTIDOS DIARIOS
         for r in u_p_hist.itertuples():
-            # Buscamos el resultado real del partido
             m = df_r_all[(df_r_all['Jornada'] == r.Jornada) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
-            
             if not m.empty:
-                # --- CAMBIO AQUÍ: Llamamos a calcular_puntos_wc con los nuevos campos ---
                 p_acum += calcular_puntos_wc(
                     r.P_L, r.P_V, 
                     m.iloc[0]['R_L'], m.iloc[0]['R_V'], 
                     m.iloc[0]['Tipo'],
-                    getattr(r, 'P_Pasa', None),         # Quién puso el usuario que pasaba
-                    m.iloc[0].get('R_Pasa'),            # Quién pasó realmente
-                    m.iloc[0].get('Hubo_Prorroga') == "SI" # Si hubo prórroga real
+                    getattr(r, 'P_Pasa', None),
+                    m.iloc[0].get('R_Pasa'),
+                    m.iloc[0].get('Hubo_Prorroga') == "SI"
                 )
+
+        # 2. PUNTOS POR EL BRACKET
+        u_bracket_row = df_b_all[df_b_all['Usuario'] == u]
+        if not u_bracket_row.empty and r_bracket is not None:
+            p_acum += calcular_puntos_bracket(u_bracket_row.iloc[0], r_bracket)
+
         stats_hero.append({"Usuario": u, "Puntos": p_acum})
     
     df_hero = pd.DataFrame(stats_hero).sort_values("Puntos", ascending=False).reset_index(drop=True)
