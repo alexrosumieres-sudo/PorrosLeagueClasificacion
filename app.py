@@ -664,10 +664,21 @@ else:
     df_perf = leer_datos("ImagenesPerfil")
     # Cargamos también los logs para que ChatG-O-L los vea
     df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase"), leer_datos("Logs")
-    # --- 🛡️ MURO DE SEGURIDAD (Añade esto aquí) ---
-    if df_r_all.empty or df_p_all.empty or df_u_all.empty:
-        st.info("⌛ El VAR está conectando con los satélites... (Cargando datos)")
+    # --- 🛡️ MURO DE SEGURIDAD ACTUALIZADO ---
+    # Verificamos si las variables son None (error de carga) o si falta la tabla crítica de Usuarios
+    if df_u_all is None or df_u_all.empty:
+        st.error("❌ No se pudo cargar la tabla de Usuarios. Revisa la conexión con GSheets.")
         st.stop()
+    
+    # Si Resultados o Predicciones están vacíos, creamos un DataFrame vacío con sus columnas 
+    # para que el resto de la lógica no explote, pero permitimos que la App siga.
+    if df_r_all.empty:
+        st.warning("⚠️ La tabla de Resultados está vacía. El Admin debe inicializar los partidos.")
+        # Opcional: df_r_all = pd.DataFrame(columns=['Jornada', 'Partido', 'R_L', 'R_V', 'Finalizado', 'Tipo', 'Hora_Inicio'])
+    
+    if df_p_all.empty:
+        # Esto es normal si nadie ha apostado aún. No detenemos la app.
+        pass
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
