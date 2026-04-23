@@ -131,52 +131,52 @@ JORNADAS = {
 
 LOGOS = {
     # Grupo A
-    "México": f"{LOGOS_DIR}mexico.jpeg", "Sudáfrica": f"{LOGOS_DIR}sudafrica.jpeg", 
-    "Corea del Sur": f"{LOGOS_DIR}corea.jpeg", "Chequia": f"{LOGOS_DIR}chequia.jpeg",
+    "México": f"{LOGOS_DIR}mexico.png", "Sudáfrica": f"{LOGOS_DIR}sudafrica.png", 
+    "Corea del Sur": f"{LOGOS_DIR}corea.png", "Chequia": f"{LOGOS_DIR}chequia.png",
     
     # Grupo B
-    "Canadá": f"{LOGOS_DIR}canada.jpeg", "Bosnia y Hezegovina": f"{LOGOS_DIR}bosnia.jpeg", 
-    "Qatar": f"{LOGOS_DIR}qatar.jpeg", "Suiza": f"{LOGOS_DIR}suiza.jpeg",
+    "Canadá": f"{LOGOS_DIR}canada.png", "Bosnia y Hezegovina": f"{LOGOS_DIR}bosnia.png", 
+    "Qatar": f"{LOGOS_DIR}qatar.png", "Suiza": f"{LOGOS_DIR}suiza.png",
     
     # Grupo C
-    "Brasil": f"{LOGOS_DIR}brasil.jpeg", "Marruecos": f"{LOGOS_DIR}marruecos.jpeg", 
-    "Haití": f"{LOGOS_DIR}haiti.jpeg", "Escocia": f"{LOGOS_DIR}escocia.jpeg",
+    "Brasil": f"{LOGOS_DIR}brasil.png", "Marruecos": f"{LOGOS_DIR}marruecos.png", 
+    "Haití": f"{LOGOS_DIR}haiti.png", "Escocia": f"{LOGOS_DIR}escocia.png",
     
     # Grupo D
-    "Estados Unidos": f"{LOGOS_DIR}eeuu.jpeg", "Paraguay": f"{LOGOS_DIR}paraguay.jpeg", 
-    "Australia": f"{LOGOS_DIR}australia.jpeg", "Turquía": f"{LOGOS_DIR}turquia.jpeg",
+    "Estados Unidos": f"{LOGOS_DIR}eeuu.png", "Paraguay": f"{LOGOS_DIR}paraguay.png", 
+    "Australia": f"{LOGOS_DIR}australia.png", "Turquía": f"{LOGOS_DIR}turquia.png",
     
     # Grupo E
-    "Alemania": f"{LOGOS_DIR}alemania.jpeg", "Curazao": f"{LOGOS_DIR}curazao.jpeg", 
-    "Costa de Marfil": f"{LOGOS_DIR}costa.jpeg", "Ecuador": f"{LOGOS_DIR}ecuador.jpeg",
+    "Alemania": f"{LOGOS_DIR}alemania.png", "Curazao": f"{LOGOS_DIR}curazao.png", 
+    "Costa de Marfil": f"{LOGOS_DIR}costa.png", "Ecuador": f"{LOGOS_DIR}ecuador.png",
     
     # Grupo F
-    "Países Bajos": f"{LOGOS_DIR}holanda.jpeg", "Japón": f"{LOGOS_DIR}japon.jpeg", 
-    "Suecia": f"{LOGOS_DIR}suecia.jpeg", "Túnez": f"{LOGOS_DIR}tunez.jpeg",
+    "Países Bajos": f"{LOGOS_DIR}holanda.png", "Japón": f"{LOGOS_DIR}japon.png", 
+    "Suecia": f"{LOGOS_DIR}suecia.png", "Túnez": f"{LOGOS_DIR}tunez.png",
     
     # Grupo G
-    "Bélgica": f"{LOGOS_DIR}belgica.jpeg", "Egipto": f"{LOGOS_DIR}egipto.jpeg", 
-    "Irán": f"{LOGOS_DIR}iran.jpeg", "Nueva Zelanda": f"{LOGOS_DIR}zelanda.jpeg",
+    "Bélgica": f"{LOGOS_DIR}belgica.png", "Egipto": f"{LOGOS_DIR}egipto.png", 
+    "Irán": f"{LOGOS_DIR}iran.png", "Nueva Zelanda": f"{LOGOS_DIR}zelanda.png",
     
     # Grupo H
-    "España": f"{LOGOS_DIR}espana.jpeg", "Cabo Verde": f"{LOGOS_DIR}cabo.jpeg", 
-    "Arabia Saudita": f"{LOGOS_DIR}arabia_saudita.jpeg", "Uruguay": f"{LOGOS_DIR}uruguay.jpeg",
+    "España": f"{LOGOS_DIR}espana.png", "Cabo Verde": f"{LOGOS_DIR}cabo.png", 
+    "Arabia Saudita": f"{LOGOS_DIR}arabia_saudita.png", "Uruguay": f"{LOGOS_DIR}uruguay.png",
     
     # Grupo I
-    "Francia": f"{LOGOS_DIR}francia.jpeg", "Senegal": f"{LOGOS_DIR}senegal.jpeg", 
-    "Irak": f"{LOGOS_DIR}irak.jpeg", "Noruega": f"{LOGOS_DIR}noruega.jpeg",
+    "Francia": f"{LOGOS_DIR}francia.png", "Senegal": f"{LOGOS_DIR}senegal.png", 
+    "Irak": f"{LOGOS_DIR}irak.png", "Noruega": f"{LOGOS_DIR}noruega.png",
     
     # Grupo J
-    "Argentina": f"{LOGOS_DIR}argentina.jpeg", "Argelia": f"{LOGOS_DIR}argelia.jpeg", 
-    "Austria": f"{LOGOS_DIR}austria.jpeg", "Jordania": f"{LOGOS_DIR}jordania.jpeg",
+    "Argentina": f"{LOGOS_DIR}argentina.png", "Argelia": f"{LOGOS_DIR}argelia.png", 
+    "Austria": f"{LOGOS_DIR}austria.png", "Jordania": f"{LOGOS_DIR}jordania.png",
     
     # Grupo K
-    "Portugal": f"{LOGOS_DIR}portugal.jpeg", "R.D. Congo": f"{LOGOS_DIR}congo.jpeg", 
-    "Uzbekistán": f"{LOGOS_DIR}uzbekistan.jpeg", "Colombia": f"{LOGOS_DIR}colombia.jpeg",
+    "Portugal": f"{LOGOS_DIR}portugal.png", "R.D. Congo": f"{LOGOS_DIR}congo.png", 
+    "Uzbekistán": f"{LOGOS_DIR}uzbekistan.png", "Colombia": f"{LOGOS_DIR}colombia.png",
     
     # Grupo L
-    "Inglaterra": f"{LOGOS_DIR}inglaterra.jpeg", "Croacia": f"{LOGOS_DIR}croacia.jpeg", 
-    "Ghana": f"{LOGOS_DIR}ghana.jpeg", "Panamá": f"{LOGOS_DIR}panama.jpeg",
+    "Inglaterra": f"{LOGOS_DIR}inglaterra.png", "Croacia": f"{LOGOS_DIR}croacia.png", 
+    "Ghana": f"{LOGOS_DIR}ghana.png", "Panamá": f"{LOGOS_DIR}panama.png",
 }
 
 SCORING_WC = {
