@@ -159,8 +159,8 @@ LOGOS = {
     "Irán": f"{LOGOS_DIR}iran.png", "Nueva Zelanda": f"{LOGOS_DIR}zelanda.png",
     
     # Grupo H
-    "España": f"{LOGOS_DIR}espana.png", "Cabo Verde": f"{LOGOS_DIR}cabo.png", 
-    "Arabia Saudita": f"{LOGOS_DIR}arabia_saudita.png", "Uruguay": f"{LOGOS_DIR}uruguay.png",
+    "España": f"{LOGOS_DIR}españa.png", "Cabo Verde": f"{LOGOS_DIR}cabo.png", 
+    "Arabia Saudita": f"{LOGOS_DIR}arabia.png", "Uruguay": f"{LOGOS_DIR}uruguay.png",
     
     # Grupo I
     "Francia": f"{LOGOS_DIR}francia.png", "Senegal": f"{LOGOS_DIR}senegal.png", 
