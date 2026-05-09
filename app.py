@@ -1525,6 +1525,7 @@ else:
     "📊 Clasificación", 
     "🏅 Palmarés", 
     "📈 Stats PRO", 
+     "🏆 Detalles",
     "🔮 Simulador", 
     "🎲 Oráculo", 
     "⚙️ Admin", 
