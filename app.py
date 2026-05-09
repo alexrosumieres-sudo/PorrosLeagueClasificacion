@@ -1287,7 +1287,7 @@ else:
     # Verificamos si las variables son None (error de carga) o si falta la tabla crítica de Usuarios
     if df_u_all is None or df_u_all.empty:
         st.error("❌ No se pudo cargar la tabla de Usuarios. Revisa la conexión con GSheets.")
-        st.stop()
+        ()
     
     # Si Resultados o Predicciones están vacíos, creamos un DataFrame vacío con sus columnas 
     # para que el resto de la lógica no explote, pero permitimos que la App siga.
@@ -1680,255 +1680,216 @@ else:
         if st.session_state.rol == "admin":
             st.warning("🛡️ Acceso restringido: Los administradores no participan en el Súper Bracket.")
             st.info("Tu función es supervisar el torneo y aplicar justicia desde el VAR.")
-            # Reutilizamos el GIF del árbitro que tienes en apuestas para mantener el estilo
             st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
-        st.header("🌳 El Súper Bracket del Mundial")
-        st.caption("Define las posiciones de los grupos, los mejores terceros y el camino a la gloria.")
+        else: # <--- ESTE ELSE FALTABA
+            st.header("🌳 El Súper Bracket del Mundial")
+            st.caption("Define las posiciones de los grupos, los mejores terceros y el camino a la gloria.")
 
-        # --- 0. CONFIGURACIÓN DE SEGURIDAD Y CIERRE ---
-        FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
-        mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
-        
-        if not mercado_abierto:
-            st.error(f"🔒 **MERCADO CERRADO.** No se admiten más cambios.")
-        else:
-            st.success(f"🔓 **MERCADO ABIERTO.** Tienes hasta el 11 de junio a las 21:00.")
-
-        # Carga de datos guardados
-        df_b_all = leer_datos("Brackets")
-        b_prev = df_b_all[df_b_all['Usuario'] == st.session_state.user]
-        
-        # --- 1. FASE DE GRUPOS (Posiciones 1 a 4) ---
-        st.subheader("1️⃣ Posiciones de la Fase de Grupos")
-        ganadores_grupos = {}
-        todos_los_terceros = []
-
-        c_g1, c_g2, c_g3 = st.columns(3)
-        for idx, (nombre_g, equipos) in enumerate(GRUPOS_2026.items()):
-            target_col = [c_g1, c_g2, c_g3][idx % 3]
-            with target_col:
-                with st.container(border=True):
-                    st.markdown(f"**{nombre_g}**")
-                    
-                    # Recuperar selección previa
-                    def_p1 = b_prev.iloc[0][f"{nombre_g}_1"] if not b_prev.empty else equipos[0]
-                    def_p2 = b_prev.iloc[0][f"{nombre_g}_2"] if not b_prev.empty else equipos[1]
-                    def_p3 = b_prev.iloc[0][f"{nombre_g}_3"] if not b_prev.empty else equipos[2]
-
-                    p1 = st.selectbox(f"1º", equipos, index=equipos.index(def_p1) if def_p1 in equipos else 0, key=f"p1_{nombre_g}", disabled=not mercado_abierto)
-                    
-                    op2 = [e for e in equipos if e != p1]
-                    p2 = st.selectbox(f"2º", op2, index=op2.index(def_p2) if def_p2 in op2 else 0, key=f"p2_{nombre_g}", disabled=not mercado_abierto)
-                    
-                    op3 = [e for e in op2 if e != p2]
-                    p3 = st.selectbox(f"3º", op3, index=op3.index(def_p3) if def_p3 in op3 else 0, key=f"p3_{nombre_g}", disabled=not mercado_abierto)
-                    
-                    p4 = [e for e in op3 if e != p3][0]
-                    st.caption(f"4º puesto: {p4}")
-
-                    ganadores_grupos[f"{nombre_g}_1"] = p1
-                    ganadores_grupos[f"{nombre_g}_2"] = p2
-                    ganadores_grupos[f"{nombre_g}_3"] = p3
-                    todos_los_terceros.append(p3)
-
-        st.divider()
-
-        # --- 2. LOS 8 MEJORES TERCEROS ---
-        st.subheader("🎯 2️⃣ Elección de Mejores Terceros")
-        st.info("Elige los 8 equipos que pasarán a Dieciseisavos de entre los 12 terceros.")
-        
-        def_terc_str = b_prev.iloc[0]["MejoresTerceros"] if not b_prev.empty and "MejoresTerceros" in b_prev.columns else ""
-        def_terceros_list = def_terc_str.split(",") if def_terc_str else []
-        
-        seleccion_terceros = st.multiselect(
-            "Selecciona exactamente 8:",
-            options=todos_los_terceros,
-            default=[t for t in def_terceros_list if t in todos_los_terceros],
-            max_selections=8,
-            key="ms_terceros",
-            disabled=not mercado_abierto
-        )
-
-        if len(seleccion_terceros) < 8:
-            st.warning(f"⚠️ Seleccionados: {len(seleccion_terceros)}/8. El cuadro se activará al elegir 8.")
-
-        # --- 3. DIECISEISAVOS (JORNADA 4) ---
-        st.subheader("🏟️ 3️⃣ Dieciseisavos de Final (Matriz FIFA)")
-        
-        # 1. Averiguamos a qué grupos pertenecen los 8 terceros seleccionados
-        grupos_3ros = []
-        mapa_pais_letra = {}
-        for pais in seleccion_terceros:
-            for g_name in GRUPOS_2026.keys():
-                if ganadores_grupos[f"{g_name}_3"] == pais:
-                    letra = g_name.replace("Grupo ", "") # "A", "B", etc.
-                    grupos_3ros.append(letra)
-                    mapa_pais_letra[letra] = pais
-                    break
-        
-        # 2. Ordenamos alfabéticamente para buscar en nuestra súper matriz
-        clave_3ros = "".join(sorted(grupos_3ros))
-        
-        if clave_3ros not in MATRIZ_TERCEROS:
-            st.error("❌ ¡Combinación Imposible! Según la FIFA, es matemáticamente imposible que pasen esos 8 terceros juntos. Revisa tu selección.")
-            st.stop()
+            FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
+            mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
             
-        cruces_3ros = MATRIZ_TERCEROS[clave_3ros]
-        
-        # 3. Mapeo Oficial de la FIFA (M73 al M88)
-        cruces_16 = [
-            (ganadores_grupos["Grupo A_2"], ganadores_grupos["Grupo B_2"]), # M73
-            (ganadores_grupos["Grupo E_1"], mapa_pais_letra[cruces_3ros["1E"]]), # M74
-            (ganadores_grupos["Grupo F_1"], ganadores_grupos["Grupo C_2"]), # M75
-            (ganadores_grupos["Grupo C_1"], ganadores_grupos["Grupo F_2"]), # M76
-            (ganadores_grupos["Grupo I_1"], mapa_pais_letra[cruces_3ros["1I"]]), # M77
-            (ganadores_grupos["Grupo E_2"], ganadores_grupos["Grupo I_2"]), # M78
-            (ganadores_grupos["Grupo A_1"], mapa_pais_letra[cruces_3ros["1A"]]), # M79
-            (ganadores_grupos["Grupo L_1"], mapa_pais_letra[cruces_3ros["1L"]]), # M80
-            (ganadores_grupos["Grupo D_1"], mapa_pais_letra[cruces_3ros["1D"]]), # M81
-            (ganadores_grupos["Grupo G_1"], mapa_pais_letra[cruces_3ros["1G"]]), # M82
-            (ganadores_grupos["Grupo K_2"], ganadores_grupos["Grupo L_2"]), # M83
-            (ganadores_grupos["Grupo H_1"], ganadores_grupos["Grupo J_2"]), # M84
-            (ganadores_grupos["Grupo B_1"], mapa_pais_letra[cruces_3ros["1B"]]), # M85
-            (ganadores_grupos["Grupo J_1"], ganadores_grupos["Grupo H_2"]), # M86
-            (ganadores_grupos["Grupo K_1"], mapa_pais_letra[cruces_3ros["1K"]]), # M87
-            (ganadores_grupos["Grupo D_2"], ganadores_grupos["Grupo G_2"])  # M88
-        ]
+            if not mercado_abierto:
+                st.error(f"🔒 **MERCADO CERRADO.** No se admiten más cambios.")
+            else:
+                st.success(f"🔓 **MERCADO ABIERTO.** Tienes hasta el 11 de junio a las 21:00.")
 
-        ganadores_16 = []
-        cols_16 = st.columns(4)
-        for i, (loc, vis) in enumerate(cruces_16):
-            with cols_16[i // 4]:
-                st.markdown(f"<small>M{73+i}</small>", unsafe_allow_html=True)
-                def_w16 = b_prev.iloc[0][f"W16_{i}"] if not b_prev.empty and f"W16_{i}" in b_prev.columns else loc
-                res_16 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w16) if def_w16 in [loc, vis] else 0, key=f"radio_16_{i}", disabled=not mercado_abierto, label_visibility="collapsed")
-                ganadores_16.append(res_16)
+            df_b_all = leer_datos("Brackets")
+            b_prev = df_b_all[df_b_all['Usuario'] == st.session_state.user]
+            
+            st.subheader("1️⃣ Posiciones de la Fase de Grupos")
+            ganadores_grupos = {}
+            todos_los_terceros = []
 
-        # --- 4. OCTAVOS (JORNADA 5) ---
-        st.subheader("🛡️ 4️⃣ Octavos de Final (Orden FIFA)")
-        # Orden oficial de cruces de la FIFA (M89 a M96)
-        cruces_8 = [
-            (ganadores_16[1], ganadores_16[4]),   # M89: W74 vs W77
-            (ganadores_16[0], ganadores_16[2]),   # M90: W73 vs W75
-            (ganadores_16[3], ganadores_16[5]),   # M91: W76 vs W78
-            (ganadores_16[6], ganadores_16[7]),   # M92: W79 vs W80
-            (ganadores_16[10], ganadores_16[11]), # M93: W83 vs W84
-            (ganadores_16[8], ganadores_16[9]),   # M94: W81 vs W82
-            (ganadores_16[13], ganadores_16[15]), # M95: W86 vs W88
-            (ganadores_16[12], ganadores_16[14])  # M96: W85 vs W87
-        ]
-        
-        ganadores_8 = []
-        cols_8 = st.columns(4)
-        for i, (loc, vis) in enumerate(cruces_8):
-            with cols_8[i // 2]:
-                st.markdown(f"<small>M{89+i}</small>", unsafe_allow_html=True)
-                def_w8 = b_prev.iloc[0][f"W8_{i}"] if not b_prev.empty and f"W8_{i}" in b_prev.columns else loc
-                res_8 = st.radio(f"{loc}-{vis}", [loc, vis], index=[loc, vis].index(def_w8) if def_w8 in [loc, vis] else 0, key=f"radio_8_{i}", disabled=not mercado_abierto)
-                ganadores_8.append(res_8)
+            c_g1, c_g2, c_g3 = st.columns(3)
+            for idx, (nombre_g, equipos) in enumerate(GRUPOS_2026.items()):
+                target_col = [c_g1, c_g2, c_g3][idx % 3]
+                with target_col:
+                    with st.container(border=True):
+                        st.markdown(f"**{nombre_g}**")
+                        def_p1 = b_prev.iloc[0][f"{nombre_g}_1"] if not b_prev.empty else equipos[0]
+                        def_p2 = b_prev.iloc[0][f"{nombre_g}_2"] if not b_prev.empty else equipos[1]
+                        def_p3 = b_prev.iloc[0][f"{nombre_g}_3"] if not b_prev.empty else equipos[2]
 
-        # --- 5. CUARTOS (JORNADA 6) ---
-        st.subheader("📊 5️⃣ Cuartos de Final")
-        cruces_4 = [
-            (ganadores_8[0], ganadores_8[1]), # O1 vs O2
-            (ganadores_8[4], ganadores_8[5]), # O5 vs O6
-            (ganadores_8[2], ganadores_8[3]), # O3 vs O4
-            (ganadores_8[6], ganadores_8[7])  # O7 vs O8
-        ]
-        
-        ganadores_4 = []
-        cols_4 = st.columns(2)
-        for i, (loc, vis) in enumerate(cruces_4):
-            with cols_4[i // 2]:
-                def_w4 = b_prev.iloc[0][f"W4_{i}"] if not b_prev.empty and f"W4_{i}" in b_prev.columns else loc
-                res_4 = st.radio(f"Cuarto {i+1}", [loc, vis], index=[loc, vis].index(def_w4) if def_w4 in [loc, vis] else 0, key=f"radio_4_{i}", disabled=not mercado_abierto)
-                ganadores_4.append(res_4)
+                        p1 = st.selectbox(f"1º", equipos, index=equipos.index(def_p1) if def_p1 in equipos else 0, key=f"p1_{nombre_g}", disabled=not mercado_abierto)
+                        op2 = [e for e in equipos if e != p1]
+                        p2 = st.selectbox(f"2º", op2, index=op2.index(def_p2) if def_p2 in op2 else 0, key=f"p2_{nombre_g}", disabled=not mercado_abierto)
+                        op3 = [e for e in op2 if e != p2]
+                        p3 = st.selectbox(f"3º", op3, index=op3.index(def_p3) if def_p3 in op3 else 0, key=f"p3_{nombre_g}", disabled=not mercado_abierto)
+                        p4 = [e for e in op3 if e != p3][0]
+                        st.caption(f"4º puesto: {p4}")
 
-        # --- 6. SEMIFINALES (JORNADA 7) ---
-        st.subheader("⚔️ 6️⃣ Semifinales")
-        cols_2 = st.columns(2)
-        ganadores_semi = []
-        perdedores_semi = []
-        for i in range(0, 4, 2):
-            loc, vis = ganadores_4[i], ganadores_4[i+1]
-            with cols_2[i // 2]:
-                def_ws = b_prev.iloc[0][f"WS_{i//2}"] if not b_prev.empty and f"WS_{i//2}" in b_prev.columns else loc
-                ws = st.radio(f"Semifinal {i//2 + 1}", [loc, vis], index=[loc, vis].index(def_ws) if def_ws in [loc, vis] else 0, key=f"radio_s_{i}", disabled=not mercado_abierto)
-                ganadores_semi.append(ws)
-                perdedores_semi.append(vis if ws == loc else loc)
+                        ganadores_grupos[f"{nombre_g}_1"] = p1
+                        ganadores_grupos[f"{nombre_g}_2"] = p2
+                        ganadores_grupos[f"{nombre_g}_3"] = p3
+                        todos_los_terceros.append(p3)
 
-        # --- 7. TERCER PUESTO Y FINAL ---
-        st.divider()
-        col_f, col_t = st.columns(2)
-        with col_t:
-            st.subheader("🥉 Tercer Puesto")
-            t3_l, t3_v = perdedores_semi[0], perdedores_semi[1]
-            def_t3 = b_prev.iloc[0]["TercerPuesto"] if not b_prev.empty and "TercerPuesto" in b_prev.columns else t3_l
-            res_t3 = st.selectbox("Ganador Bronce", [t3_l, t3_v], index=[t3_l, t3_v].index(def_t3) if def_t3 in [t3_l, t3_v] else 0, key="sb_t3", disabled=not mercado_abierto)
-        
-        with col_f:
-            st.subheader("🏆 Gran Final")
-            f_l, f_v = ganadores_semi[0], ganadores_semi[1]
-            def_cam = b_prev.iloc[0]["Campeon"] if not b_prev.empty and "Campeon" in b_prev.columns else f_l
-            campeon = st.selectbox("CAMPEÓN DEL MUNDO", [f_l, f_v], index=[f_l, f_v].index(def_cam) if def_cam in [f_l, f_v] else 0, key="sb_final", disabled=not mercado_abierto)
-            st.markdown(f"<h2 style='text-align:center; color:#ffd700;'>🥇 {campeon}</h2>", unsafe_allow_html=True)
+            st.divider()
 
-        # --- 8. MERCADO DE LARGO PLAZO (Pichichi, Zamora, MVP) ---
-        st.divider()
-        st.subheader("⚽ 8️⃣ Premios Individuales")
-        clp1, clp2, clp3 = st.columns(3)
-        
-        with clp1:
-            def_pi = b_prev.iloc[0]["Pichichi"] if not b_prev.empty and "Pichichi" in b_prev.columns else ""
-            pichichi = st.text_input("Pichichi (Goleador)", value=def_pi, disabled=not mercado_abierto)
-        with clp2:
-            def_za = b_prev.iloc[0]["Zamora"] if not b_prev.empty and "Zamora" in b_prev.columns else ""
-            zamora = st.text_input("Zamora (Portero)", value=def_za, disabled=not mercado_abierto)
-        with clp3:
-            def_mv = b_prev.iloc[0]["MVP"] if not b_prev.empty and "MVP" in b_prev.columns else ""
-            mvp = st.text_input("MVP del Torneo", value=def_mv, disabled=not mercado_abierto)
+            st.subheader("🎯 2️⃣ Elección de Mejores Terceros")
+            def_terc_str = b_prev.iloc[0]["MejoresTerceros"] if not b_prev.empty and "MejoresTerceros" in b_prev.columns else ""
+            def_terceros_list = def_terc_str.split(",") if def_terc_str else []
+            
+            seleccion_terceros = st.multiselect(
+                "Selecciona exactamente 8:",
+                options=todos_los_terceros,
+                default=[t for t in def_terceros_list if t in todos_los_terceros],
+                max_selections=8,
+                key="ms_terceros",
+                disabled=not mercado_abierto
+            )
 
-        # --- 9. BOTÓN DE GUARDADO ---
-        st.divider()
-        if not es_admin and mercado_abierto:
-            if st.button("💾 GUARDAR TODO EL BRACKET Y PREMIOS", use_container_width=True, type="primary"):
-                try:
-                    datos = {
-                        "Usuario": st.session_state.user,
-                        "MejoresTerceros": ",".join(seleccion_terceros),
-                        "TercerPuesto": res_t3,
-                        "Campeon": campeon,
-                        "Pichichi": pichichi,
-                        "Zamora": zamora,
-                        "MVP": mvp
-                    }
-                    # Guardar posiciones de grupos
-                    for g in GRUPOS_2026.keys():
-                        datos[f"{g}_1"] = ganadores_grupos[f"{g}_1"]
-                        datos[f"{g}_2"] = ganadores_grupos[f"{g}_2"]
-                        datos[f"{g}_3"] = ganadores_grupos[f"{g}_3"]
+            if len(seleccion_terceros) < 8:
+                st.warning(f"⚠️ Seleccionados: {len(seleccion_terceros)}/8. El cuadro se activará al elegir 8.")
+            else: # <--- ESTE ELSE EVITA EL ST.STOP Y QUE SE ROMPA TODO
+                st.subheader("🏟️ 3️⃣ Dieciseisavos de Final (Matriz FIFA)")
+                
+                grupos_3ros = []
+                mapa_pais_letra = {}
+                for pais in seleccion_terceros:
+                    for g_name in GRUPOS_2026.keys():
+                        if ganadores_grupos[f"{g_name}_3"] == pais:
+                            letra = g_name.replace("Grupo ", "")
+                            grupos_3ros.append(letra)
+                            mapa_pais_letra[letra] = pais
+                            break
+                
+                clave_3ros = "".join(sorted(grupos_3ros))
+                
+                if clave_3ros not in MATRIZ_TERCEROS:
+                    st.error("❌ ¡Combinación Imposible! Según la FIFA, es matemáticamente imposible que pasen esos 8 terceros juntos. Revisa tu selección.")
+                else: # <--- ESTE ELSE SUSTITUYE AL ST.STOP()
+                    cruces_3ros = MATRIZ_TERCEROS[clave_3ros]
                     
-                    # Guardar cruces
-                    for i, v in enumerate(ganadores_16): datos[f"W16_{i}"] = v
-                    for i, v in enumerate(ganadores_8): datos[f"W8_{i}"] = v
-                    for i, v in enumerate(ganadores_4): datos[f"W4_{i}"] = v
-                    for i, v in enumerate(ganadores_semi): datos[f"WS_{i}"] = v
+                    cruces_16 = [
+                        (ganadores_grupos["Grupo A_2"], ganadores_grupos["Grupo B_2"]),
+                        (ganadores_grupos["Grupo E_1"], mapa_pais_letra[cruces_3ros["1E"]]),
+                        (ganadores_grupos["Grupo F_1"], ganadores_grupos["Grupo C_2"]),
+                        (ganadores_grupos["Grupo C_1"], ganadores_grupos["Grupo F_2"]),
+                        (ganadores_grupos["Grupo I_1"], mapa_pais_letra[cruces_3ros["1I"]]),
+                        (ganadores_grupos["Grupo E_2"], ganadores_grupos["Grupo I_2"]),
+                        (ganadores_grupos["Grupo A_1"], mapa_pais_letra[cruces_3ros["1A"]]),
+                        (ganadores_grupos["Grupo L_1"], mapa_pais_letra[cruces_3ros["1L"]]),
+                        (ganadores_grupos["Grupo D_1"], mapa_pais_letra[cruces_3ros["1D"]]),
+                        (ganadores_grupos["Grupo G_1"], mapa_pais_letra[cruces_3ros["1G"]]),
+                        (ganadores_grupos["Grupo K_2"], ganadores_grupos["Grupo L_2"]),
+                        (ganadores_grupos["Grupo H_1"], ganadores_grupos["Grupo J_2"]),
+                        (ganadores_grupos["Grupo B_1"], mapa_pais_letra[cruces_3ros["1B"]]),
+                        (ganadores_grupos["Grupo J_1"], ganadores_grupos["Grupo H_2"]),
+                        (ganadores_grupos["Grupo K_1"], mapa_pais_letra[cruces_3ros["1K"]]),
+                        (ganadores_grupos["Grupo D_2"], ganadores_grupos["Grupo G_2"]) 
+                    ]
 
-                    # Actualizar GSheets
-                    df_b_act = pd.concat([df_b_all[df_b_all['Usuario'] != st.session_state.user], pd.DataFrame([datos])], ignore_index=True)
-                    conn.update(worksheet="Brackets", data=df_b_act)
+                    ganadores_16 = []
+                    cols_16 = st.columns(4)
+                    for i, (loc, vis) in enumerate(cruces_16):
+                        with cols_16[i // 4]:
+                            st.markdown(f"<small>M{73+i}</small>", unsafe_allow_html=True)
+                            def_w16 = b_prev.iloc[0][f"W16_{i}"] if not b_prev.empty and f"W16_{i}" in b_prev.columns else loc
+                            res_16 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w16) if def_w16 in [loc, vis] else 0, key=f"radio_16_{i}", disabled=not mercado_abierto, label_visibility="collapsed")
+                            ganadores_16.append(res_16)
+
+                    st.subheader("🛡️ 4️⃣ Octavos de Final (Orden FIFA)")
+                    cruces_8 = [
+                        (ganadores_16[1], ganadores_16[4]),
+                        (ganadores_16[0], ganadores_16[2]),
+                        (ganadores_16[3], ganadores_16[5]),
+                        (ganadores_16[6], ganadores_16[7]),
+                        (ganadores_16[10], ganadores_16[11]),
+                        (ganadores_16[8], ganadores_16[9]),
+                        (ganadores_16[13], ganadores_16[15]),
+                        (ganadores_16[12], ganadores_16[14])
+                    ]
                     
-                    # Log en el VAR
-                    log_e = pd.DataFrame([{"Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"), "Usuario": st.session_state.user, "Accion": f"🌳 BRACKET: Actualizó su cuadro completo. Campeón: {campeon}"}])
-                    conn.update(worksheet="Logs", data=pd.concat([leer_datos("Logs"), log_e], ignore_index=True))
+                    ganadores_8 = []
+                    cols_8 = st.columns(4)
+                    for i, (loc, vis) in enumerate(cruces_8):
+                        with cols_8[i // 2]:
+                            st.markdown(f"<small>M{89+i}</small>", unsafe_allow_html=True)
+                            def_w8 = b_prev.iloc[0][f"W8_{i}"] if not b_prev.empty and f"W8_{i}" in b_prev.columns else loc
+                            res_8 = st.radio(f"{loc}-{vis}", [loc, vis], index=[loc, vis].index(def_w8) if def_w8 in [loc, vis] else 0, key=f"radio_8_{i}", disabled=not mercado_abierto)
+                            ganadores_8.append(res_8)
+
+                    st.subheader("📊 5️⃣ Cuartos de Final")
+                    cruces_4 = [
+                        (ganadores_8[0], ganadores_8[1]), (ganadores_8[4], ganadores_8[5]),
+                        (ganadores_8[2], ganadores_8[3]), (ganadores_8[6], ganadores_8[7]) 
+                    ]
                     
-                    st.success("✅ ¡Bracket y Premios guardados correctamente!")
-                    st.balloons()
-                    st.cache_data.clear()
-                    time.sleep(1)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error al guardar: {e}")
+                    ganadores_4 = []
+                    cols_4 = st.columns(2)
+                    for i, (loc, vis) in enumerate(cruces_4):
+                        with cols_4[i // 2]:
+                            def_w4 = b_prev.iloc[0][f"W4_{i}"] if not b_prev.empty and f"W4_{i}" in b_prev.columns else loc
+                            res_4 = st.radio(f"Cuarto {i+1}", [loc, vis], index=[loc, vis].index(def_w4) if def_w4 in [loc, vis] else 0, key=f"radio_4_{i}", disabled=not mercado_abierto)
+                            ganadores_4.append(res_4)
+
+                    st.subheader("⚔️ 6️⃣ Semifinales")
+                    cols_2 = st.columns(2)
+                    ganadores_semi = []
+                    perdedores_semi = []
+                    for i in range(0, 4, 2):
+                        loc, vis = ganadores_4[i], ganadores_4[i+1]
+                        with cols_2[i // 2]:
+                            def_ws = b_prev.iloc[0][f"WS_{i//2}"] if not b_prev.empty and f"WS_{i//2}" in b_prev.columns else loc
+                            ws = st.radio(f"Semifinal {i//2 + 1}", [loc, vis], index=[loc, vis].index(def_ws) if def_ws in [loc, vis] else 0, key=f"radio_s_{i}", disabled=not mercado_abierto)
+                            ganadores_semi.append(ws)
+                            perdedores_semi.append(vis if ws == loc else loc)
+
+                    st.divider()
+                    col_f, col_t = st.columns(2)
+                    with col_t:
+                        st.subheader("🥉 Tercer Puesto")
+                        t3_l, t3_v = perdedores_semi[0], perdedores_semi[1]
+                        def_t3 = b_prev.iloc[0]["TercerPuesto"] if not b_prev.empty and "TercerPuesto" in b_prev.columns else t3_l
+                        res_t3 = st.selectbox("Ganador Bronce", [t3_l, t3_v], index=[t3_l, t3_v].index(def_t3) if def_t3 in [t3_l, t3_v] else 0, key="sb_t3", disabled=not mercado_abierto)
+                    
+                    with col_f:
+                        st.subheader("🏆 Gran Final")
+                        f_l, f_v = ganadores_semi[0], ganadores_semi[1]
+                        def_cam = b_prev.iloc[0]["Campeon"] if not b_prev.empty and "Campeon" in b_prev.columns else f_l
+                        campeon = st.selectbox("CAMPEÓN DEL MUNDO", [f_l, f_v], index=[f_l, f_v].index(def_cam) if def_cam in [f_l, f_v] else 0, key="sb_final", disabled=not mercado_abierto)
+                        st.markdown(f"<h2 style='text-align:center; color:#ffd700;'>🥇 {campeon}</h2>", unsafe_allow_html=True)
+
+                    st.divider()
+                    st.subheader("⚽ 8️⃣ Premios Individuales")
+                    clp1, clp2, clp3 = st.columns(3)
+                    with clp1:
+                        def_pi = b_prev.iloc[0]["Pichichi"] if not b_prev.empty and "Pichichi" in b_prev.columns else ""
+                        pichichi = st.text_input("Pichichi (Goleador)", value=def_pi, disabled=not mercado_abierto)
+                    with clp2:
+                        def_za = b_prev.iloc[0]["Zamora"] if not b_prev.empty and "Zamora" in b_prev.columns else ""
+                        zamora = st.text_input("Zamora (Portero)", value=def_za, disabled=not mercado_abierto)
+                    with clp3:
+                        def_mv = b_prev.iloc[0]["MVP"] if not b_prev.empty and "MVP" in b_prev.columns else ""
+                        mvp = st.text_input("MVP del Torneo", value=def_mv, disabled=not mercado_abierto)
+
+                    st.divider()
+                    if not es_admin and mercado_abierto:
+                        if st.button("💾 GUARDAR TODO EL BRACKET Y PREMIOS", use_container_width=True, type="primary"):
+                            try:
+                                datos = {"Usuario": st.session_state.user, "MejoresTerceros": ",".join(seleccion_terceros), "TercerPuesto": res_t3, "Campeon": campeon, "Pichichi": pichichi, "Zamora": zamora, "MVP": mvp}
+                                for g in GRUPOS_2026.keys():
+                                    datos[f"{g}_1"] = ganadores_grupos[f"{g}_1"]
+                                    datos[f"{g}_2"] = ganadores_grupos[f"{g}_2"]
+                                    datos[f"{g}_3"] = ganadores_grupos[f"{g}_3"]
+                                for i, v in enumerate(ganadores_16): datos[f"W16_{i}"] = v
+                                for i, v in enumerate(ganadores_8): datos[f"W8_{i}"] = v
+                                for i, v in enumerate(ganadores_4): datos[f"W4_{i}"] = v
+                                for i, v in enumerate(ganadores_semi): datos[f"WS_{i}"] = v
+
+                                df_b_act = pd.concat([df_b_all[df_b_all['Usuario'] != st.session_state.user], pd.DataFrame([datos])], ignore_index=True)
+                                conn.update(worksheet="Brackets", data=df_b_act)
+                                
+                                log_e = pd.DataFrame([{"Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"), "Usuario": st.session_state.user, "Accion": f"🌳 BRACKET: Actualizó su cuadro completo. Campeón: {campeon}"}])
+                                conn.update(worksheet="Logs", data=pd.concat([leer_datos("Logs"), log_e], ignore_index=True))
+                                
+                                st.success("✅ ¡Bracket y Premios guardados correctamente!")
+                                st.balloons()
+                                st.cache_data.clear()
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error al guardar: {e}")
 
     
     with tabs[2]: # --- 🔮 PESTAÑA OTROS (TENDENCIAS + REVELACIONES) ---
@@ -2588,7 +2549,7 @@ else:
             st.info("🔮 El Oráculo está meditando... Se activará cuando queden entre 1 y 3 partidos para cerrar la fase.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", use_container_width=True)
     
-    with tabs[8]: # --- ⚙️ PANEL DE CONTROL ADMIN (MUNDIAL 2026) ---
+    with tabs[9]: # --- ⚙️ PANEL DE CONTROL ADMIN (MUNDIAL 2026) ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
             
@@ -2731,7 +2692,7 @@ else:
         else:
             st.error("⛔ Acceso restringido al Alto Mando.")
     
-    with tabs[9]: # --- 📜 PESTAÑA VAR (EL OJO QUE TODO LO VE) ---
+    with tabs[10]: # --- 📜 PESTAÑA VAR (EL OJO QUE TODO LO VE) ---
         st.header("🏁 El VAR de la Porra")
         
         # Imagen de cabecera para dar tensión
