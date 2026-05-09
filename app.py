@@ -2002,7 +2002,135 @@ else:
                         cols_mostrar = ['Partido', 'P_L', 'P_V']
                         if es_ronda_ko: cols_mostrar.append('P_Pasa')
                         st.table(p_futuras[p_futuras['Usuario'] == u][cols_mostrar])
+    with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
+            st.header("📊 Clasificación Premium")
+            tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
+            pts_l = []
+            
+            # Cargamos los brackets para saber el campeón elegido por cada uno
+            df_b_all = leer_datos("Brackets")
+            admin_b = df_b_all[df_b_all['Usuario'] == "ADMIN"]
+            r_bracket = admin_b.iloc[0] if not admin_b.empty else None
+            
+            # 1. Cálculo de puntos (Adaptado 100% al Mundial)
+            for u in u_jugadores:
+                # Averiguamos a qué selección va este usuario
+                campeon_usr = "Ninguno"
+                u_bracket = df_b_all[df_b_all['Usuario'] == u]
+                if not u_bracket.empty and "Campeon" in u_bracket.columns:
+                    campeon_usr = str(u_bracket.iloc[0]["Campeon"])
+    
+                p_a = 0.0
+                if tipo_r == "General":
+                    pb_r = df_base[df_base['Usuario'] == u]
+                    p_a = safe_float(pb_r['Puntos'].values[0]) if not pb_r.empty else 0.0
+                    u_p_h = df_p_all[df_p_all['Usuario'] == u]
+                    
+                    # Sumamos puntos del Bracket si existe
+                    if not u_bracket.empty and r_bracket is not None:
+                        p_a += calcular_puntos_bracket(u_bracket.iloc[0], r_bracket)
+                else: 
+                    u_p_h = df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)]
+                
+                # Sumamos puntos de los partidos
+                for r in u_p_h.itertuples():
+                    m = df_r_all[(df_r_all['Jornada']==r.Jornada)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
+                    if not m.empty: 
+                        p_a += calcular_puntos_wc(
+                            r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'],
+                            getattr(r, 'P_Pasa', None), m.iloc[0].get('R_Pasa'), m.iloc[0].get('Hubo_Prorroga') == "SI"
+                        )
+                        
+                pts_l.append({"Usuario": u, "Puntos": p_a, "Campeon": campeon_usr})
+            
+            df_rk = pd.DataFrame(pts_l).sort_values("Puntos", ascending=False).reset_index(drop=True)
+            df_rk['Posicion'] = range(1, len(df_rk)+1)
+            
+            pts_lider = df_rk.iloc[0]['Puntos'] if not df_rk.empty else 0
+            total_usuarios = len(df_rk)
+    
+            # 2. Renderizado de Tarjetas Premium
+            for i, row in df_rk.iterrows():
+                pos = row['Posicion']
+                pts_actuales = row['Puntos']
+                mi_campeon = row['Campeon']
+                
+                # --- LÓGICA DE ZONAS ---
+                zone_class = ""
+                if pos <= 3: 
+                    zone_class = "zone-champions"
+                elif pos >= total_usuarios - 1 and total_usuarios > 3: 
+                    zone_class = "zone-danger"
+                
+                medal_html = f'<span class="pos-badge">#{pos}</span>'
+                if pos == 1: medal_html = '<span style="font-size:1.5em;">🥇</span>'
+                elif pos == 2: medal_html = '<span style="font-size:1.5em;">🥈</span>'
+                elif pos == 3: medal_html = '<span style="font-size:1.5em;">🥉</span>'
+    
+                f_t = random.choice(FRASES_POR_PUESTO.get(pos if pos <= 7 else 7))
+                porcentaje = (pts_actuales / pts_lider * 100) if pts_lider > 0 else 0
+    
+                # --- ESTÉTICA DE LA SELECCIÓN ---
+                # Sacamos los colores de la bandera. Si no ha elegido a nadie aún, gris por defecto.
+                colores = COLORES_BANDERAS.get(mi_campeon, ["#cbd5e1", "#94a3b8"])
+                estilo_anillo = f"background: linear-gradient(135deg, {colores[0]}, {colores[1]}); padding: 4px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px {colores[0]}80;"
+                
+                # Sacamos el logo para ponerlo en pequeñito
+                logo_path = get_logo(mi_campeon)
+                logo_b64 = ""
+                # Truco para incrustar la imagen local en HTML fácilmente
+                if logo_path and os.path.exists(logo_path):
+                    import base64
+                    with open(logo_path, "rb") as image_file:
+                        encoded_string = base64.b64encode(image_file.read()).decode()
+                    logo_b64 = f'<img src="data:image/png;base64,{encoded_string}" width="20" style="vertical-align: middle; margin-left: 8px;">'
+    
+                # --- RENDER CARD ---
+                st.markdown(f'<div class="panini-card {zone_class}" style="margin-bottom:15px; padding:15px; border-radius:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; background: white;">', unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns([0.5, 1, 2.5, 2])
+                
+                with c1: # Puesto
+                    st.markdown(f'<div style="text-align:center; margin-top:15px;">{medal_html}</div>', unsafe_allow_html=True)
+                
+                with c2: # Avatar con Anillo Dinámico de su Selección
+                    st.markdown(f'<div style="text-align:center;"><div style="{estilo_anillo}">', unsafe_allow_html=True)
+                    img = foto_dict.get(row['Usuario'])
+                    if img and os.path.exists(str(img)): 
+                        st.image(img, width=65) # Ligeramente más pequeño para que destaque el anillo
+                    else: 
+                        st.markdown("<h2 style='margin:10px 0; background:white; border-radius:50%; width:65px; height:65px; line-height:65px;'>👤</h2>", unsafe_allow_html=True)
+                    st.markdown('</div></div>', unsafe_allow_html=True)
+                
+                with c3: # Nombre, Frase y Selección
+                    # Añadimos el logo al lado del nombre
+                    st.markdown(f'<h4 style="margin:0; color:#1e293b; display: flex; align-items: center;">{row["Usuario"]} {logo_b64}</h4>', unsafe_allow_html=True)
+                    
+                    # Mostramos su apuesta para el Mundial
+                    if mi_campeon != "Ninguno":
+                        st.markdown(f'<small style="color:{colores[0]}; font-weight:bold; font-size:0.75em; text-transform:uppercase;">ESCUDERÍA {mi_campeon}</small><br>', unsafe_allow_html=True)
+                    
+                    st.markdown(f'<small style="color:#64748b; font-style:italic;">"{f_t[0]}"</small>', unsafe_allow_html=True)
+                    
+                    # Barra de progreso con el color de su equipo
+                    st.markdown(f"""
+                        <div style="width: 80%; background-color: #f1f5f9; border-radius: 10px; height: 6px; margin-top: 5px;">
+                            <div style="width: {porcentaje}%; background-color: {colores[0]}; border-radius: 10px; height: 100%;"></div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                with c4: # Puntos y Gaps
+                    st.markdown(f'<div style="text-align: right;"><span style="font-size: 1.4em; font-weight: 800; color: #1e293b;">{pts_actuales:.2f}</span><br><small style="font-weight:bold; color:#64748b;">PUNTOS</small></div>', unsafe_allow_html=True)
+                    
+                    if i > 0:
+                        gap = df_rk.iloc[i-1]['Puntos'] - pts_actuales
+                        if gap > 0:
+                            st.markdown(f'<div style="text-align: right;"><small style="color:#f59e0b;">🎯 A {gap:.2f} pts</small></div>', unsafe_allow_html=True)
+                    elif pos == 1:
+                        st.markdown('<div style="text-align: right;"><small style="color:#ffd700; font-weight:bold;">🏆 LÍDER</small></div>', unsafe_allow_html=True)
+    
+                st.markdown('</div>', unsafe_allow_html=True)
 
+ 
     with tabs[4]: # --- 🏅 PALMARÉS (EDICIÓN MUNDIAL 2026) ---
         st.header("🏅 El Palmarés del Mundial")
         st.caption("Gloria, poder y humillación en el torneo más grande del mundo.")
