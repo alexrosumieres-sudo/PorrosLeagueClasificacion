@@ -462,57 +462,87 @@ def calcular_puntos_bracket(user_bracket, real_bracket):
     if user_bracket is None or real_bracket is None:
         return 0.0
 
-    # --- 1. FASE DE GRUPOS (Puestos 1º y 2º) ---
+    # --- 1. FASE DE GRUPOS Y SUPERVIVIENTES ---
     for g in ["Grupo A", "Grupo B", "Grupo C", "Grupo D", "Grupo E", "Grupo F", 
               "Grupo G", "Grupo H", "Grupo I", "Grupo J", "Grupo K", "Grupo L"]:
         # Acertar 1º (0.5 pts)
-        if user_bracket.get(f"{g}_1") == real_bracket.get(f"{g}_1"):
+        if user_bracket.get(f"{g}_1") == real_bracket.get(f"{g}_1") and pd.notna(real_bracket.get(f"{g}_1")):
             pts += 0.5
         # Acertar 2º (0.5 pts)
-        if user_bracket.get(f"{g}_2") == real_bracket.get(f"{g}_2"):
+        if user_bracket.get(f"{g}_2") == real_bracket.get(f"{g}_2") and pd.notna(real_bracket.get(f"{g}_2")):
             pts += 0.5
 
-    # --- 2. MEJORES TERCEROS (0.5 pts c/u) ---
+    # Los 8 Mejores Terceros (0.5 pts c/u)
     u_terceros = set(str(user_bracket.get("MejoresTerceros", "")).split(","))
     r_terceros = set(str(real_bracket.get("MejoresTerceros", "")).split(","))
+    u_terceros.discard("")
+    r_terceros.discard("")
+    
     aciertos_3ros = u_terceros.intersection(r_terceros)
     pts += len(aciertos_3ros) * 0.5
 
-    # --- 3. AVANCE DE EQUIPOS (0.5 pts por ronda) ---
+    # --- 2. AVANCE DE EQUIPOS (ESCALADO) ---
     # Sacamos las listas de equipos que llegaron realmente a cada ronda
-    r_16 = [real_bracket.get(f"W16_{i}") for i in range(16)]
-    r_8 = [real_bracket.get(f"W8_{i}") for i in range(8)]
-    r_4 = [real_bracket.get(f"W4_{i}") for i in range(4)]
-    r_2 = [real_bracket.get(f"WS_{i}") for i in range(2)]
+    r_octavos = [real_bracket.get(f"W16_{i}") for i in range(16) if pd.notna(real_bracket.get(f"W16_{i}"))]
+    r_cuartos = [real_bracket.get(f"W8_{i}") for i in range(8) if pd.notna(real_bracket.get(f"W8_{i}"))]
+    r_semis = [real_bracket.get(f"W4_{i}") for i in range(4) if pd.notna(real_bracket.get(f"W4_{i}"))]
+    r_final = [real_bracket.get(f"WS_{i}") for i in range(2) if pd.notna(real_bracket.get(f"WS_{i}"))]
     r_campeon = real_bracket.get("Campeon")
 
-    # Comparamos con lo que puso el usuario (Avance)
-    # Si el equipo que el usuario puso en 16vos está en la lista real de 16vos...
-    u_16 = [user_bracket.get(f"W16_{i}") for i in range(16)]
-    for eq in set(u_16):
-        if eq in r_16: pts += 0.5
+    # Comparamos si los equipos del usuario llegaron a esas rondas
+    u_octavos = [user_bracket.get(f"W16_{i}") for i in range(16)]
+    for eq in set(u_octavos):
+        if eq in r_octavos and eq is not None: pts += 0.5  # Llega a Octavos
         
-    u_8 = [user_bracket.get(f"W8_{i}") for i in range(8)]
-    for eq in set(u_8):
-        if eq in r_8: pts += 0.5
+    u_cuartos = [user_bracket.get(f"W8_{i}") for i in range(8)]
+    for eq in set(u_cuartos):
+        if eq in r_cuartos and eq is not None: pts += 1.0  # Llega a Cuartos
 
-    u_4 = [user_bracket.get(f"W4_{i}") for i in range(4)]
-    for eq in set(u_4):
-        if eq in r_4: pts += 0.5
+    u_semis = [user_bracket.get(f"W4_{i}") for i in range(4)]
+    for eq in set(u_semis):
+        if eq in r_semis and eq is not None: pts += 1.5  # Llega a Semis
 
-    u_2 = [user_bracket.get(f"WS_{i}") for i in range(2)]
-    for eq in set(u_2):
-        if eq in r_2: pts += 0.5
+    u_final = [user_bracket.get(f"WS_{i}") for i in range(2)]
+    for eq in set(u_final):
+        if eq in r_final and eq is not None: pts += 2.0  # Llega a la Final
         
-    if user_bracket.get("Campeon") == r_campeon:
-        pts += 0.5
+    if user_bracket.get("Campeon") == r_campeon and r_campeon is not None:
+        pts += 4.0  # Campeón del Mundo
 
-    # --- 4. PARTIDO EXACTO (Cruces) ---
-    # Dieciseisavos (0.5 pts) - Aquí comparamos si los dos rivales coinciden
-    # Esta lógica es más compleja porque requiere saber quién jugaba contra quién en 16vos reales.
-    # Por ahora, si quieres simplificar, esta parte se puede calcular comparando 
-    # si los índices de los partidos coinciden en participantes.
-    
+    # --- 3. CRUCES EXACTOS (EL PARTIDO LITERAL) ---
+    # Función de apoyo para verificar si dos equipos juegan entre sí
+    def cruce_exacto(u_eq1, u_eq2, list_r_matches):
+        if not u_eq1 or not u_eq2: return False
+        for r_eq1, r_eq2 in list_r_matches:
+            if set([u_eq1, u_eq2]) == set([r_eq1, r_eq2]):
+                return True
+        return False
+
+    # Extraemos los emparejamientos reales leyendo la base de datos del Admin
+    r_matches_8vos = [(real_bracket.get(f"W16_{i*2}"), real_bracket.get(f"W16_{i*2+1}")) for i in range(8)]
+    r_matches_4tos = [(real_bracket.get(f"W8_{i*2}"), real_bracket.get(f"W8_{i*2+1}")) for i in range(4)]
+    r_matches_semis = [(real_bracket.get(f"W4_{i*2}"), real_bracket.get(f"W4_{i*2+1}")) for i in range(2)]
+    r_matches_final = [(real_bracket.get("WS_0"), real_bracket.get("WS_1"))]
+
+    # Evaluamos Octavos (0.5 pts)
+    for i in range(8):
+        if cruce_exacto(user_bracket.get(f"W16_{i*2}"), user_bracket.get(f"W16_{i*2+1}"), r_matches_8vos):
+            pts += 0.5
+            
+    # Evaluamos Cuartos (1.0 pt)
+    for i in range(4):
+        if cruce_exacto(user_bracket.get(f"W8_{i*2}"), user_bracket.get(f"W8_{i*2+1}"), r_matches_4tos):
+            pts += 1.0
+            
+    # Evaluamos Semifinales (1.0 pt)
+    for i in range(2):
+        if cruce_exacto(user_bracket.get(f"W4_{i*2}"), user_bracket.get(f"W4_{i*2+1}"), r_matches_semis):
+            pts += 1.0
+
+    # Evaluamos Final Exacta (2.0 pts)
+    if cruce_exacto(user_bracket.get("WS_0"), user_bracket.get("WS_1"), r_matches_final):
+        pts += 2.0
+
     return pts
 
 def simular_temporada_completa(df_hero, df_p_all, df_r_all):
