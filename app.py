@@ -975,94 +975,59 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo="Normal", p_pasa=None, r_pasa=No
 
 def calcular_puntos_bracket(user_bracket, real_bracket):
     """
-    user_bracket: Fila del DataFrame del usuario (Series)
-    real_bracket: Fila del DataFrame con los resultados REALES (Admin)
+    Sistema Híbrido: Puntos por avance de equipo (escalado) + Bonus por partido exacto.
     """
     pts = 0.0
-    
-    if user_bracket is None or real_bracket is None:
-        return 0.0
+    if user_bracket is None or real_bracket is None: return 0.0
 
-    # --- 1. FASE DE GRUPOS Y SUPERVIVIENTES ---
+    # 1. FASE DE GRUPOS (0.5 pts)
     for g in ["Grupo A", "Grupo B", "Grupo C", "Grupo D", "Grupo E", "Grupo F", 
               "Grupo G", "Grupo H", "Grupo I", "Grupo J", "Grupo K", "Grupo L"]:
-        # Acertar 1º (0.5 pts)
-        if user_bracket.get(f"{g}_1") == real_bracket.get(f"{g}_1") and pd.notna(real_bracket.get(f"{g}_1")):
-            pts += 0.5
-        # Acertar 2º (0.5 pts)
-        if user_bracket.get(f"{g}_2") == real_bracket.get(f"{g}_2") and pd.notna(real_bracket.get(f"{g}_2")):
-            pts += 0.5
+        if user_bracket.get(f"{g}_1") == real_bracket.get(f"{g}_1") and pd.notna(real_bracket.get(f"{g}_1")): pts += 0.5
+        if user_bracket.get(f"{g}_2") == real_bracket.get(f"{g}_2") and pd.notna(real_bracket.get(f"{g}_2")): pts += 0.5
 
-    # Los 8 Mejores Terceros (0.5 pts c/u)
+    # Los 8 Mejores Terceros (0.5 pts)
     u_terceros = set(str(user_bracket.get("MejoresTerceros", "")).split(","))
     r_terceros = set(str(real_bracket.get("MejoresTerceros", "")).split(","))
-    u_terceros.discard("")
-    r_terceros.discard("")
-    
-    aciertos_3ros = u_terceros.intersection(r_terceros)
-    pts += len(aciertos_3ros) * 0.5
+    u_terceros.discard(""); r_terceros.discard("")
+    pts += len(u_terceros.intersection(r_terceros)) * 0.5
 
-    # --- 2. AVANCE DE EQUIPOS (ESCALADO) ---
-    # Sacamos las listas de equipos que llegaron realmente a cada ronda
+    # 2. AVANCE DE EQUIPOS (ESCALADO: 0.5 -> 1.0 -> 1.5 -> 2.0)
     r_octavos = [real_bracket.get(f"W16_{i}") for i in range(16) if pd.notna(real_bracket.get(f"W16_{i}"))]
     r_cuartos = [real_bracket.get(f"W8_{i}") for i in range(8) if pd.notna(real_bracket.get(f"W8_{i}"))]
     r_semis = [real_bracket.get(f"W4_{i}") for i in range(4) if pd.notna(real_bracket.get(f"W4_{i}"))]
     r_final = [real_bracket.get(f"WS_{i}") for i in range(2) if pd.notna(real_bracket.get(f"WS_{i}"))]
     r_campeon = real_bracket.get("Campeon")
 
-    # Comparamos si los equipos del usuario llegaron a esas rondas
-    u_octavos = [user_bracket.get(f"W16_{i}") for i in range(16)]
-    for eq in set(u_octavos):
-        if eq in r_octavos and eq is not None: pts += 0.5  # Llega a Octavos
-        
-    u_cuartos = [user_bracket.get(f"W8_{i}") for i in range(8)]
-    for eq in set(u_cuartos):
-        if eq in r_cuartos and eq is not None: pts += 1.0  # Llega a Cuartos
-
-    u_semis = [user_bracket.get(f"W4_{i}") for i in range(4)]
-    for eq in set(u_semis):
-        if eq in r_semis and eq is not None: pts += 1.5  # Llega a Semis
-
-    u_final = [user_bracket.get(f"WS_{i}") for i in range(2)]
-    for eq in set(u_final):
-        if eq in r_final and eq is not None: pts += 2.0  # Llega a la Final
+    for eq in set([user_bracket.get(f"W16_{i}") for i in range(16)]):
+        if eq in r_octavos and eq is not None: pts += 0.5  
+    for eq in set([user_bracket.get(f"W8_{i}") for i in range(8)]):
+        if eq in r_cuartos and eq is not None: pts += 1.0  
+    for eq in set([user_bracket.get(f"W4_{i}") for i in range(4)]):
+        if eq in r_semis and eq is not None: pts += 1.5  
+    for eq in set([user_bracket.get(f"WS_{i}") for i in range(2)]):
+        if eq in r_final and eq is not None: pts += 2.0  
         
     if user_bracket.get("Campeon") == r_campeon and r_campeon is not None:
         pts += 4.0  # Campeón del Mundo
 
-    # --- 3. CRUCES EXACTOS (EL PARTIDO LITERAL) ---
-    # Función de apoyo para verificar si dos equipos juegan entre sí
-    def cruce_exacto(u_eq1, u_eq2, list_r_matches):
-        if not u_eq1 or not u_eq2: return False
-        for r_eq1, r_eq2 in list_r_matches:
-            if set([u_eq1, u_eq2]) == set([r_eq1, r_eq2]):
-                return True
-        return False
+    # 3. CRUCES EXACTOS (Bonus extra)
+    def cruce_exacto(u1, u2, list_r_matches):
+        if not u1 or not u2: return False
+        return any(set([u1, u2]) == set([r1, r2]) for r1, r2 in list_r_matches)
 
-    # Extraemos los emparejamientos reales leyendo la base de datos del Admin
     r_matches_8vos = [(real_bracket.get(f"W16_{i*2}"), real_bracket.get(f"W16_{i*2+1}")) for i in range(8)]
     r_matches_4tos = [(real_bracket.get(f"W8_{i*2}"), real_bracket.get(f"W8_{i*2+1}")) for i in range(4)]
     r_matches_semis = [(real_bracket.get(f"W4_{i*2}"), real_bracket.get(f"W4_{i*2+1}")) for i in range(2)]
     r_matches_final = [(real_bracket.get("WS_0"), real_bracket.get("WS_1"))]
 
-    # Evaluamos Octavos (0.5 pts)
     for i in range(8):
-        if cruce_exacto(user_bracket.get(f"W16_{i*2}"), user_bracket.get(f"W16_{i*2+1}"), r_matches_8vos):
-            pts += 0.5
-            
-    # Evaluamos Cuartos (1.0 pt)
+        if cruce_exacto(user_bracket.get(f"W16_{i*2}"), user_bracket.get(f"W16_{i*2+1}"), r_matches_8vos): pts += 0.5
     for i in range(4):
-        if cruce_exacto(user_bracket.get(f"W8_{i*2}"), user_bracket.get(f"W8_{i*2+1}"), r_matches_4tos):
-            pts += 1.0
-            
-    # Evaluamos Semifinales (1.0 pt)
+        if cruce_exacto(user_bracket.get(f"W8_{i*2}"), user_bracket.get(f"W8_{i*2+1}"), r_matches_4tos): pts += 1.0
     for i in range(2):
-        if cruce_exacto(user_bracket.get(f"W4_{i*2}"), user_bracket.get(f"W4_{i*2+1}"), r_matches_semis):
-            pts += 1.0
-
-    # Evaluamos Final Exacta (2.0 pts)
-    if cruce_exacto(user_bracket.get("WS_0"), user_bracket.get("WS_1"), r_matches_final):
-        pts += 2.0
+        if cruce_exacto(user_bracket.get(f"W4_{i*2}"), user_bracket.get(f"W4_{i*2+1}"), r_matches_semis): pts += 1.0
+    if cruce_exacto(user_bracket.get("WS_0"), user_bracket.get("WS_1"), r_matches_final): pts += 2.0
 
     return pts
 
@@ -1784,55 +1749,76 @@ else:
             st.stop()
 
         # --- 3. DIECISEISAVOS (JORNADA 4) ---
-        st.subheader("🏟️ 3️⃣ Dieciseisavos de Final")
+        st.subheader("🏟️ 3️⃣ Dieciseisavos de Final (Matriz FIFA)")
         
-        # Mapeo de cruces según tu lista
+        # 1. Averiguamos a qué grupos pertenecen los 8 terceros seleccionados
+        grupos_3ros = []
+        mapa_pais_letra = {}
+        for pais in seleccion_terceros:
+            for g_name in GRUPOS_2026.keys():
+                if ganadores_grupos[f"{g_name}_3"] == pais:
+                    letra = g_name.replace("Grupo ", "") # "A", "B", etc.
+                    grupos_3ros.append(letra)
+                    mapa_pais_letra[letra] = pais
+                    break
+        
+        # 2. Ordenamos alfabéticamente para buscar en nuestra súper matriz
+        clave_3ros = "".join(sorted(grupos_3ros))
+        
+        if clave_3ros not in MATRIZ_TERCEROS:
+            st.error("❌ ¡Combinación Imposible! Según la FIFA, es matemáticamente imposible que pasen esos 8 terceros juntos. Revisa tu selección.")
+            st.stop()
+            
+        cruces_3ros = MATRIZ_TERCEROS[clave_3ros]
+        
+        # 3. Mapeo Oficial de la FIFA (M73 al M88)
         cruces_16 = [
-            (ganadores_grupos["Grupo A_2"], ganadores_grupos["Grupo B_2"]), # M1
-            (ganadores_grupos["Grupo C_1"], ganadores_grupos["Grupo F_2"]), # M2
-            (ganadores_grupos["Grupo E_1"], seleccion_terceros[0]),          # M3 (A/B/C/D/F)
-            (ganadores_grupos["Grupo F_1"], ganadores_grupos["Grupo C_2"]), # M4
-            (ganadores_grupos["Grupo E_2"], ganadores_grupos["Grupo I_2"]), # M5
-            (ganadores_grupos["Grupo I_1"], seleccion_terceros[1]),          # M6 (C/D/F/G/H)
-            (ganadores_grupos["Grupo A_1"], seleccion_terceros[2]),          # M7 (C/E/F/H/I)
-            (ganadores_grupos["Grupo L_1"], seleccion_terceros[3]),          # M8 (E/H/I/J/K)
-            (ganadores_grupos["Grupo G_1"], seleccion_terceros[4]),          # M9 (A/E/H/I/J)
-            (ganadores_grupos["Grupo D_1"], seleccion_terceros[5]),          # M10 (B/E/F/I/J)
-            (ganadores_grupos["Grupo H_1"], ganadores_grupos["Grupo J_2"]), # M11
-            (ganadores_grupos["Grupo K_2"], ganadores_grupos["Grupo L_2"]), # M12
-            (ganadores_grupos["Grupo B_1"], seleccion_terceros[6]),          # M13 (E/F/G/I/J)
-            (ganadores_grupos["Grupo D_2"], ganadores_grupos["Grupo G_2"]), # M14
-            (ganadores_grupos["Grupo J_1"], ganadores_grupos["Grupo H_2"]), # M15
-            (ganadores_grupos["Grupo K_1"], seleccion_terceros[7])           # M16 (D/E/I/J/L)
+            (ganadores_grupos["Grupo A_2"], ganadores_grupos["Grupo B_2"]), # M73
+            (ganadores_grupos["Grupo E_1"], mapa_pais_letra[cruces_3ros["1E"]]), # M74
+            (ganadores_grupos["Grupo F_1"], ganadores_grupos["Grupo C_2"]), # M75
+            (ganadores_grupos["Grupo C_1"], ganadores_grupos["Grupo F_2"]), # M76
+            (ganadores_grupos["Grupo I_1"], mapa_pais_letra[cruces_3ros["1I"]]), # M77
+            (ganadores_grupos["Grupo E_2"], ganadores_grupos["Grupo I_2"]), # M78
+            (ganadores_grupos["Grupo A_1"], mapa_pais_letra[cruces_3ros["1A"]]), # M79
+            (ganadores_grupos["Grupo L_1"], mapa_pais_letra[cruces_3ros["1L"]]), # M80
+            (ganadores_grupos["Grupo D_1"], mapa_pais_letra[cruces_3ros["1D"]]), # M81
+            (ganadores_grupos["Grupo G_1"], mapa_pais_letra[cruces_3ros["1G"]]), # M82
+            (ganadores_grupos["Grupo K_2"], ganadores_grupos["Grupo L_2"]), # M83
+            (ganadores_grupos["Grupo H_1"], ganadores_grupos["Grupo J_2"]), # M84
+            (ganadores_grupos["Grupo B_1"], mapa_pais_letra[cruces_3ros["1B"]]), # M85
+            (ganadores_grupos["Grupo J_1"], ganadores_grupos["Grupo H_2"]), # M86
+            (ganadores_grupos["Grupo K_1"], mapa_pais_letra[cruces_3ros["1K"]]), # M87
+            (ganadores_grupos["Grupo D_2"], ganadores_grupos["Grupo G_2"])  # M88
         ]
 
         ganadores_16 = []
         cols_16 = st.columns(4)
         for i, (loc, vis) in enumerate(cruces_16):
             with cols_16[i // 4]:
-                st.markdown(f"<small>Partido {i+1}</small>", unsafe_allow_html=True)
+                st.markdown(f"<small>M{73+i}</small>", unsafe_allow_html=True)
                 def_w16 = b_prev.iloc[0][f"W16_{i}"] if not b_prev.empty and f"W16_{i}" in b_prev.columns else loc
                 res_16 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w16) if def_w16 in [loc, vis] else 0, key=f"radio_16_{i}", disabled=not mercado_abierto, label_visibility="collapsed")
                 ganadores_16.append(res_16)
 
         # --- 4. OCTAVOS (JORNADA 5) ---
-        st.subheader("🛡️ 4️⃣ Octavos de Final")
+        st.subheader("🛡️ 4️⃣ Octavos de Final (Orden FIFA)")
+        # Orden oficial de cruces de la FIFA (M89 a M96)
         cruces_8 = [
-            (ganadores_16[0], ganadores_16[2]), # W1 vs W3
-            (ganadores_16[1], ganadores_16[4]), # W2 vs W5
-            (ganadores_16[3], ganadores_16[5]), # W4 vs W6
-            (ganadores_16[6], ganadores_16[7]), # W7 vs W8
-            (ganadores_16[10], ganadores_16[11]),# W11 vs W12
-            (ganadores_16[8], ganadores_16[9]), # W9 vs W10
-            (ganadores_16[13], ganadores_16[15]),# W14 vs W16
-            (ganadores_16[12], ganadores_16[14]) # W13 vs W15
+            (ganadores_16[1], ganadores_16[4]),   # M89: W74 vs W77
+            (ganadores_16[0], ganadores_16[2]),   # M90: W73 vs W75
+            (ganadores_16[3], ganadores_16[5]),   # M91: W76 vs W78
+            (ganadores_16[6], ganadores_16[7]),   # M92: W79 vs W80
+            (ganadores_16[10], ganadores_16[11]), # M93: W83 vs W84
+            (ganadores_16[8], ganadores_16[9]),   # M94: W81 vs W82
+            (ganadores_16[13], ganadores_16[15]), # M95: W86 vs W88
+            (ganadores_16[12], ganadores_16[14])  # M96: W85 vs W87
         ]
         
         ganadores_8 = []
         cols_8 = st.columns(4)
         for i, (loc, vis) in enumerate(cruces_8):
             with cols_8[i // 2]:
-                st.markdown(f"<small>Octavo {i+1}</small>", unsafe_allow_html=True)
+                st.markdown(f"<small>M{89+i}</small>", unsafe_allow_html=True)
                 def_w8 = b_prev.iloc[0][f"W8_{i}"] if not b_prev.empty and f"W8_{i}" in b_prev.columns else loc
                 res_8 = st.radio(f"{loc}-{vis}", [loc, vis], index=[loc, vis].index(def_w8) if def_w8 in [loc, vis] else 0, key=f"radio_8_{i}", disabled=not mercado_abierto)
                 ganadores_8.append(res_8)
