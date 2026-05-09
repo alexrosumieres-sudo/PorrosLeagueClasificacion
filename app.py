@@ -1751,7 +1751,6 @@ else:
 
         if len(seleccion_terceros) < 8:
             st.warning(f"⚠️ Seleccionados: {len(seleccion_terceros)}/8. El cuadro se activará al elegir 8.")
-            st.stop()
 
         # --- 3. DIECISEISAVOS (JORNADA 4) ---
         st.subheader("🏟️ 3️⃣ Dieciseisavos de Final (Matriz FIFA)")
