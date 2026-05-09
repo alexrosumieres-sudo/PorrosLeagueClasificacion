@@ -2267,13 +2267,12 @@ else:
         with sub_tabs[0]: # --- ANÁLISIS INDIVIDUAL ---
             u_sel = st.selectbox("Analizar jugador:", u_jugadores, key="sb_stats_pro")
             
-            # Función auxiliar para ADN Pro adaptada al Mundial
+            # --- 1. Preparación de datos y Función ADN ---
             def analizar_adn_wc(usuario, df_p, df_r):
-                # Unimos predicciones con resultados finalizados
                 df_m = pd.merge(df_p[df_p['Usuario'] == usuario], df_r[df_r['Finalizado'] == "SI"], on=['Jornada', 'Partido'])
-                if df_m.empty: return None
+                if df_m.empty: return None, df_m
                 
-                # Calculamos puntos con la nueva lógica
+                # Calculamos puntos
                 df_m['Pts'] = df_m.apply(lambda x: calcular_puntos_wc(
                     x.P_L, x.P_V, x.R_L, x.R_V, x.Tipo, 
                     getattr(x, 'P_Pasa', None), x.get('R_Pasa'), x.get('Hubo_Prorroga') == "SI"
@@ -2282,37 +2281,91 @@ else:
                 # Estadísticas de acierto
                 ex = len(df_m[df_m.apply(lambda x: x.P_L == x.R_L and x.P_V == x.R_V, axis=1)])
                 sig = len(df_m[df_m['Pts'] > 0]) - ex
+                fallos = len(df_m) - (ex + sig)
+                
+                # NUEVO: Medida de "Alejamiento" (Error Absoluto Medio - MAE)
+                # ¿Por cuántos goles de media se equivoca este usuario por partido?
+                df_m['Error_Goles'] = abs(df_m['P_L'] - df_m['R_L']) + abs(df_m['P_V'] - df_m['R_V'])
+                mae = df_m['Error_Goles'].mean()
                 
                 return {
-                    "exactos": ex, "signos": sig, "fallos": len(df_m)-(ex+sig),
-                    "total": len(df_m)
-                }
+                    "exactos": ex, "signos": sig, "fallos": fallos,
+                    "total": len(df_m), "mae": mae
+                }, df_m
 
-            adn = analizar_adn_wc(u_sel, df_p_all, df_r_all)
+            adn, df_m_usuario = analizar_adn_wc(u_sel, df_p_all, df_r_all)
+            
             if adn:
-                c1, c2, c3 = st.columns(3)
+                # --- 2. KPIs SUPERIORES ---
+                c1, c2, c3, c4 = st.columns(4)
                 c1.metric("🎯 Plenos", adn['exactos'])
                 c2.metric("⚖️ Signos", adn['signos'])
                 pct_acierto = (adn['exactos'] + adn['signos']) / adn['total'] * 100
                 c3.metric("📈 Eficiencia", f"{pct_acierto:.1f}%")
+                # Explicación del MAE: Menos es mejor
+                c4.metric("📏 Desvío de Mira", f"{adn['mae']:.2f} goles", help="Error Absoluto Medio. De media, por cuántos goles te equivocas en el marcador exacto de un partido. ¡Cuanto más cerca de 0, mejor!")
                 
-                st.plotly_chart(px.pie(
-                    values=[adn['exactos'], adn['signos'], adn['fallos']], 
-                    names=['Plenos (Resultado)', 'Signos (1X2)', 'Fallos'], 
-                    color_discrete_sequence=['#2baf2b', '#ffd700', '#ff4b4b'],
-                    hole=0.4, title=f"Distribución de Aciertos: {u_sel}"
-                ), use_container_width=True)
+                st.divider()
+                
+                # --- 3. GRÁFICOS PARALELOS: PUNTOS POR GRUPO vs REPARTO DE ACIERTOS ---
+                col_g1, col_g2 = st.columns(2)
+                
+                with col_g1:
+                    st.markdown(f"#### 🕸️ Radar de Grupos")
+                    st.caption("Puntos conseguidos en cada uno de los 12 grupos.")
+                    
+                    # Diccionario inverso para saber a qué grupo pertenece cada equipo
+                    equipo_a_grupo = {}
+                    for g_name, eqs in GRUPOS_2026.items():
+                        for eq in eqs:
+                            equipo_a_grupo[eq] = g_name.replace("Grupo ", "")
+                    
+                    # Filtramos solo partidos de fase de grupos y mapeamos a qué grupo pertenece
+                    df_grupos_usr = df_m_usuario[df_m_usuario['Jornada'].isin(["Jornada 1", "Jornada 2", "Jornada 3"])].copy()
+                    
+                    if not df_grupos_usr.empty:
+                        # Sacamos el grupo mirando al equipo local
+                        df_grupos_usr['Grupo'] = df_grupos_usr['Partido'].apply(lambda x: equipo_a_grupo.get(x.split('-')[0], "K.O."))
+                        pts_grupo = df_grupos_usr.groupby('Grupo')['Pts'].sum().reset_index()
+                        
+                        # Asegurarnos de que salgan todas las letras (de la A a la L) aunque tenga 0 puntos
+                        todas_letras = [chr(i) for i in range(65, 77)] # Letras de A a L
+                        pts_grupo = pts_grupo.set_index('Grupo').reindex(todas_letras).fillna(0).reset_index()
+                        
+                        fig_radar = px.line_polar(pts_grupo, r='Pts', theta='Grupo', line_close=True,
+                                                  color_discrete_sequence=['#3b82f6'])
+                        fig_radar.update_traces(fill='toself')
+                        fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, showticklabels=True)), height=350)
+                        st.plotly_chart(fig_radar, use_container_width=True)
+                    else:
+                        st.info("No hay datos de fase de grupos cerrados aún.")
 
-            st.markdown("---")
-            st.subheader(f"🎯 Tendencia de Marcadores: {u_sel}")
-            u_p_stats = df_p_all[df_p_all['Usuario'] == u_sel]
-            if not u_p_stats.empty:
-                fig_heat = px.density_heatmap(
-                    u_p_stats, x="P_L", y="P_V",
-                    labels={'P_L': 'Goles Local', 'P_V': 'Goles Visitante'},
-                    color_continuous_scale="Viridis", text_auto=True, nbinsx=6, nbinsy=6
-                )
-                st.plotly_chart(fig_heat, use_container_width=True)
+                with col_g2:
+                    st.markdown(f"#### 🍩 Distribución")
+                    st.caption("Balance global entre Plenos, Signos y Fallos.")
+                    fig_pie = px.pie(
+                        values=[adn['exactos'], adn['signos'], adn['fallos']], 
+                        names=['Plenos (Resultado)', 'Signos (1X2)', 'Fallos'], 
+                        color_discrete_sequence=['#2baf2b', '#ffd700', '#ff4b4b'],
+                        hole=0.4
+                    )
+                    fig_pie.update_layout(height=350)
+                    st.plotly_chart(fig_pie, use_container_width=True)
+
+                st.divider()
+
+                # --- 4. MAPA DE CALOR ---
+                st.markdown(f"#### 🔥 Tendencia de Marcadores")
+                u_p_stats = df_p_all[df_p_all['Usuario'] == u_sel]
+                if not u_p_stats.empty:
+                    fig_heat = px.density_heatmap(
+                        u_p_stats, x="P_L", y="P_V",
+                        labels={'P_L': 'Goles Local (Apostados)', 'P_V': 'Goles Visitante (Apostados)'},
+                        color_continuous_scale="Viridis", text_auto=True, nbinsx=6, nbinsy=6
+                    )
+                    st.plotly_chart(fig_heat, use_container_width=True)
+            else:
+                st.info("Este jugador aún no tiene partidos finalizados para analizar.")
 
         with sub_tabs[1]: # --- 🌍 EFECTIVIDAD POR CONTINENTE ---
             st.subheader("🌍 Especialista por Continente")
