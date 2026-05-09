@@ -935,7 +935,7 @@ else:
             # 1. Sacamos qué equipo puso el líder como campeón en su Bracket
             # (Asumiendo que tenemos una tabla llamada df_brackets)
             try:
-                equipo_fav = df_brackets[df_brackets['Usuario'] == lider['Usuario']]['Campeon'].values[0]
+                equipo_fav = df_b_all[df_brackets['Usuario'] == lider['Usuario']]['Campeon'].values[0]
                 colores = COLORES_BANDERAS.get(equipo_fav, ["#ffd700", "#ffae00"]) # Oro si no hay
                 estilo_anillo = f"background: linear-gradient(45deg, {colores[0]}, {colores[1]});"
             except:
