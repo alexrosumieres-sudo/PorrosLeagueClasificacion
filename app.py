@@ -1236,7 +1236,7 @@ if 'autenticado' not in st.session_state: st.session_state.autenticado = False
 if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title("🏆 Porros League 2026")
+        st.title("🏆 Mundial Porros League 2026")
         u_in, p_in = st.text_input("Usuario"), st.text_input("Contraseña", type="password")
         c1, c2 = st.columns(2)
         if c1.button("Entrar", use_container_width=True):
