@@ -2594,7 +2594,7 @@ else:
 
         with sub_tabs[1]:
             st.header("🏟️ El Mundial según mis Porros")
-            st.markdown("Calculadora en tiempo real: Así quedarían los Grupos y los Dieciseisavos si se cumplieran todas tus apuestas de la primera fase.")
+            st.markdown("Calculadora en tiempo real: Así quedarían los Grupos y los Dieciseisavos según tus apuestas.")
             
             usr_sim = st.selectbox("Generar simulación basada en:", u_jugadores, key="sb_sim_porros")
             
@@ -2605,62 +2605,70 @@ else:
                     for eq in g_equipos:
                         sim_equipos[eq] = {"Equipo": eq, "PJ": 0, "V": 0, "E": 0, "D": 0, "GF": 0, "GC": 0, "DG": 0, "Pts": 0}
                 
-                # 2. Filtrar las predicciones del usuario solo para las 3 primeras jornadas (Fase de Grupos)
+                # 2. Filtrar las predicciones del usuario solo para las 3 primeras jornadas
                 preds_usr = df_p_all[(df_p_all['Usuario'] == usr_sim) & (df_p_all['Jornada'].isin(["Jornada 1", "Jornada 2", "Jornada 3"]))]
+                ahora = get_now_madrid()
                 
-                # Calcular resultados virtuales
+                # Calcular resultados virtuales con FILTRO ANTI-ESPIONAJE
                 for p in preds_usr.itertuples():
                     try:
                         tl, tv = p.Partido.split('-')
                         gl, gv = int(p.P_L), int(p.P_V)
                         
-                        if tl in sim_equipos and tv in sim_equipos:
-                            sim_equipos[tl]["PJ"] += 1
-                            sim_equipos[tv]["PJ"] += 1
-                            sim_equipos[tl]["GF"] += gl
-                            sim_equipos[tl]["GC"] += gv
-                            sim_equipos[tv]["GF"] += gv
-                            sim_equipos[tv]["GC"] += gl
+                        match_info = df_r_all[df_r_all['Partido'] == p.Partido]
+                        if not match_info.empty:
+                            hora_partido = pd.to_datetime(match_info.iloc[0]['Hora_Inicio'])
                             
-                            if gl > gv:
-                                sim_equipos[tl]["Pts"] += 3; sim_equipos[tl]["V"] += 1; sim_equipos[tv]["D"] += 1
-                            elif gv > gl:
-                                sim_equipos[tv]["Pts"] += 3; sim_equipos[tv]["V"] += 1; sim_equipos[tl]["D"] += 1
-                            else:
-                                sim_equipos[tl]["Pts"] += 1; sim_equipos[tv]["Pts"] += 1; sim_equipos[tl]["E"] += 1; sim_equipos[tv]["E"] += 1
+                            # Lógica de visibilidad
+                            es_mi_simulacion = (usr_sim == st.session_state.user)
+                            partido_empezado = (ahora >= hora_partido)
+                            es_publica = (getattr(p, 'Publica', 'NO') == 'SI')
+                            
+                            # Solo contamos el partido si es tuyo, si ya ha empezado o si el rival lo puso Público
+                            if es_mi_simulacion or partido_empezado or es_publica:
+                                if tl in sim_equipos and tv in sim_equipos:
+                                    sim_equipos[tl]["PJ"] += 1
+                                    sim_equipos[tv]["PJ"] += 1
+                                    sim_equipos[tl]["GF"] += gl
+                                    sim_equipos[tl]["GC"] += gv
+                                    sim_equipos[tv]["GF"] += gv
+                                    sim_equipos[tv]["GC"] += gl
+                                    
+                                    if gl > gv:
+                                        sim_equipos[tl]["Pts"] += 3; sim_equipos[tl]["V"] += 1; sim_equipos[tv]["D"] += 1
+                                    elif gv > gl:
+                                        sim_equipos[tv]["Pts"] += 3; sim_equipos[tv]["V"] += 1; sim_equipos[tl]["D"] += 1
+                                    else:
+                                        sim_equipos[tl]["Pts"] += 1; sim_equipos[tv]["Pts"] += 1; sim_equipos[tl]["E"] += 1; sim_equipos[tv]["E"] += 1
                     except: continue
                 
-                # Calcular la Diferencia de Goles (criterio FIFA clave)
+                # Calcular la Diferencia de Goles
                 for eq in sim_equipos.keys():
                     sim_equipos[eq]["DG"] = sim_equipos[eq]["GF"] - sim_equipos[eq]["GC"]
 
                 # 3. Extraer y ordenar Grupos
                 st.divider()
-                st.subheader("📋 Clasificación Proyectada: Fase de Grupos")
-                st.caption("Ordenado por: 1º Puntos, 2º Diferencia de Goles, 3º Goles a Favor")
+                st.subheader(f"📋 Clasificación Proyectada de {usr_sim}")
+                if usr_sim != st.session_state.user:
+                    st.info("🔒 Modo Anti-Espionaje Activo: Solo estás viendo los puntos de los partidos que ya han comenzado o que son públicos.")
                 
                 ganadores_sim = {}
                 lista_terceros = []
-                cols_g = st.columns(3) # Mostramos los grupos en 3 columnas
+                cols_g = st.columns(3) 
                 
                 for idx, (nombre_g, equipos_g) in enumerate(GRUPOS_2026.items()):
-                    # Obtener los datos de los 4 equipos del grupo
                     datos_g = [sim_equipos[eq] for eq in equipos_g]
-                    # Ordenar el grupo siguiendo el criterio oficial
                     datos_g.sort(key=lambda x: (x["Pts"], x["DG"], x["GF"]), reverse=True)
                     
-                    # Guardar posiciones para cruzarlos después
                     ganadores_sim[f"{nombre_g}_1"] = datos_g[0]["Equipo"]
                     ganadores_sim[f"{nombre_g}_2"] = datos_g[1]["Equipo"]
                     ganadores_sim[f"{nombre_g}_3"] = datos_g[2]["Equipo"]
                     
-                    # Identificar al 3º y guardarlo en una lista general
                     letra = nombre_g.replace("Grupo ", "")
                     tercero_info = datos_g[2].copy()
                     tercero_info["Grupo"] = letra
                     lista_terceros.append(tercero_info)
                     
-                    # Renderizar la tabla del grupo
                     with cols_g[idx % 3]:
                         st.markdown(f"<span style='color:#3b82f6; font-weight:bold;'>{nombre_g.upper()}</span>", unsafe_allow_html=True)
                         df_g = pd.DataFrame(datos_g)[["Equipo", "PJ", "DG", "Pts"]]
@@ -2669,13 +2677,11 @@ else:
                 # 4. Los Mejores Terceros
                 st.divider()
                 st.subheader("🎯 Tabla de los 12 Terceros")
-                # Ordenar todos los terceros para saber quiénes son los 8 mejores
                 lista_terceros.sort(key=lambda x: (x["Pts"], x["DG"], x["GF"]), reverse=True)
                 mejores_8 = lista_terceros[:8]
                 
                 df_3ros = pd.DataFrame(lista_terceros)[["Grupo", "Equipo", "PJ", "Pts", "DG", "GF"]]
                 
-                # Aplicamos colores para distinguir a los 8 clasificados de los 4 eliminados
                 def pintar_clasificados(col):
                     return ['background-color: #dcfce7' if i < 8 else 'background-color: #fee2e2' for i in range(len(col))]
                 
@@ -2683,10 +2689,9 @@ else:
 
                 # 5. Generar Cruces de Dieciseisavos (La Matriz FIFA)
                 st.divider()
-                st.subheader("⚔️ Consecuencia: Tus Dieciseisavos de Final")
+                st.subheader("⚔️ Consecuencia: Dieciseisavos de Final")
                 st.caption("Aplicando la matriz del Anexo C del reglamento FIFA a los 8 mejores terceros clasificados.")
                 
-                # Obtenemos las letras de los 8 terceros y creamos la clave ("ABCD..." etc)
                 grupos_clasificados = [t["Grupo"] for t in mejores_8]
                 clave_matriz = "".join(sorted(grupos_clasificados))
                 
@@ -2694,27 +2699,25 @@ else:
                     cruces_3ros = MATRIZ_TERCEROS[clave_matriz]
                     mapa_letra_pais = {t["Grupo"]: t["Equipo"] for t in mejores_8}
                     
-                    # Lista maestra de enfrentamientos
                     cruces_16_sim = [
-                        (ganadores_sim["Grupo A_2"], ganadores_sim["Grupo B_2"]), # M73
-                        (ganadores_sim["Grupo E_1"], mapa_letra_pais[cruces_3ros["1E"]]), # M74
-                        (ganadores_sim["Grupo F_1"], ganadores_sim["Grupo C_2"]), # M75
-                        (ganadores_sim["Grupo C_1"], ganadores_sim["Grupo F_2"]), # M76
-                        (ganadores_sim["Grupo I_1"], mapa_letra_pais[cruces_3ros["1I"]]), # M77
-                        (ganadores_sim["Grupo E_2"], ganadores_sim["Grupo I_2"]), # M78
-                        (ganadores_sim["Grupo A_1"], mapa_letra_pais[cruces_3ros["1A"]]), # M79
-                        (ganadores_sim["Grupo L_1"], mapa_letra_pais[cruces_3ros["1L"]]), # M80
-                        (ganadores_sim["Grupo D_1"], mapa_letra_pais[cruces_3ros["1D"]]), # M81
-                        (ganadores_sim["Grupo G_1"], mapa_letra_pais[cruces_3ros["1G"]]), # M82
-                        (ganadores_sim["Grupo K_2"], ganadores_sim["Grupo L_2"]), # M83
-                        (ganadores_sim["Grupo H_1"], ganadores_sim["Grupo J_2"]), # M84
-                        (ganadores_sim["Grupo B_1"], mapa_letra_pais[cruces_3ros["1B"]]), # M85
-                        (ganadores_sim["Grupo J_1"], ganadores_sim["Grupo H_2"]), # M86
-                        (ganadores_sim["Grupo K_1"], mapa_letra_pais[cruces_3ros["1K"]]), # M87
-                        (ganadores_sim["Grupo D_2"], ganadores_sim["Grupo G_2"])  # M88
+                        (ganadores_sim["Grupo A_2"], ganadores_sim["Grupo B_2"]),
+                        (ganadores_sim["Grupo E_1"], mapa_letra_pais[cruces_3ros["1E"]]),
+                        (ganadores_sim["Grupo F_1"], ganadores_sim["Grupo C_2"]),
+                        (ganadores_sim["Grupo C_1"], ganadores_sim["Grupo F_2"]),
+                        (ganadores_sim["Grupo I_1"], mapa_letra_pais[cruces_3ros["1I"]]),
+                        (ganadores_sim["Grupo E_2"], ganadores_sim["Grupo I_2"]),
+                        (ganadores_sim["Grupo A_1"], mapa_letra_pais[cruces_3ros["1A"]]),
+                        (ganadores_sim["Grupo L_1"], mapa_letra_pais[cruces_3ros["1L"]]),
+                        (ganadores_sim["Grupo D_1"], mapa_letra_pais[cruces_3ros["1D"]]),
+                        (ganadores_sim["Grupo G_1"], mapa_letra_pais[cruces_3ros["1G"]]),
+                        (ganadores_sim["Grupo K_2"], ganadores_sim["Grupo L_2"]),
+                        (ganadores_sim["Grupo H_1"], ganadores_sim["Grupo J_2"]),
+                        (ganadores_sim["Grupo B_1"], mapa_letra_pais[cruces_3ros["1B"]]),
+                        (ganadores_sim["Grupo J_1"], ganadores_sim["Grupo H_2"]),
+                        (ganadores_sim["Grupo K_1"], mapa_letra_pais[cruces_3ros["1K"]]),
+                        (ganadores_sim["Grupo D_2"], ganadores_sim["Grupo G_2"]) 
                     ]
                     
-                    # Dibujamos las tarjetas de partido
                     cols_c = st.columns(4)
                     for i, (loc, vis) in enumerate(cruces_16_sim):
                         with cols_c[i % 4]:
@@ -2729,8 +2732,7 @@ else:
                             </div>
                             """, unsafe_allow_html=True)
                 else:
-                    st.error("Error en la matriz: La combinación proyectada de terceros no está registrada en el reglamento de la FIFA. (Verifica si faltan predicciones)")
-
+                    st.error("Error en la matriz: Faltan partidos por disputarse para determinar los cruces oficiales, o la combinación generada aún es incompleta.")
  
     with tabs[8]: # --- 🎲 ORÁCULO (EL DESTINO DE LA FASE) ---
         if usa_oraculo:
