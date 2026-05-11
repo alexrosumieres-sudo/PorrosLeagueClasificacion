@@ -2607,9 +2607,8 @@ else:
                 
                 # 2. Filtrar las predicciones del usuario solo para las 3 primeras jornadas
                 preds_usr = df_p_all[(df_p_all['Usuario'] == usr_sim) & (df_p_all['Jornada'].isin(["Jornada 1", "Jornada 2", "Jornada 3"]))]
-                ahora = get_now_madrid()
                 
-                # Calcular resultados virtuales con FILTRO ANTI-ESPIONAJE
+                # Calcular resultados virtuales con FILTRO ANTI-ESPIONAJE ESTRICTO (Solo Finalizados)
                 for p in preds_usr.itertuples():
                     try:
                         tl, tv = p.Partido.split('-')
@@ -2617,15 +2616,15 @@ else:
                         
                         match_info = df_r_all[df_r_all['Partido'] == p.Partido]
                         if not match_info.empty:
-                            hora_partido = pd.to_datetime(match_info.iloc[0]['Hora_Inicio'])
+                            # NUEVO FILTRO: Miramos explícitamente si el Admin lo ha marcado como finalizado
+                            esta_finalizado = (match_info.iloc[0]['Finalizado'] == "SI")
                             
                             # Lógica de visibilidad
                             es_mi_simulacion = (usr_sim == st.session_state.user)
-                            partido_empezado = (ahora >= hora_partido)
                             es_publica = (getattr(p, 'Publica', 'NO') == 'SI')
                             
-                            # Solo contamos el partido si es tuyo, si ya ha empezado o si el rival lo puso Público
-                            if es_mi_simulacion or partido_empezado or es_publica:
+                            # Solo contamos el partido si es tuyo, si está FINALIZADO o si el rival lo puso Público
+                            if es_mi_simulacion or esta_finalizado or es_publica:
                                 if tl in sim_equipos and tv in sim_equipos:
                                     sim_equipos[tl]["PJ"] += 1
                                     sim_equipos[tv]["PJ"] += 1
@@ -2650,8 +2649,7 @@ else:
                 st.divider()
                 st.subheader(f"📋 Clasificación Proyectada de {usr_sim}")
                 if usr_sim != st.session_state.user:
-                    st.info("🔒 Modo Anti-Espionaje Activo: Solo estás viendo los puntos de los partidos que ya han comenzado o que son públicos.")
-                
+                    st.info("🔒 Modo Anti-Espionaje Activo: Solo estás viendo los puntos de los partidos que el Admin ya ha marcado como FINALIZADOS.")
                 ganadores_sim = {}
                 lista_terceros = []
                 cols_g = st.columns(3) 
