@@ -591,17 +591,17 @@ COLORES_BANDERAS = {
 }
 
 GRUPOS_2026 = {
-    "Grupo A": ["México", "Sudáfrica", "Corea del Sur", "Chequia"],
-    "Grupo B": ["Canadá", "Bosnia y Hezegovina", "Qatar", "Suiza"],
+    "Grupo A": ["México", "Sudáfrica", "Corea del Sur", "República Checa"],
+    "Grupo B": ["Canadá", "Bosnia Herzegovina", "Qatar", "Suiza"],
     "Grupo C": ["Brasil", "Marruecos", "Haití", "Escocia"],
     "Grupo D": ["Estados Unidos", "Paraguay", "Australia", "Turquía"],
-    "Grupo E": ["Alemania", "Curazao", "Costa de Marfil", "Ecuador"],
+    "Grupo E": ["Alemania", "Curaçao", "Costa de Marfil", "Ecuador"],
     "Grupo F": ["Países Bajos", "Japón", "Suecia", "Túnez"],
     "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
-    "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
-    "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
+    "Grupo H": ["España", "Cabo Verde", "Arabia Saudí", "Uruguay"],
+    "Grupo I": ["Francia", "Senegal", "Iraq", "Noruega"],
     "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
-    "Grupo K": ["Portugal", "R.D. Congo", "Uzbekistán", "Colombia"],
+    "Grupo K": ["Portugal", "Congo", "Uzbekistán", "Colombia"],
     "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
 }
 
@@ -653,10 +653,10 @@ JORNADAS = {
 LOGOS = {
     # Grupo A
     "México": f"{LOGOS_DIR}mexico.png", "Sudáfrica": f"{LOGOS_DIR}sudafrica.png", 
-    "Corea del Sur": f"{LOGOS_DIR}corea.png", "Chequia": f"{LOGOS_DIR}chequia.png",
+    "Corea del Sur": f"{LOGOS_DIR}corea.png", "República Checa": f"{LOGOS_DIR}chequia.png",
     
     # Grupo B
-    "Canadá": f"{LOGOS_DIR}canada.png", "Bosnia y Hezegovina": f"{LOGOS_DIR}bosnia.png", 
+    "Canadá": f"{LOGOS_DIR}canada.png", "Bosnia Herzegovina": f"{LOGOS_DIR}bosnia.png", 
     "Qatar": f"{LOGOS_DIR}qatar.png", "Suiza": f"{LOGOS_DIR}suiza.png",
     
     # Grupo C
@@ -668,7 +668,7 @@ LOGOS = {
     "Australia": f"{LOGOS_DIR}australia.png", "Turquía": f"{LOGOS_DIR}turquia.png",
     
     # Grupo E
-    "Alemania": f"{LOGOS_DIR}alemania.png", "Curazao": f"{LOGOS_DIR}curazao.png", 
+    "Alemania": f"{LOGOS_DIR}alemania.png", "Curaçao": f"{LOGOS_DIR}curazao.png", 
     "Costa de Marfil": f"{LOGOS_DIR}costa.png", "Ecuador": f"{LOGOS_DIR}ecuador.png",
     
     # Grupo F
@@ -681,25 +681,24 @@ LOGOS = {
     
     # Grupo H
     "España": f"{LOGOS_DIR}españa.png", "Cabo Verde": f"{LOGOS_DIR}cabo.png", 
-    "Arabia Saudita": f"{LOGOS_DIR}arabia.png", "Uruguay": f"{LOGOS_DIR}uruguay.png",
+    "Arabia Saudí": f"{LOGOS_DIR}arabia.png", "Uruguay": f"{LOGOS_DIR}uruguay.png",
     
     # Grupo I
     "Francia": f"{LOGOS_DIR}francia.png", "Senegal": f"{LOGOS_DIR}senegal.png", 
-    "Irak": f"{LOGOS_DIR}irak.png", "Noruega": f"{LOGOS_DIR}noruega.png",
+    "Iraq": f"{LOGOS_DIR}irak.png", "Noruega": f"{LOGOS_DIR}noruega.png",
     
     # Grupo J
     "Argentina": f"{LOGOS_DIR}argentina.png", "Argelia": f"{LOGOS_DIR}argelia.png", 
     "Austria": f"{LOGOS_DIR}austria.png", "Jordania": f"{LOGOS_DIR}jordania.png",
     
     # Grupo K
-    "Portugal": f"{LOGOS_DIR}portugal.png", "R.D. Congo": f"{LOGOS_DIR}congo.png", 
+    "Portugal": f"{LOGOS_DIR}portugal.png", "Congo": f"{LOGOS_DIR}congo.png", 
     "Uzbekistán": f"{LOGOS_DIR}uzbekistan.png", "Colombia": f"{LOGOS_DIR}colombia.png",
     
     # Grupo L
     "Inglaterra": f"{LOGOS_DIR}inglaterra.png", "Croacia": f"{LOGOS_DIR}croacia.png", 
     "Ghana": f"{LOGOS_DIR}ghana.png", "Panamá": f"{LOGOS_DIR}panama.png",
 }
-
 SCORING_WC = {
     "Normal": {"signo": 0.5, "diff": 0.75, "exacto": 1.0, "pasa": 0.5},
     "Esquizo": {"signo": 1.0, "diff": 1.5, "exacto": 3.0, "pasa": 1.0}
