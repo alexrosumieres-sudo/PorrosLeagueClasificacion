@@ -1712,8 +1712,15 @@ else:
             FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
             mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
             
+            # --- NUEVO: LLAVE MAESTRA DEL ADMIN ---
+            es_admin = (st.session_state.user == "ADMIN")
+            puede_editar = mercado_abierto or es_admin
+            
             if not mercado_abierto:
-                st.error(f"🔒 **MERCADO CERRADO.** No se admiten más cambios.")
+                if es_admin:
+                    st.warning("👑 **MODO ADMIN.** El mercado está cerrado para los jugadores, pero tú tienes permisos para actualizar el Cuadro Oficial.")
+                else:
+                    st.error(f"🔒 **MERCADO CERRADO.** No se admiten más cambios.")
             else:
                 st.success(f"🔓 **MERCADO ABIERTO.** Tienes hasta el 11 de junio a las 21:00.")
 
@@ -1734,11 +1741,11 @@ else:
                         def_p2 = b_prev.iloc[0][f"{nombre_g}_2"] if not b_prev.empty else equipos[1]
                         def_p3 = b_prev.iloc[0][f"{nombre_g}_3"] if not b_prev.empty else equipos[2]
 
-                        p1 = st.selectbox(f"1º", equipos, index=equipos.index(def_p1) if def_p1 in equipos else 0, key=f"p1_{nombre_g}", disabled=not mercado_abierto)
+                        p1 = st.selectbox(f"1º", equipos, index=equipos.index(def_p1) if def_p1 in equipos else 0, key=f"p1_{nombre_g}", disabled=not puede_editar)
                         op2 = [e for e in equipos if e != p1]
-                        p2 = st.selectbox(f"2º", op2, index=op2.index(def_p2) if def_p2 in op2 else 0, key=f"p2_{nombre_g}", disabled=not mercado_abierto)
+                        p2 = st.selectbox(f"2º", op2, index=op2.index(def_p2) if def_p2 in op2 else 0, key=f"p2_{nombre_g}", disabled=not puede_editar)
                         op3 = [e for e in op2 if e != p2]
-                        p3 = st.selectbox(f"3º", op3, index=op3.index(def_p3) if def_p3 in op3 else 0, key=f"p3_{nombre_g}", disabled=not mercado_abierto)
+                        p3 = st.selectbox(f"3º", op3, index=op3.index(def_p3) if def_p3 in op3 else 0, key=f"p3_{nombre_g}", disabled=not puede_editar)
                         p4 = [e for e in op3 if e != p3][0]
                         st.caption(f"4º puesto: {p4}")
 
@@ -1759,12 +1766,12 @@ else:
                 default=[t for t in def_terceros_list if t in todos_los_terceros],
                 max_selections=8,
                 key="ms_terceros",
-                disabled=not mercado_abierto
+                disabled=not puede_editar
             )
 
             if len(seleccion_terceros) < 8:
                 st.warning(f"⚠️ Seleccionados: {len(seleccion_terceros)}/8. El cuadro se activará al elegir 8.")
-            else: # <--- ESTE ELSE EVITA EL ST.STOP Y QUE SE ROMPA TODO
+            else:
                 st.subheader("🏟️ 3️⃣ Dieciseisavos de Final (Matriz FIFA)")
                 
                 grupos_3ros = []
@@ -1781,7 +1788,7 @@ else:
                 
                 if clave_3ros not in MATRIZ_TERCEROS:
                     st.error("❌ ¡Combinación Imposible! Según la FIFA, es matemáticamente imposible que pasen esos 8 terceros juntos. Revisa tu selección.")
-                else: # <--- ESTE ELSE SUSTITUYE AL ST.STOP()
+                else: 
                     cruces_3ros = MATRIZ_TERCEROS[clave_3ros]
                     
                     cruces_16 = [
@@ -1809,7 +1816,7 @@ else:
                         with cols_16[i // 4]:
                             st.markdown(f"<small>M{73+i}</small>", unsafe_allow_html=True)
                             def_w16 = b_prev.iloc[0][f"W16_{i}"] if not b_prev.empty and f"W16_{i}" in b_prev.columns else loc
-                            res_16 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w16) if def_w16 in [loc, vis] else 0, key=f"radio_16_{i}", disabled=not mercado_abierto, label_visibility="collapsed")
+                            res_16 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w16) if def_w16 in [loc, vis] else 0, key=f"radio_16_{i}", disabled=not puede_editar, label_visibility="collapsed")
                             ganadores_16.append(res_16)
 
                     st.subheader("🛡️ 4️⃣ Octavos de Final (Orden FIFA)")
@@ -1830,7 +1837,7 @@ else:
                         with cols_8[i // 2]:
                             st.markdown(f"<small>M{89+i}</small>", unsafe_allow_html=True)
                             def_w8 = b_prev.iloc[0][f"W8_{i}"] if not b_prev.empty and f"W8_{i}" in b_prev.columns else loc
-                            res_8 = st.radio(f"{loc}-{vis}", [loc, vis], index=[loc, vis].index(def_w8) if def_w8 in [loc, vis] else 0, key=f"radio_8_{i}", disabled=not mercado_abierto)
+                            res_8 = st.radio(f"{loc}-{vis}", [loc, vis], index=[loc, vis].index(def_w8) if def_w8 in [loc, vis] else 0, key=f"radio_8_{i}", disabled=not puede_editar)
                             ganadores_8.append(res_8)
 
                     st.subheader("📊 5️⃣ Cuartos de Final")
@@ -1844,7 +1851,7 @@ else:
                     for i, (loc, vis) in enumerate(cruces_4):
                         with cols_4[i // 2]:
                             def_w4 = b_prev.iloc[0][f"W4_{i}"] if not b_prev.empty and f"W4_{i}" in b_prev.columns else loc
-                            res_4 = st.radio(f"Cuarto {i+1}", [loc, vis], index=[loc, vis].index(def_w4) if def_w4 in [loc, vis] else 0, key=f"radio_4_{i}", disabled=not mercado_abierto)
+                            res_4 = st.radio(f"Cuarto {i+1}", [loc, vis], index=[loc, vis].index(def_w4) if def_w4 in [loc, vis] else 0, key=f"radio_4_{i}", disabled=not puede_editar)
                             ganadores_4.append(res_4)
 
                     st.subheader("⚔️ 6️⃣ Semifinales")
@@ -1855,7 +1862,7 @@ else:
                         loc, vis = ganadores_4[i], ganadores_4[i+1]
                         with cols_2[i // 2]:
                             def_ws = b_prev.iloc[0][f"WS_{i//2}"] if not b_prev.empty and f"WS_{i//2}" in b_prev.columns else loc
-                            ws = st.radio(f"Semifinal {i//2 + 1}", [loc, vis], index=[loc, vis].index(def_ws) if def_ws in [loc, vis] else 0, key=f"radio_s_{i}", disabled=not mercado_abierto)
+                            ws = st.radio(f"Semifinal {i//2 + 1}", [loc, vis], index=[loc, vis].index(def_ws) if def_ws in [loc, vis] else 0, key=f"radio_s_{i}", disabled=not puede_editar)
                             ganadores_semi.append(ws)
                             perdedores_semi.append(vis if ws == loc else loc)
 
@@ -1865,13 +1872,13 @@ else:
                         st.subheader("🥉 Tercer Puesto")
                         t3_l, t3_v = perdedores_semi[0], perdedores_semi[1]
                         def_t3 = b_prev.iloc[0]["TercerPuesto"] if not b_prev.empty and "TercerPuesto" in b_prev.columns else t3_l
-                        res_t3 = st.selectbox("Ganador Bronce", [t3_l, t3_v], index=[t3_l, t3_v].index(def_t3) if def_t3 in [t3_l, t3_v] else 0, key="sb_t3", disabled=not mercado_abierto)
+                        res_t3 = st.selectbox("Ganador Bronce", [t3_l, t3_v], index=[t3_l, t3_v].index(def_t3) if def_t3 in [t3_l, t3_v] else 0, key="sb_t3", disabled=not puede_editar)
                     
                     with col_f:
                         st.subheader("🏆 Gran Final")
                         f_l, f_v = ganadores_semi[0], ganadores_semi[1]
                         def_cam = b_prev.iloc[0]["Campeon"] if not b_prev.empty and "Campeon" in b_prev.columns else f_l
-                        campeon = st.selectbox("CAMPEÓN DEL MUNDO", [f_l, f_v], index=[f_l, f_v].index(def_cam) if def_cam in [f_l, f_v] else 0, key="sb_final", disabled=not mercado_abierto)
+                        campeon = st.selectbox("CAMPEÓN DEL MUNDO", [f_l, f_v], index=[f_l, f_v].index(def_cam) if def_cam in [f_l, f_v] else 0, key="sb_final", disabled=not puede_editar)
                         st.markdown(f"<h2 style='text-align:center; color:#ffd700;'>🥇 {campeon}</h2>", unsafe_allow_html=True)
 
                     st.divider()
@@ -1879,17 +1886,20 @@ else:
                     clp1, clp2, clp3 = st.columns(3)
                     with clp1:
                         def_pi = b_prev.iloc[0]["Pichichi"] if not b_prev.empty and "Pichichi" in b_prev.columns else ""
-                        pichichi = st.text_input("Pichichi (Goleador)", value=def_pi, disabled=not mercado_abierto)
+                        pichichi = st.text_input("Pichichi (Goleador)", value=def_pi, disabled=not puede_editar)
                     with clp2:
                         def_za = b_prev.iloc[0]["Zamora"] if not b_prev.empty and "Zamora" in b_prev.columns else ""
-                        zamora = st.text_input("Zamora (Portero)", value=def_za, disabled=not mercado_abierto)
+                        zamora = st.text_input("Zamora (Portero)", value=def_za, disabled=not puede_editar)
                     with clp3:
                         def_mv = b_prev.iloc[0]["MVP"] if not b_prev.empty and "MVP" in b_prev.columns else ""
-                        mvp = st.text_input("MVP del Torneo", value=def_mv, disabled=not mercado_abierto)
+                        mvp = st.text_input("MVP del Torneo", value=def_mv, disabled=not puede_editar)
 
                     st.divider()
-                    if not es_admin and mercado_abierto:
-                        if st.button("💾 GUARDAR TODO EL BRACKET Y PREMIOS", use_container_width=True, type="primary"):
+                    
+                    # --- NUEVO: CONDICIÓN DEL BOTÓN ---
+                    if puede_editar:
+                        texto_boton = "👑 GUARDAR BRACKET OFICIAL (ADMIN)" if es_admin else "💾 GUARDAR TODO EL BRACKET Y PREMIOS"
+                        if st.button(texto_boton, use_container_width=True, type="primary"):
                             try:
                                 datos = {"Usuario": st.session_state.user, "MejoresTerceros": ",".join(seleccion_terceros), "TercerPuesto": res_t3, "Campeon": campeon, "Pichichi": pichichi, "Zamora": zamora, "MVP": mvp}
                                 for g in GRUPOS_2026.keys():
@@ -1904,7 +1914,7 @@ else:
                                 df_b_act = pd.concat([df_b_all[df_b_all['Usuario'] != st.session_state.user], pd.DataFrame([datos])], ignore_index=True)
                                 conn.update(worksheet="Brackets", data=df_b_act)
                                 
-                                log_e = pd.DataFrame([{"Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"), "Usuario": st.session_state.user, "Accion": f"🌳 BRACKET: Actualizó su cuadro completo. Campeón: {campeon}"}])
+                                log_e = pd.DataFrame([{"Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"), "Usuario": st.session_state.user, "Accion": f"🌳 BRACKET: Actualizó su cuadro {'oficial' if es_admin else 'completo'}. Campeón: {campeon}"}])
                                 conn.update(worksheet="Logs", data=pd.concat([leer_datos("Logs"), log_e], ignore_index=True))
                                 
                                 st.success("✅ ¡Bracket y Premios guardados correctamente!")
