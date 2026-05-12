@@ -2290,78 +2290,78 @@ else:
                 lider_act.append(("Súper Bracket" + tag_b, lideres_gen_b))
 
 
-        # --- 🥇 SECCIÓN GANADORES (MEDALLAS POR FASE) ---
-        st.subheader("🥇 Héroes del Mundial (Ganadores de Fase)")
-        count_g = {}
-        for j, us in gan_act:
-            if "En curso" not in j: 
-                for u in us: count_g[u] = count_g.get(u, 0) + 1
-        
-        if count_g:
-            df_g = pd.DataFrame(list(count_g.items()), columns=['U', 'V']).sort_values('V', ascending=False)
-            c_g = st.columns(4)
-            for i, (_, r) in enumerate(df_g.iterrows()):
-                with c_g[i % 4]:
-                    st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #fff9c4 0%, #ffeb3b 100%); border:2px solid #ffd700; margin-bottom:10px;">
-                        <b style="color:#000; font-size:0.85em;">🏆 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#000;">{int(r['V'])}</span><br><small style="color:#000; font-weight:bold;">MEDALLAS</small></div>""", unsafe_allow_html=True)
-        else:
-            st.info("Esperando al final de la primera fase para repartir medallas.")
-
-        st.divider()
-
-        # --- 👑 SECCIÓN LÍDERES (TRONO DEL MUNDIAL) ---
-        st.subheader("👑 El Trono del Mundial (Líderes Generales)")
-        st.caption("Quién ha mandado en la clasificación acumulada en cada etapa.")
-        count_l = {}
-        for j, us in lider_act:
-            for u in us: count_l[u] = count_l.get(u, 0) + 1
-        
-        if count_l:
-            df_l_rank = pd.DataFrame(list(count_l.items()), columns=['U', 'V']).sort_values('V', ascending=False)
-            c_l = st.columns(4)
-            for i, (_, r) in enumerate(df_l_rank.iterrows()):
-                with c_l[i % 4]:
-                    st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border:2px solid #0ea5e9; margin-bottom:10px;">
-                        <b style="color:#0369a1; font-size:0.85em;">👑 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#0369a1;">{int(r['V'])}</span><br><small style="color:#0369a1; font-weight:bold;">FASES LÍDER</small></div>""", unsafe_allow_html=True)
-
-        st.divider()
-
-        # --- 🦎 SECCIÓN PERDEDORES: EL LAGARTO MUNDIALISTA ---
-        st.subheader("🦎 El Lagarto del Mundial")
-        count_p = {}
-        for j, us in perd_act:
-            if "En curso" not in j:
-                for u in us: count_p[u] = count_p.get(u, 0) + 1
-        
-        if count_p:
-            df_p_rank = pd.DataFrame(list(count_p.items()), columns=['U', 'V']).sort_values('V', ascending=False)
-            c_p = st.columns(4)
-            for i, (_, r) in enumerate(df_p_rank.iterrows()):
-                st_color = "#32cd32" if r['V'] >= 2 else "#6c757d"
-                with c_p[i % 4]:
-                    st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#f0fff0; border:2px solid {st_color}; margin-bottom:10px;">
-                        <b style="color:#333; font-size:0.85em;">🦎 {r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:{st_color};">{int(r['V'])}</span><br><small style="color:{st_color}; font-weight:bold;">LAGARTOS</small></div>""", unsafe_allow_html=True)
-
-        # --- 📅 ACTA HISTÓRICA DEL MUNDIAL ---
-        st.divider()
-        st.subheader("📅 Acta de Guerra: Resultados por Fase")
-        if gan_act:
-            cronologia = []
-            for i in range(len(gan_act)-1, -1, -1):
-                jor = gan_act[i][0]
-                g = gan_act[i][1]
-                p = perd_act[i][1]
-                l = lider_act[i][1]
-                
-                cronologia.append({
-                    "Fase / Etapa": jor,
-                    "Héroe (🏆)": " & ".join(map(str, g)),
-                    "Líder General (👑)": " & ".join(map(str, l)),
-                    "Lagarto (🦎)": " & ".join(map(str, p))
-                })
-            st.table(pd.DataFrame(cronologia))
-        else:
-            st.write("Aún no hay actas registradas. El Mundial está por escribir.")
+            # --- 🥇 SECCIÓN GANADORES (MEDALLAS POR FASE) ---
+            st.subheader("🥇 Héroes del Mundial (Ganadores de Fase)")
+            count_g = {}
+            for j, us in gan_act:
+                if "En curso" not in j: 
+                    for u in us: count_g[u] = count_g.get(u, 0) + 1
+            
+            if count_g:
+                df_g = pd.DataFrame(list(count_g.items()), columns=['U', 'V']).sort_values('V', ascending=False)
+                c_g = st.columns(4)
+                for i, (_, r) in enumerate(df_g.iterrows()):
+                    with c_g[i % 4]:
+                        st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #fff9c4 0%, #ffeb3b 100%); border:2px solid #ffd700; margin-bottom:10px;">
+                            <b style="color:#000; font-size:0.85em;">🏆 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#000;">{int(r['V'])}</span><br><small style="color:#000; font-weight:bold;">MEDALLAS</small></div>""", unsafe_allow_html=True)
+            else:
+                st.info("Esperando al final de la primera fase para repartir medallas.")
+    
+            st.divider()
+    
+            # --- 👑 SECCIÓN LÍDERES (TRONO DEL MUNDIAL) ---
+            st.subheader("👑 El Trono del Mundial (Líderes Generales)")
+            st.caption("Quién ha mandado en la clasificación acumulada en cada etapa.")
+            count_l = {}
+            for j, us in lider_act:
+                for u in us: count_l[u] = count_l.get(u, 0) + 1
+            
+            if count_l:
+                df_l_rank = pd.DataFrame(list(count_l.items()), columns=['U', 'V']).sort_values('V', ascending=False)
+                c_l = st.columns(4)
+                for i, (_, r) in enumerate(df_l_rank.iterrows()):
+                    with c_l[i % 4]:
+                        st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border:2px solid #0ea5e9; margin-bottom:10px;">
+                            <b style="color:#0369a1; font-size:0.85em;">👑 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#0369a1;">{int(r['V'])}</span><br><small style="color:#0369a1; font-weight:bold;">FASES LÍDER</small></div>""", unsafe_allow_html=True)
+    
+            st.divider()
+    
+            # --- 🦎 SECCIÓN PERDEDORES: EL LAGARTO MUNDIALISTA ---
+            st.subheader("🦎 El Lagarto del Mundial")
+            count_p = {}
+            for j, us in perd_act:
+                if "En curso" not in j:
+                    for u in us: count_p[u] = count_p.get(u, 0) + 1
+            
+            if count_p:
+                df_p_rank = pd.DataFrame(list(count_p.items()), columns=['U', 'V']).sort_values('V', ascending=False)
+                c_p = st.columns(4)
+                for i, (_, r) in enumerate(df_p_rank.iterrows()):
+                    st_color = "#32cd32" if r['V'] >= 2 else "#6c757d"
+                    with c_p[i % 4]:
+                        st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#f0fff0; border:2px solid {st_color}; margin-bottom:10px;">
+                            <b style="color:#333; font-size:0.85em;">🦎 {r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:{st_color};">{int(r['V'])}</span><br><small style="color:{st_color}; font-weight:bold;">LAGARTOS</small></div>""", unsafe_allow_html=True)
+    
+            # --- 📅 ACTA HISTÓRICA DEL MUNDIAL ---
+            st.divider()
+            st.subheader("📅 Acta de Guerra: Resultados por Fase")
+            if gan_act:
+                cronologia = []
+                for i in range(len(gan_act)-1, -1, -1):
+                    jor = gan_act[i][0]
+                    g = gan_act[i][1]
+                    p = perd_act[i][1]
+                    l = lider_act[i][1]
+                    
+                    cronologia.append({
+                        "Fase / Etapa": jor,
+                        "Héroe (🏆)": " & ".join(map(str, g)),
+                        "Líder General (👑)": " & ".join(map(str, l)),
+                        "Lagarto (🦎)": " & ".join(map(str, p))
+                    })
+                st.table(pd.DataFrame(cronologia))
+            else:
+                st.write("Aún no hay actas registradas. El Mundial está por escribir.")
     
     with tabs[5]: # --- 📈 STATS PRO (MUNDIAL EDITION) ---
         sub_tabs = st.tabs(["👤 Análisis Individual", "🌍 Mapa de Continentes", "🔥 Power Ranking", "📉 Evolución"])
