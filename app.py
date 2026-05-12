@@ -2172,6 +2172,7 @@ else:
             # --- 1. CONFIGURACIÓN INICIAL ---
             gan_act, perd_act, lider_act = [], [], []
             pts_acumulados = {u: safe_float(df_base[df_base['Usuario'] == u]['Puntos'].values[0]) if not df_base[df_base['Usuario'] == u].empty else 0.0 for u in u_jugadores}
+            pts_por_partidos_puros = {u: 0.0 for u in u_jugadores}
 
             # --- 2. CÁLCULO DE PARTIDOS NORMALES ---
             for j_n in JORNADAS.keys():
@@ -2196,6 +2197,7 @@ else:
                                 )
                         pts_esta_j.append({"Usuario": u, "Puntos": puntos_fase})
                         pts_acumulados[u] += puntos_fase 
+                        pts_por_partidos_puros[u] += puntos_fase
 
                     if pts_esta_j and len(fin_j) > 0:
                         df_res = pd.DataFrame(pts_esta_j)
@@ -2209,76 +2211,86 @@ else:
 
             # --- 3. CÁLCULO SÚPER BRACKET ---
             df_b_all = leer_datos("Brackets")
-            admin_b = df_b_all[df_b_all['Usuario'] == 'ADMIN']
             
-            pts_bracket_j = [] 
+            # Asegurarnos de que no rompe por diferencias de mayúsculas en la BBDD
+            if not df_b_all.empty and 'Usuario' in df_b_all.columns:
+                df_b_all['Usuario_Lower'] = df_b_all['Usuario'].astype(str).str.strip().str.lower()
+                admin_b = df_b_all[df_b_all['Usuario_Lower'] == 'admin']
+            else:
+                admin_b = pd.DataFrame()
+            
+            pts_por_bracket_puros = {u: 0.0 for u in u_jugadores}
             
             if admin_b.empty:
-                # Si el ADMIN no ha guardado Bracket, lo dejamos a 0 y avisamos.
-                for u in u_jugadores:
-                    pts_bracket_j.append({"Usuario": u, "Puntos": 0.0})
-                st.info("ℹ️ El ADMIN aún no ha publicado el Bracket Oficial. Los puntos de esta fase están ocultos.")
+                st.info("ℹ️ El ADMIN aún no ha publicado el Bracket Oficial. Los puntos de Bracket están ocultos.")
             else:
                 admin_row = admin_b.iloc[0]
                 
-                # Función escudo (reparada, sin nonlocal)
-                def calcular_acierto(col, pts, f_admin, f_usr):
-                    if col in f_admin and col in f_usr:
-                        v_admin = str(f_admin[col]).strip().lower()
-                        v_usr = str(f_usr[col]).strip().lower()
-                        if v_admin not in ["nan", "", "none"] and v_admin == v_usr:
-                            return pts
+                # Función super blindada
+                def calc_acierto(col, pts, dict_admin, dict_usr):
+                    if col in dict_admin and col in dict_usr:
+                        val_a = str(dict_admin[col]).strip().lower()
+                        val_u = str(dict_usr[col]).strip().lower()
+                        if val_a not in ["nan", "none", "", "null", "<na>"] and val_a == val_u:
+                            return float(pts)
                     return 0.0
 
                 for u in u_jugadores:
-                    pts_b = 0.0
                     usr_b = df_b_all[df_b_all['Usuario'] == u]
+                    pts_b = 0.0
+                    
                     if not usr_b.empty:
                         usr_row = usr_b.iloc[0]
-
-                        # 1. Grupos (0.5 pts)
+                        # 1. Grupos (0.5)
                         for g in GRUPOS_2026.keys():
-                            for pos in [1, 2, 3]: pts_b += calcular_acierto(f"{g}_{pos}", 0.5, admin_row, usr_row)
+                            for pos in [1, 2, 3]: pts_b += calc_acierto(f"{g}_{pos}", 0.5, admin_row, usr_row)
                         # 2. Octavos (0.5)
-                        for i in range(16): pts_b += calcular_acierto(f"W16_{i}", 0.5, admin_row, usr_row)
+                        for i in range(16): pts_b += calc_acierto(f"W16_{i}", 0.5, admin_row, usr_row)
                         # 3. Cuartos (1.0)
-                        for i in range(8): pts_b += calcular_acierto(f"W8_{i}", 1.0, admin_row, usr_row)
+                        for i in range(8): pts_b += calc_acierto(f"W8_{i}", 1.0, admin_row, usr_row)
                         # 4. Semis (1.5)
-                        for i in range(4): pts_b += calcular_acierto(f"W4_{i}", 1.5, admin_row, usr_row)
+                        for i in range(4): pts_b += calc_acierto(f"W4_{i}", 1.5, admin_row, usr_row)
                         # 5. Finalistas (2.0)
-                        for i in range(2): pts_b += calcular_acierto(f"WS_{i}", 2.0, admin_row, usr_row)
+                        for i in range(2): pts_b += calc_acierto(f"WS_{i}", 2.0, admin_row, usr_row)
                         # 6. Campeón (4.0) y Tercero (1.0)
-                        pts_b += calcular_acierto("Campeon", 4.0, admin_row, usr_row)
-                        pts_b += calcular_acierto("TercerPuesto", 1.0, admin_row, usr_row)
+                        pts_b += calc_acierto("Campeon", 4.0, admin_row, usr_row)
+                        pts_b += calc_acierto("TercerPuesto", 1.0, admin_row, usr_row)
                         # 7. Premios Individuales (2.0)
-                        pts_b += calcular_acierto("Pichichi", 2.0, admin_row, usr_row)
-                        pts_b += calcular_acierto("Zamora", 2.0, admin_row, usr_row)
-                        pts_b += calcular_acierto("MVP", 2.0, admin_row, usr_row)
-                                    
-                    pts_bracket_j.append({"Usuario": u, "Puntos": pts_b})
+                        pts_b += calc_acierto("Pichichi", 2.0, admin_row, usr_row)
+                        pts_b += calc_acierto("Zamora", 2.0, admin_row, usr_row)
+                        pts_b += calc_acierto("MVP", 2.0, admin_row, usr_row)
+                    
+                    pts_por_bracket_puros[u] = pts_b
                     pts_acumulados[u] += pts_b
 
-                # Añadir los resultados del Bracket al Acta Histórica
-                df_res_b = pd.DataFrame(pts_bracket_j)
-                max_p_b, min_p_b = df_res_b['Puntos'].max(), df_res_b['Puntos'].min()
-                max_general_b = max(pts_acumulados.values())
-                lideres_gen_b = [u for u, p in pts_acumulados.items() if p == max_general_b]
-                
-                es_bracket_terminado = 'Campeon' in admin_row and str(admin_row['Campeon']).strip().lower() not in ["nan", "", "none"]
-                tag_b = "" if es_bracket_terminado else " (En curso ⏳)"
-                
-                gan_act.append(("Súper Bracket" + tag_b, df_res_b[df_res_b['Puntos'] == max_p_b]['Usuario'].tolist()))
-                perd_act.append(("Súper Bracket" + tag_b, df_res_b[df_res_b['Puntos'] == min_p_b]['Usuario'].tolist()))
-                lider_act.append(("Súper Bracket" + tag_b, lideres_gen_b))
+                # Acta del Bracket
+                df_res_b = pd.DataFrame([{"Usuario": k, "Puntos": v} for k, v in pts_por_bracket_puros.items()])
+                if not df_res_b.empty and df_res_b['Puntos'].max() > 0:
+                    max_p_b, min_p_b = df_res_b['Puntos'].max(), df_res_b['Puntos'].min()
+                    max_general_b = max(pts_acumulados.values())
+                    lideres_gen_b = [us for us, p in pts_acumulados.items() if p == max_general_b]
+                    
+                    val_campeon = str(admin_row.get('Campeon', '')).strip().lower()
+                    es_bracket_terminado = val_campeon not in ["nan", "none", "", "null", "<na>"]
+                    tag_b = "" if es_bracket_terminado else " (En curso ⏳)"
+                    
+                    gan_act.append(("Súper Bracket" + tag_b, df_res_b[df_res_b['Puntos'] == max_p_b]['Usuario'].tolist()))
+                    perd_act.append(("Súper Bracket" + tag_b, df_res_b[df_res_b['Puntos'] == min_p_b]['Usuario'].tolist()))
+                    lider_act.append(("Súper Bracket" + tag_b, lideres_gen_b))
 
 
             # --- NUEVA: TABLA VISUAL DE CLASIFICACIÓN GENERAL ---
             st.subheader("🏆 Clasificación General Oficial")
             datos_tabla = []
+            
+            # Base (Si existen puntos de inicio en PuntosBase que no sean del mundial)
+            puntos_inicio = {u: safe_float(df_base[df_base['Usuario'] == u]['Puntos'].values[0]) if not df_base[df_base['Usuario'] == u].empty else 0.0 for u in u_jugadores}
+            
             for u in u_jugadores:
-                p_total = pts_acumulados[u]
-                p_bracket = next((item["Puntos"] for item in pts_bracket_j if item["Usuario"] == u), 0.0)
-                p_partidos = p_total - p_bracket
+                p_partidos = float(pts_por_partidos_puros.get(u, 0.0))
+                p_bracket = float(pts_por_bracket_puros.get(u, 0.0))
+                p_base = float(puntos_inicio.get(u, 0.0))
+                p_total = p_base + p_partidos + p_bracket
                 
                 datos_tabla.append({
                     "Usuario": u,
@@ -2289,9 +2301,14 @@ else:
                 
             df_clasificacion = pd.DataFrame(datos_tabla).sort_values("🌟 TOTAL", ascending=False)
             st.dataframe(
-                df_clasificacion.style.format({"⚽ Puntos Partidos": "{:.1f}", "🌳 Puntos Bracket": "{:.1f}", "🌟 TOTAL": "{:.1f}"})
-                .highlight_max(subset="🌟 TOTAL", color="#dcfce7", axis=0),
-                use_container_width=True, hide_index=True
+                df_clasificacion,
+                column_config={
+                    "⚽ Puntos Partidos": st.column_config.NumberColumn(format="%.2f"),
+                    "🌳 Puntos Bracket": st.column_config.NumberColumn(format="%.2f"),
+                    "🌟 TOTAL": st.column_config.NumberColumn(format="%.2f")
+                },
+                use_container_width=True, 
+                hide_index=True
             )
 
             st.divider()
