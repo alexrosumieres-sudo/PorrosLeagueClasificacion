@@ -2170,13 +2170,10 @@ else:
             st.caption("Gloria, poder y humillación en el torneo más grande del mundo.")
             
             # --- 1. CONFIGURACIÓN INICIAL ---
-            # Vaciamos los datos antiguos para empezar la cuenta del Mundial de cero
             gan_act, perd_act, lider_act = [], [], []
-            
-            # Cargamos puntos base (normalmente 0 al inicio del Mundial)
             pts_acumulados = {u: safe_float(df_base[df_base['Usuario'] == u]['Puntos'].values[0]) if not df_base[df_base['Usuario'] == u].empty else 0.0 for u in u_jugadores}
 
-            # --- 2. CÁLCULO DE MEDALLAS POR CADA FASE (PARTIDOS NORMALES) ---
+            # --- 2. CÁLCULO DE PARTIDOS NORMALES ---
             for j_n in JORNADAS.keys():
                 partidos_j = df_r_all[df_r_all['Jornada'] == j_n]
                 fin_j = partidos_j[partidos_j['Finalizado'] == "SI"]
@@ -2185,7 +2182,6 @@ else:
                     pts_esta_j = []
                     for u in u_jugadores:
                         u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_n)]
-                        
                         puntos_fase = 0.0
                         for r in u_p.itertuples():
                             m_real = fin_j[fin_j['Partido'] == r.Partido]
@@ -2198,97 +2194,106 @@ else:
                                     m_real.iloc[0].get('R_Pasa'),
                                     m_real.iloc[0].get('Hubo_Prorroga') == "SI"
                                 )
-                        
                         pts_esta_j.append({"Usuario": u, "Puntos": puntos_fase})
                         pts_acumulados[u] += puntos_fase 
 
                     if pts_esta_j and len(fin_j) > 0:
                         df_res = pd.DataFrame(pts_esta_j)
                         max_p, min_p = df_res['Puntos'].max(), df_res['Puntos'].min()
-                        
                         max_general = max(pts_acumulados.values())
                         lideres_gen = [u for u, p in pts_acumulados.items() if p == max_general]
-
                         tag = " (En curso ⏳)" if len(fin_j) < len(partidos_j) else ""
-                        
                         gan_act.append((j_n + tag, df_res[df_res['Puntos'] == max_p]['Usuario'].tolist()))
                         perd_act.append((j_n + tag, df_res[df_res['Puntos'] == min_p]['Usuario'].tolist()))
                         lider_act.append((j_n + tag, lideres_gen))
 
-            # --- 2.5 CÁLCULO DE PUNTOS DEL SÚPER BRACKET ---
+            # --- 3. CÁLCULO SÚPER BRACKET ---
             df_b_all = leer_datos("Brackets")
             admin_b = df_b_all[df_b_all['Usuario'] == 'ADMIN']
-
-            if not admin_b.empty:
+            
+            pts_bracket_j = [] 
+            
+            if admin_b.empty:
+                # Si el ADMIN no ha guardado Bracket, lo dejamos a 0 y avisamos.
+                for u in u_jugadores:
+                    pts_bracket_j.append({"Usuario": u, "Puntos": 0.0})
+                st.info("ℹ️ El ADMIN aún no ha publicado el Bracket Oficial. Los puntos de esta fase están ocultos.")
+            else:
                 admin_row = admin_b.iloc[0]
-                pts_bracket_j = []
-                
                 for u in u_jugadores:
                     pts_b = 0.0
                     usr_b = df_b_all[df_b_all['Usuario'] == u]
-                    
                     if not usr_b.empty:
                         usr_row = usr_b.iloc[0]
-                        # 1. Puntos por Fase de Grupos
+                        
+                        # Función escudo para evitar errores de espacios o mayúsculas al comparar
+                        def check_acierto(col, pts):
+                            nonlocal pts_b
+                            if col in admin_row and col in usr_row:
+                                v_admin = str(admin_row[col]).strip().lower()
+                                v_usr = str(usr_row[col]).strip().lower()
+                                if v_admin not in ["nan", "", "none"] and v_admin == v_usr:
+                                    pts_b += pts
+
+                        # 1. Grupos (0.5 pts)
                         for g in GRUPOS_2026.keys():
-                            for pos in [1, 2, 3]:
-                                col = f"{g}_{pos}"
-                                if col in admin_row and col in usr_row:
-                                    if pd.notna(admin_row[col]) and admin_row[col] == usr_row[col]:
-                                        pts_b += 0.5
-                        # 2. Octavos (16 equipos)
-                        for i in range(16):
-                            col = f"W16_{i}"
-                            if col in admin_row and col in usr_row:
-                                if pd.notna(admin_row[col]) and admin_row[col] == usr_row[col]:
-                                    pts_b += 0.5
-                        # 3. Cuartos (8 equipos)
-                        for i in range(8):
-                            col = f"W8_{i}"
-                            if col in admin_row and col in usr_row:
-                                if pd.notna(admin_row[col]) and admin_row[col] == usr_row[col]:
-                                    pts_b += 1.0
-                        # 4. Semis (4 equipos)
-                        for i in range(4):
-                            col = f"W4_{i}"
-                            if col in admin_row and col in usr_row:
-                                if pd.notna(admin_row[col]) and admin_row[col] == usr_row[col]:
-                                    pts_b += 1.5
-                        # 5. Finalistas
-                        for i in range(2):
-                            col = f"WS_{i}"
-                            if col in admin_row and col in usr_row:
-                                if pd.notna(admin_row[col]) and admin_row[col] == usr_row[col]:
-                                    pts_b += 2.0
-                        # 6. Campeón y Tercer Puesto
-                        if 'Campeon' in admin_row and pd.notna(admin_row['Campeon']) and admin_row['Campeon'] == usr_row.get('Campeon'):
-                            pts_b += 4.0
-                        if 'TercerPuesto' in admin_row and pd.notna(admin_row['TercerPuesto']) and admin_row['TercerPuesto'] == usr_row.get('TercerPuesto'):
-                            pts_b += 1.0
-                        # 7. Premios Individuales
-                        for premio in ['Pichichi', 'Zamora', 'MVP']:
-                            if premio in admin_row and pd.notna(admin_row[premio]) and str(admin_row[premio]).strip() != "":
-                                if str(admin_row[premio]).lower().strip() == str(usr_row.get(premio, "")).lower().strip():
-                                    pts_b += 2.0
+                            for pos in [1, 2, 3]: check_acierto(f"{g}_{pos}", 0.5)
+                        # 2. Octavos (0.5)
+                        for i in range(16): check_acierto(f"W16_{i}", 0.5)
+                        # 3. Cuartos (1.0)
+                        for i in range(8): check_acierto(f"W8_{i}", 1.0)
+                        # 4. Semis (1.5)
+                        for i in range(4): check_acierto(f"W4_{i}", 1.5)
+                        # 5. Finalistas (2.0)
+                        for i in range(2): check_acierto(f"WS_{i}", 2.0)
+                        # 6. Campeón (4.0) y Tercero (1.0)
+                        check_acierto("Campeon", 4.0)
+                        check_acierto("TercerPuesto", 1.0)
+                        # 7. Premios Individuales (2.0)
+                        check_acierto("Pichichi", 2.0)
+                        check_acierto("Zamora", 2.0)
+                        check_acierto("MVP", 2.0)
                                     
                     pts_bracket_j.append({"Usuario": u, "Puntos": pts_b})
-                    pts_acumulados[u] += pts_b # ¡Sumamos al acumulado general!
+                    pts_acumulados[u] += pts_b
 
-                # Añadimos los resultados del Bracket como si fuera una jornada más
+                # Añadir los resultados del Bracket al Acta Histórica
                 df_res_b = pd.DataFrame(pts_bracket_j)
                 max_p_b, min_p_b = df_res_b['Puntos'].max(), df_res_b['Puntos'].min()
-                
                 max_general_b = max(pts_acumulados.values())
                 lideres_gen_b = [u for u, p in pts_acumulados.items() if p == max_general_b]
                 
-                # Determinamos si el Bracket está "En curso" o terminado (si el Admin ya ha puesto al Campeón)
-                es_bracket_terminado = 'Campeon' in admin_row and pd.notna(admin_row['Campeon']) and str(admin_row['Campeon']).strip() != ""
+                es_bracket_terminado = 'Campeon' in admin_row and str(admin_row['Campeon']).strip().lower() not in ["nan", "", "none"]
                 tag_b = "" if es_bracket_terminado else " (En curso ⏳)"
                 
                 gan_act.append(("Súper Bracket" + tag_b, df_res_b[df_res_b['Puntos'] == max_p_b]['Usuario'].tolist()))
                 perd_act.append(("Súper Bracket" + tag_b, df_res_b[df_res_b['Puntos'] == min_p_b]['Usuario'].tolist()))
                 lider_act.append(("Súper Bracket" + tag_b, lideres_gen_b))
 
+
+            # --- NUEVA: TABLA VISUAL DE CLASIFICACIÓN GENERAL ---
+            st.subheader("🏆 Clasificación General Oficial")
+            datos_tabla = []
+            for u in u_jugadores:
+                p_total = pts_acumulados[u]
+                p_bracket = next((item["Puntos"] for item in pts_bracket_j if item["Usuario"] == u), 0.0)
+                p_partidos = p_total - p_bracket
+                
+                datos_tabla.append({
+                    "Usuario": u,
+                    "⚽ Puntos Partidos": p_partidos,
+                    "🌳 Puntos Bracket": p_bracket,
+                    "🌟 TOTAL": p_total
+                })
+                
+            df_clasificacion = pd.DataFrame(datos_tabla).sort_values("🌟 TOTAL", ascending=False)
+            st.dataframe(
+                df_clasificacion.style.format({"⚽ Puntos Partidos": "{:.1f}", "🌳 Puntos Bracket": "{:.1f}", "🌟 TOTAL": "{:.1f}"})
+                .highlight_max(subset="🌟 TOTAL", color="#dcfce7", axis=0),
+                use_container_width=True, hide_index=True
+            )
+
+            st.divider()
 
             # --- 🥇 SECCIÓN GANADORES (MEDALLAS POR FASE) ---
             st.subheader("🥇 Héroes del Mundial (Ganadores de Fase)")
@@ -2306,9 +2311,9 @@ else:
                             <b style="color:#000; font-size:0.85em;">🏆 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#000;">{int(r['V'])}</span><br><small style="color:#000; font-weight:bold;">MEDALLAS</small></div>""", unsafe_allow_html=True)
             else:
                 st.info("Esperando al final de la primera fase para repartir medallas.")
-    
+
             st.divider()
-    
+
             # --- 👑 SECCIÓN LÍDERES (TRONO DEL MUNDIAL) ---
             st.subheader("👑 El Trono del Mundial (Líderes Generales)")
             st.caption("Quién ha mandado en la clasificación acumulada en cada etapa.")
@@ -2323,9 +2328,9 @@ else:
                     with c_l[i % 4]:
                         st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border:2px solid #0ea5e9; margin-bottom:10px;">
                             <b style="color:#0369a1; font-size:0.85em;">👑 {r['U']}</b><br><span style="font-size:1.8em; font-weight:900; color:#0369a1;">{int(r['V'])}</span><br><small style="color:#0369a1; font-weight:bold;">FASES LÍDER</small></div>""", unsafe_allow_html=True)
-    
+
             st.divider()
-    
+
             # --- 🦎 SECCIÓN PERDEDORES: EL LAGARTO MUNDIALISTA ---
             st.subheader("🦎 El Lagarto del Mundial")
             count_p = {}
@@ -2341,7 +2346,7 @@ else:
                     with c_p[i % 4]:
                         st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#f0fff0; border:2px solid {st_color}; margin-bottom:10px;">
                             <b style="color:#333; font-size:0.85em;">🦎 {r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:{st_color};">{int(r['V'])}</span><br><small style="color:{st_color}; font-weight:bold;">LAGARTOS</small></div>""", unsafe_allow_html=True)
-    
+
             # --- 📅 ACTA HISTÓRICA DEL MUNDIAL ---
             st.divider()
             st.subheader("📅 Acta de Guerra: Resultados por Fase")
