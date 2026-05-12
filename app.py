@@ -648,16 +648,16 @@ JORNADAS = {
         ("Colombia", "Portugal"), ("Congo", "Uzbekistán"),
         ("Argelia", "Austria"), ("Jordania", "Argentina")
     ],
- "Dieciseisavos": [
-        ("México", "Qatar"), ("Curaçao", "Turquía"),
-        ("Túnez", "Marruecos"), ("Haití", "Países Bajos"),
-        ("Senegal", "Suecia"), ("Costa de Marfil", "Iraq"),
-        ("Sudáfrica", "España"), ("Croacia", "Ecuador"),
-        ("Paraguay", "Canadá"), ("Irán", "Corea del Sur"),
-        ("Uzbekistán", "Ghana"), ("Cabo Verde", "Jordania"),
-        ("Bosnia Herzegovina", "Austria"), ("Argelia", "Arabia Saudí"),
-        ("Congo", "Panamá"), ("Australia", "Bélgica")
-    ]
+    "Dieciseisavos": [
+           ("México", "Qatar"), ("Curaçao", "Turquía"),
+           ("Túnez", "Marruecos"), ("Haití", "Países Bajos"),
+           ("Senegal", "Suecia"), ("Costa de Marfil", "Iraq"),
+           ("Sudáfrica", "España"), ("Croacia", "Ecuador"),
+           ("Paraguay", "Canadá"), ("Irán", "Corea del Sur"),
+           ("Uzbekistán", "Ghana"), ("Cabo Verde", "Jordania"),
+           ("Bosnia Herzegovina", "Austria"), ("Argelia", "Arabia Saudí"),
+           ("Congo", "Panamá"), ("Australia", "Bélgica")
+       ]
  
 }
 
