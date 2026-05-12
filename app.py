@@ -2220,39 +2220,40 @@ else:
                 st.info("ℹ️ El ADMIN aún no ha publicado el Bracket Oficial. Los puntos de esta fase están ocultos.")
             else:
                 admin_row = admin_b.iloc[0]
+                
+                # Función escudo (reparada, sin nonlocal)
+                def calcular_acierto(col, pts, f_admin, f_usr):
+                    if col in f_admin and col in f_usr:
+                        v_admin = str(f_admin[col]).strip().lower()
+                        v_usr = str(f_usr[col]).strip().lower()
+                        if v_admin not in ["nan", "", "none"] and v_admin == v_usr:
+                            return pts
+                    return 0.0
+
                 for u in u_jugadores:
                     pts_b = 0.0
                     usr_b = df_b_all[df_b_all['Usuario'] == u]
                     if not usr_b.empty:
                         usr_row = usr_b.iloc[0]
-                        
-                        # Función escudo para evitar errores de espacios o mayúsculas al comparar
-                        def check_acierto(col, pts):
-                            nonlocal pts_b
-                            if col in admin_row and col in usr_row:
-                                v_admin = str(admin_row[col]).strip().lower()
-                                v_usr = str(usr_row[col]).strip().lower()
-                                if v_admin not in ["nan", "", "none"] and v_admin == v_usr:
-                                    pts_b += pts
 
                         # 1. Grupos (0.5 pts)
                         for g in GRUPOS_2026.keys():
-                            for pos in [1, 2, 3]: check_acierto(f"{g}_{pos}", 0.5)
+                            for pos in [1, 2, 3]: pts_b += calcular_acierto(f"{g}_{pos}", 0.5, admin_row, usr_row)
                         # 2. Octavos (0.5)
-                        for i in range(16): check_acierto(f"W16_{i}", 0.5)
+                        for i in range(16): pts_b += calcular_acierto(f"W16_{i}", 0.5, admin_row, usr_row)
                         # 3. Cuartos (1.0)
-                        for i in range(8): check_acierto(f"W8_{i}", 1.0)
+                        for i in range(8): pts_b += calcular_acierto(f"W8_{i}", 1.0, admin_row, usr_row)
                         # 4. Semis (1.5)
-                        for i in range(4): check_acierto(f"W4_{i}", 1.5)
+                        for i in range(4): pts_b += calcular_acierto(f"W4_{i}", 1.5, admin_row, usr_row)
                         # 5. Finalistas (2.0)
-                        for i in range(2): check_acierto(f"WS_{i}", 2.0)
+                        for i in range(2): pts_b += calcular_acierto(f"WS_{i}", 2.0, admin_row, usr_row)
                         # 6. Campeón (4.0) y Tercero (1.0)
-                        check_acierto("Campeon", 4.0)
-                        check_acierto("TercerPuesto", 1.0)
+                        pts_b += calcular_acierto("Campeon", 4.0, admin_row, usr_row)
+                        pts_b += calcular_acierto("TercerPuesto", 1.0, admin_row, usr_row)
                         # 7. Premios Individuales (2.0)
-                        check_acierto("Pichichi", 2.0)
-                        check_acierto("Zamora", 2.0)
-                        check_acierto("MVP", 2.0)
+                        pts_b += calcular_acierto("Pichichi", 2.0, admin_row, usr_row)
+                        pts_b += calcular_acierto("Zamora", 2.0, admin_row, usr_row)
+                        pts_b += calcular_acierto("MVP", 2.0, admin_row, usr_row)
                                     
                     pts_bracket_j.append({"Usuario": u, "Puntos": pts_b})
                     pts_acumulados[u] += pts_b
