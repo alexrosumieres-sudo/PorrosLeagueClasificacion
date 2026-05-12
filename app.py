@@ -1385,7 +1385,7 @@ else:
     stats_hero = []
     df_b_all = leer_datos("Brackets") # Cargamos los brackets
     # El bracket real es el que rellena el ADMIN
-    admin_b = df_b_all[df_b_all['Usuario'] == "ADMIN"] 
+    admin_b = df_b_all[df_b_all['Usuario'].str.upper() == 'ADMIN']
     r_bracket = admin_b.iloc[0] if not admin_b.empty else None
 
     for u in u_jugadores:
