@@ -941,36 +941,38 @@ def get_logo(equipo):
     if path and os.path.exists(path): return path
     return None
 
-def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo="Normal", p_pasa=None, r_pasa=None, hubo_prorroga=False):
-    """
-    p_l, p_v: Predicción marcador 90'
-    r_l, r_v: Resultado real 90'
-    p_pasa: Equipo que el usuario dijo que pasaba
-    r_pasa: Equipo que pasó realmente
-    hubo_prorroga: Booleano que indica si el partido terminó en empate tras los 90'
-    """
-    puntos_totales = 0.0
-    config = SCORING_WC.get(tipo, SCORING_WC["Normal"])
+def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=None, hubo_prorroga=False):
+    # 1. ESCUDO: Forzamos a que todo sea número. Si hay un nulo o texto, devolvemos 0.
+    try:
+        p_l = int(float(p_l))
+        p_v = int(float(p_v))
+        r_l = int(float(r_l))
+        r_v = int(float(r_v))
+    except (ValueError, TypeError):
+        return 0.0
+
+    puntos = 0.0
     
-    # 1. PUNTUACIÓN 90 MINUTOS (Misma lógica de siempre)
+    # 2. Lógica de Puntos Normal
+    signo_p = (p_l > p_v) - (p_l < p_v)
+    signo_r = (r_l > r_v) - (r_l < r_v)
+    
     if p_l == r_l and p_v == r_v:
-        puntos_totales += config["exacto"]
-    else:
-        signo_p = (p_l > p_v) - (p_l < p_v)
-        signo_r = (r_l > r_v) - (r_l < r_v)
-        if signo_p == signo_r:
-            if (p_l - p_v) == (r_l - r_v):
-                puntos_totales += config["diff"]
-            else:
-                puntos_totales += config["signo"]
-                
-    # 2. LÓGICA DE ELIMINATORIAS (EL EXTRA)
-    # Solo sumamos si hubo prórroga/penaltis y el usuario acertó quién clasifica
-    if hubo_prorroga and p_pasa and r_pasa:
-        if p_pasa == r_pasa:
-            puntos_totales += config["pasa"]
+        puntos += 1.0  # Pleno (Resultado exacto)
+    elif signo_p == signo_r:
+        if signo_p != 0 and (p_l - p_v == r_l - r_v):
+            puntos += 0.75 # Diferencia de goles exacta
+        else:
+            puntos += 0.5  # Acierto de signo (1X2)
             
-    return puntos_totales
+    # 3. Lógica para partidos de Eliminatoria (Quien pasa de ronda)
+    if tipo_partido in ["Octavos", "Cuartos", "Semis", "Final"]:
+        # Si hubo prórroga/penaltis y el usuario acertó quién pasaba
+        if p_pasa and r_pasa and p_pasa != "Ninguno" and r_pasa != "Ninguno":
+            if p_pasa == r_pasa:
+                puntos += 0.5
+                
+    return puntos
 
 def calcular_puntos_bracket(user_bracket, real_bracket):
     """
