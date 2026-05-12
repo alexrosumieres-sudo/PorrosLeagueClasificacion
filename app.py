@@ -657,7 +657,13 @@ JORNADAS = {
            ("Uzbekistán", "Ghana"), ("Cabo Verde", "Jordania"),
            ("Bosnia Herzegovina", "Austria"), ("Argelia", "Arabia Saudí"),
            ("Congo", "Panamá"), ("Australia", "Bélgica")
-       ]
+       ],
+    "Octavos": [
+        ("Curaçao", "Senegal"), ("Qatar", "Marruecos"),
+        ("Haití", "Iraq"), ("España", "Ecuador"),
+        ("Ghana", "Cabo Verde"), ("Canadá", "Irán"),
+        ("Argelia", "Australia"), ("Austria", "Congo")
+    ]
  
 }
 
