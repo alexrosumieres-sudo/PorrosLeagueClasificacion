@@ -2387,6 +2387,64 @@ else:
                         color_continuous_scale="Viridis", text_auto=True, nbinsx=6, nbinsy=6
                     )
                     st.plotly_chart(fig_heat, use_container_width=True)
+            # --- NUEVO: ORIGEN DE LOS PUNTOS ---
+                # 1. Calculamos los puntos puros de los partidos
+                pts_partidos = df_m_usuario['Pts'].sum()
+                
+                # 2. Rescatamos los puntos del bracket
+                # OJO: Aquí debes usar la variable o función que ya tengas en tu código 
+                # para calcular los puntos del bracket de este usuario (u_sel). 
+                # Te lo dejo como "pts_bracket", cámbialo por tu variable real.
+                pts_bracket = 0 # <-- SUSTITUYE ESTO por tu cálculo de bracket
+                
+                pts_totales = pts_partidos + pts_bracket
+
+                if pts_totales > 0:
+                    st.write("") # Espaciador
+                    st.markdown("#### 🧬 Origen del ADN de Puntos")
+                    
+                    # Calculamos porcentajes para que quede más pro
+                    pct_partidos = (pts_partidos / pts_totales) * 100
+                    pct_bracket = (pts_bracket / pts_totales) * 100
+                    
+                    # Gráfico de barra horizontal apilada con Plotly
+                    import plotly.graph_objects as go
+                    fig_origen = go.Figure()
+                    
+                    fig_origen.add_trace(go.Bar(
+                        y=['Puntos'], x=[pts_partidos],
+                        name=f'Partidos ({pct_partidos:.1f}%)',
+                        orientation='h',
+                        marker=dict(color='#3b82f6', line=dict(color='white', width=1)),
+                        text=f"Partidos: {pts_partidos} pts",
+                        textposition='inside',
+                        insidetextanchor='middle'
+                    ))
+                    
+                    fig_origen.add_trace(go.Bar(
+                        y=['Puntos'], x=[pts_bracket],
+                        name=f'Bracket ({pct_bracket:.1f}%)',
+                        orientation='h',
+                        marker=dict(color='#8b5cf6', line=dict(color='white', width=1)),
+                        text=f"Bracket: {pts_bracket} pts",
+                        textposition='inside',
+                        insidetextanchor='middle'
+                    ))
+                    
+                    fig_origen.update_layout(
+                        barmode='stack',
+                        height=120, # Muy bajito, tipo barra de progreso
+                        margin=dict(l=0, r=0, t=0, b=0),
+                        xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+                        yaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        showlegend=True,
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5)
+                    )
+                    
+                    st.plotly_chart(fig_origen, use_container_width=True)
+                # -----------------------------------
             else:
                 st.info("Este jugador aún no tiene partidos finalizados para analizar.")
 
