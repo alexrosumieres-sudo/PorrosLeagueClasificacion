@@ -667,6 +667,12 @@ JORNADAS = {
     "Cuartos": [
         ("Curaçao", "Marruecos"), ("Cabo Verde", "Irán"),
         ("Haití", "Ecuador"), ("Argelia", "Austria")
+    ],
+    "Semis": [
+        ("Marruecos", "Cabo Verde"), ("Haití", "Congo")
+    ],
+    "Final": [
+        ("Marruecos", "Haití"), ("Cabo Verde", "Congo")
     ]
  
 }
