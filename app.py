@@ -1679,11 +1679,6 @@ else:
                 st.rerun()
 
     with tabs[1]: # --- 🌳 PESTAÑA SUPER BRACKET (MUNDIAL 2026) ---
-        if st.session_state.rol == "admin":
-            st.warning("🛡️ Acceso restringido: Los administradores no participan en el Súper Bracket.")
-            st.info("Tu función es supervisar el torneo y aplicar justicia desde el VAR.")
-            st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
-        else: # <--- ESTE ELSE FALTABA
             st.header("🌳 El Súper Bracket del Mundial")
             st.caption("Define las posiciones de los grupos, los mejores terceros y el camino a la gloria.")
 
