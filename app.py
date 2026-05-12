@@ -663,6 +663,10 @@ JORNADAS = {
         ("Haití", "Iraq"), ("España", "Ecuador"),
         ("Ghana", "Cabo Verde"), ("Canadá", "Irán"),
         ("Argelia", "Australia"), ("Austria", "Congo")
+    ],
+    "Cuartos": [
+        ("Curaçao", "Marruecos"), ("Cabo Verde", "Irán"),
+        ("Haití", "Ecuador"), ("Argelia", "Austria")
     ]
  
 }
