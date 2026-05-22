@@ -647,35 +647,7 @@ JORNADAS = {
         ("Croacia", "Ghana"), ("Panamá", "Inglaterra"),
         ("Colombia", "Portugal"), ("Congo", "Uzbekistán"),
         ("Argelia", "Austria"), ("Jordania", "Argentina")
-    ],
-    "Dieciseisavos": [
-           ("México", "Qatar"), ("Curaçao", "Turquía"),
-           ("Túnez", "Marruecos"), ("Haití", "Países Bajos"),
-           ("Senegal", "Suecia"), ("Costa de Marfil", "Iraq"),
-           ("Sudáfrica", "España"), ("Croacia", "Ecuador"),
-           ("Paraguay", "Canadá"), ("Irán", "Corea del Sur"),
-           ("Uzbekistán", "Ghana"), ("Cabo Verde", "Jordania"),
-           ("Bosnia Herzegovina", "Austria"), ("Argelia", "Arabia Saudí"),
-           ("Congo", "Panamá"), ("Australia", "Bélgica")
-       ],
-    "Octavos": [
-        ("Curaçao", "Senegal"), ("Qatar", "Marruecos"),
-        ("Haití", "Iraq"), ("España", "Ecuador"),
-        ("Ghana", "Cabo Verde"), ("Canadá", "Irán"),
-        ("Argelia", "Australia"), ("Austria", "Congo")
-    ],
-    "Cuartos": [
-        ("Curaçao", "Marruecos"), ("Cabo Verde", "Irán"),
-        ("Haití", "Ecuador"), ("Argelia", "Austria")
-    ],
-    "Semis": [
-        ("Marruecos", "Cabo Verde"), ("Haití", "Congo")
-    ],
-    "Final": [
-        ("Marruecos", "Haití"), ("Cabo Verde", "Congo")
-    ]
- 
-}
+    ]}
 
 LOGOS = {
     # Grupo A
