@@ -1521,7 +1521,7 @@ else:
     tabs = st.tabs([
     "✍️ Apuestas", 
     "🌳 Bracket",      # <--- NUEVA: Para rellenar el cuadro
-    "👀 Otros", 
+    "👀 La Grada", 
     "📊 Clasificación", 
     "🏅 Palmarés", 
     "📈 Stats PRO", 
@@ -1898,7 +1898,7 @@ else:
                                 st.error(f"Error al guardar: {e}")
 
     
-    with tabs[2]: # --- 🔮 PESTAÑA OTROS (TENDENCIAS + REVELACIONES) ---
+    with tabs[2]: # --- 🔮 PESTAÑA LA GRADA (TENDENCIAS + REVELACIONES) ---
         st.header("👀 Qué han puesto los demás")
         ahora = get_now_madrid()
         
