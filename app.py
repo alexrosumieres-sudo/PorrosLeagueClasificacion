@@ -1618,24 +1618,38 @@ else:
                         dl = int(match_data.iloc[0]['P_L'])
                         dv = int(match_data.iloc[0]['P_V'])
                         dp = match_data.iloc[0]['Publica']
-                        d_pasa = match_data.iloc[0].get('P_Pasa', loc) # Si no existe, por defecto Local
+                        d_pasa = match_data.iloc[0].get('P_Pasa', loc)
                 
-                # Lógica de Bloqueo por tiempo
-                res_info = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
+                # Lógica de Bloqueo por tiempo y rescate de Tipo de Partido
+                res_info = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == m_id)]
                 lock = False
                 hora_partido = ""
+                tipo_partido = "Normal" # Por defecto
+                
                 if not res_info.empty:
                     hora_partido = res_info.iloc[0]['Hora_Inicio']
+                    tipo_partido = res_info.iloc[0]['Tipo']
                     lock = get_now_madrid() > datetime.datetime.strptime(str(hora_partido), "%Y-%m-%d %H:%M:%S")
 
                 # --- RENDER DE LA TARJETA ---
                 card_class = "bet-card-locked" if lock else "bet-card"
                 st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
                 
-                # Si es eliminatoria, ponemos un aviso
-                if es_ronda_ko:
-                    st.markdown('<span class="ko-tag">PARTIDO DE ELIMINACIÓN</span>', unsafe_allow_html=True)
+                # --- NUEVA SEÑALIZACIÓN DINÁMICA DE PARTIDO ESQUIZO ---
+                col_tags1, col_tags2 = st.columns([3, 1])
+                with col_tags1:
+                    if tipo_partido == "Esquizo":
+                        st.markdown('<span class="ko-tag" style="background:#fef3c7; color:#d97706; border: 1px solid #f59e0b;">🔥 PARTIDO ESQUIZO (PUNTUACIÓN TRIPLE)</span>', unsafe_allow_html=True)
+                    elif tipo_partido == "Doble":
+                        st.markdown('<span class="ko-tag" style="background:#e0f2fe; color:#0369a1; border: 1px solid #0ea5e9;">🔄 PARTIDO DOBLE</span>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('<span class="ko-tag" style="background:#f0fdf4; color:#16a34a; border: 1px solid #22c55e;">⚽ Partido Normal</span>', unsafe_allow_html=True)
+                
+                with col_tags2:
+                    if es_ronda_ko:
+                        st.markdown('<span class="ko-tag" style="float:right;">🛑 ELIMINATORIA</span>', unsafe_allow_html=True)
 
+                # Cuerpo de la tarjeta de apuestas
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 1, 2, 1, 1.5])
                 
                 with c1: # Escudo Local
@@ -1667,7 +1681,7 @@ else:
                     st.markdown("<p style='font-size:0.7em; text-align:center; font-weight:bold;'>👁️ PÚBLICA</p>", unsafe_allow_html=True)
                     pub = st.checkbox("Ver", dp=="SI", key=f"pb_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
                 
-                # --- [NUEVA FILA PARA RONDAS KO: ¿QUIÉN PASA?] ---
+                # --- [FILA RONDAS KO] ---
                 pasa_res = None
                 if es_ronda_ko:
                     st.markdown("<br>", unsafe_allow_html=True)
@@ -1676,7 +1690,6 @@ else:
                         st.markdown("<p style='font-size:0.85em; font-weight:bold; margin-top:10px;'>🏆 ¿Quién clasifica?</p>", unsafe_allow_html=True)
                         st.caption("Solo cuenta si hay empate tras 90'.")
                     with col_pasa2:
-                        # Buscamos el índice del equipo guardado para el selectbox
                         lista_equipos = [loc, vis]
                         idx_defecto = lista_equipos.index(d_pasa) if d_pasa in lista_equipos else 0
                         pasa_res = st.selectbox("Selecciona equipo", lista_equipos, index=idx_defecto, key=f"pasa_{i}_{j_global}", disabled=lock, label_visibility="collapsed")
