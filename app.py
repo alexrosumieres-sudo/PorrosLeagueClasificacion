@@ -1548,6 +1548,28 @@ else:
             st.info("Tu función es supervisar el Mundial y actualizar los resultados desde la pestaña **⚙️ Admin**.")
             st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
         else:
+            # --- ZONA DE EXPLICACIÓN DE PUNTUACIÓN ---
+            with st.container():
+                st.markdown("""
+                <div class="rules-box">
+                    <h5 style='margin-top:0; color:#1e3a8a;'>💡 ¿Cómo puntúa esta jornada?</h5>
+                    <ul style='font-size:0.9em; margin-bottom:5px; color:#334155;'>
+                        <li>🎯 <b>+1.00 pto</b> - <b>Resultado Exacto:</b> Clavas el marcador final a los 90' minutos.</li>
+                        <li>📐 <b>+0.75 pts</b> - <b>Diferencia de Goles:</b> Acertaste el ganador y la diferencia exacta (Ej: pusiste 2-0 y quedó 3-1).</li>
+                        <li>⚖️ <b>+0.50 pts</b> - <b>Signo (1X2):</b> Acertaste quién gana o si empatan, pero no la diferencia ni los goles exactos.</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if any(x in j_global for x in ["Dieciseisavos", "Octavos", "Cuartos", "Semis", "Final"]):
+                    st.markdown("""
+                    <div class="rules-box" style="border-left-color: #ef4444; background-color: #fffafb;">
+                        <small style="color:#b91c1c; font-weight:bold; text-transform:uppercase;">⚠️ Regla Especial de Eliminatorias</small><br>
+                        <span style='font-size:0.85em; color:#7f1d1d;'>
+                            El marcador principal cuenta para los <b>90' reglamentarios</b>. Si el partido va a la prórroga (empate), se activará el casillero <b>"¿Quién clasifica?"</b>. Si aciertas la selección que avanza de ronda, sumarás un bonus de <b>+0.50 pts adicionales</b>.
+                        </span>
+                    </div>
+                    """, unsafe_allow_html=True)
             # Recuperar predicciones actuales del usuario
             u_preds = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
             
@@ -1680,7 +1702,24 @@ else:
     with tabs[1]: # --- 🌳 PESTAÑA SUPER BRACKET (MUNDIAL 2026) ---
             st.header("🌳 El Súper Bracket del Mundial")
             st.caption("Define las posiciones de los grupos, los mejores terceros y el camino a la gloria.")
-
+            # --- ZONA DE EXPLICACIÓN DE PUNTUACIÓN DEL BRACKET ---
+            with st.expander("📊 📜 Ver Reglamento de Puntos del Súper Bracket", expanded=False):
+                st.markdown("""
+                A diferencia de la porra diaria, el Súper Bracket premia la **supervivencia** de tus equipos seleccionados y los cruces exactos:
+                
+                | Hito o Fase Alcanzada | Puntos por Acierto |
+                | :--- | :--- |
+                | 🏁 **Clasificados de Grupo** (1º y 2º puesto) | **+0.50 pts** por equipo exacto |
+                | 🎯 **Elegir Mejor Tercero** clasificado | **+0.50 pts** por equipo acertado |
+                | 🛡️ **Avance a Octavos de Final** | **+0.50 pts** por equipo que metes en la fase |
+                | 📊 **Avance a Cuartos de Final** | **+1.00 pto** por equipo que metes en la fase |
+                | ⚔️ **Avance a Semifinales** | **+1.50 pts** por equipo que metes en la fase |
+                | 🥇 **Avance a la Gran Final** | **+2.00 pts** por equipo que metes en la fase |
+                | 🏆 **Acertar Campeón del Mundo** | **+4.00 pts** |
+                
+                **🔥 Bonus Extra por Cruces Exactos:**
+                Si clavas los dos equipos que se enfrentan en una llave (sin importar el orden de local/visitante), te llevas un bonus adicional: **+0.50 pts** en 16vos, **+1.00 pto** en 8vos y 4tos, y **+2.00 pts** en la Final.
+                """)
             FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
             mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
             
@@ -1901,6 +1940,12 @@ else:
     with tabs[2]: # --- 🔮 PESTAÑA LA GRADA (TENDENCIAS + REVELACIONES) ---
         st.header("👀 Qué han puesto los demás")
         ahora = get_now_madrid()
+        # --- ZONA DE EXPLICACIÓN DE REVELACIONES Y LOGS ---
+        st.info("""
+        ℹ️ **¿Cómo se calculan las puntuaciones visibles en las revelaciones?**
+        Los marcadores desplegados a continuación se evalúan de forma automática en cuanto el **Administrador** cierra el partido como finalizado. 
+        Las celdas de puntos otorgarán **1.00**, **0.75** o **0.50** basándose en la precisión exacta de goles y signo al término del tiempo reglamentario de la porra.
+        """)
         
         # Detectamos si es ronda de eliminación (KO)
         es_ronda_ko = any(x in j_global for x in ["Dieciseisavos", "Octavos", "Cuartos", "Semis", "Final"])
