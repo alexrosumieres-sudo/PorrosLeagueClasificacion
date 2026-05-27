@@ -1550,23 +1550,39 @@ else:
         else:
             # --- ZONA DE EXPLICACIÓN DE PUNTUACIÓN ---
             with st.container():
-                st.markdown("""
-                <div class="rules-box">
-                    <h5 style='margin-top:0; color:#1e3a8a;'>💡 ¿Cómo puntúa esta jornada?</h5>
-                    <ul style='font-size:0.9em; margin-bottom:5px; color:#334155;'>
-                        <li>🎯 <b>+1.00 pto</b> - <b>Resultado Exacto:</b> Clavas el marcador final a los 90' minutos.</li>
-                        <li>📐 <b>+0.75 pts</b> - <b>Diferencia de Goles:</b> Acertaste el ganador y la diferencia exacta (Ej: pusiste 2-0 y quedó 3-1).</li>
-                        <li>⚖️ <b>+0.50 pts</b> - <b>Signo (1X2):</b> Acertaste quién gana o si empatan, pero no la diferencia ni los goles exactos.</li>
-                    </ul>
-                </div>
-                """, unsafe_allow_html=True)
+                col_rules1, col_rules2 = st.columns(2)
+                
+                with col_rules1:
+                    st.markdown("""
+                    <div class="rules-box">
+                        <h5 style='margin-top:0; color:#1e3a8a;'>🟢 Partidos Normales</h5>
+                        <ul style='font-size:0.9em; margin-bottom:5px; color:#334155; padding-left:20px;'>
+                            <li>💯 <b>+1.00 pto</b> - <b>Resultado Exacto:</b> Clavas el marcador.</li>
+                            <li>📐 <b>+0.75 pts</b> - <b>Diferencia de Goles:</b> Aciertas ganador y diferencia.</li>
+                            <li>⚖️ <b>+0.50 pts</b> - <b>Signo (1X2):</b> Aciertas quién gana o empata.</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_rules2:
+                    st.markdown("""
+                    <div class="esquizo-box">
+                        <h5 style='margin-top:0; color:#92400e;'>🔥 Partidos Esquizos (¡Puntuación Doble!)</h5>
+                        <p style='font-size:0.85em; color:#78350f; margin-bottom:8px;'>¡Cuidado con estos! Hay pocos por jornada y pueden cambiarlo todo:</p>
+                        <ul style='font-size:0.9em; margin-bottom:5px; color:#78350f; padding-left:20px;'>
+                            <li>💯 <b>+3.00 pts</b> - <b>Resultado Exacto.</b></li>
+                            <li>📐 <b>+1.50 pts</b> - <b>Diferencia de Goles.</b></li>
+                            <li>⚖️ <b>+1.00 pto</b> - <b>Signo (1X2).</b></li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 if any(x in j_global for x in ["Dieciseisavos", "Octavos", "Cuartos", "Semis", "Final"]):
                     st.markdown("""
                     <div class="rules-box" style="border-left-color: #ef4444; background-color: #fffafb;">
                         <small style="color:#b91c1c; font-weight:bold; text-transform:uppercase;">⚠️ Regla Especial de Eliminatorias</small><br>
                         <span style='font-size:0.85em; color:#7f1d1d;'>
-                            El marcador principal cuenta para los <b>90' reglamentarios</b>. Si el partido va a la prórroga (empate), se activará el casillero <b>"¿Quién clasifica?"</b>. Si aciertas la selección que avanza de ronda, sumarás un bonus de <b>+0.50 pts adicionales</b>.
+                            El marcador cuenta para los <b>90' reglamentarios</b>. Si el partido va a la prórroga, el bonus por acertar <b>"¿Quién clasifica?"</b> te dará <b>+0.50 pts</b> en partidos Normales y <b>+1.00 pto</b> si el partido está marcado como <b>Esquizo</b>.
                         </span>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1943,8 +1959,9 @@ else:
         # --- ZONA DE EXPLICACIÓN DE REVELACIONES Y LOGS ---
         st.info("""
         ℹ️ **¿Cómo se calculan las puntuaciones visibles en las revelaciones?**
-        Los marcadores desplegados a continuación se evalúan de forma automática en cuanto el **Administrador** cierra el partido como finalizado. 
-        Las celdas de puntos otorgarán **1.00**, **0.75** o **0.50** basándose en la precisión exacta de goles y signo al término del tiempo reglamentario de la porra.
+        Los marcadores desplegados a continuación se evalúan automáticamente cuando el Administrador cierra el acta. 
+        
+        Si el partido es **Esquizo**, verás que los aciertos sumarán el triple en plenos (**3.00 pts**), el doble en signos (**1.00 pto**) o diferencia (**1.50 pts**). ¡Fíjate bien en el tipo de partido en cada tarjeta expandible!
         """)
         
         # Detectamos si es ronda de eliminación (KO)
