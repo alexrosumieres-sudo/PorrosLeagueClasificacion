@@ -1729,6 +1729,92 @@ else:
                 st.rerun()
 
     with tabs[1]: # --- 🌳 PESTAÑA SUPER BRACKET (MUNDIAL 2026) ---
+            st.markdown("## 📊 El Termómetro de Afinidades")
+        st.caption("¿Quién copia a quién? Analizamos la similitud exacta de los pronósticos de esta jornada (mismos goles apostados).")
+
+        preds_j_sim = df_p_all[df_p_all['Jornada'] == j_global]
+
+        if not preds_j_sim.empty and len(u_jugadores) > 1:
+            # 1. Construir matriz de predicciones para la jornada actual
+            # Creamos un string único 'G_L-G_V' por partido para cada usuario
+            preds_j_sim['Pred_String'] = preds_j_sim['P_L'].astype(int).astype(str) + "-" + preds_j_sim['P_V'].astype(int).astype(str)
+            
+            # Pivotamos para tener los partidos como índice y los usuarios como columnas
+            df_pivot = preds_j_sim.pivot(index='Partido', columns='Usuario', values='Pred_String')
+            df_pivot = df_pivot.fillna("N/A") # Por si alguien no rellenó algún partido
+
+            pares_similitud = []
+            # Iteramos por todas las combinaciones posibles de dos jugadores (sin repetir)
+            for u1, u2 in itertools.combinations(u_jugadores, 2):
+                if u1 in df_pivot.columns and u2 in df_pivot.columns:
+                    # Contamos en cuántos partidos han puesto exactamente el mismo marcador
+                    coincidencias = np.sum(df_pivot[u1] == df_pivot[u2])
+                    total_partidos = len(JORNADAS[j_global])
+                    porcentaje_sim = (coincidencias / total_partidos) * 100
+                    
+                    pares_similitud.append({
+                        "Jugador 1": u1,
+                        "Jugador 2": u2,
+                        "Porcentaje": porcentaje_sim,
+                        "Coincidencias": coincidencias,
+                        "Total": total_partidos
+                    })
+
+            if pares_similitud:
+                df_sim_pares = pd.DataFrame(pares_similitud)
+                
+                # Obtener Top 5 mayores similitudes (Afinidades) y menores (Rivalidades)
+                # Eliminamos duplicados de porcentaje idénticos si los hubiera para limpiar el top
+                top_afinidades = df_sim_pares.sort_values(by="Porcentaje", ascending=False).head(5)
+                top_rivalidades = df_sim_pares.sort_values(by="Porcentaje", ascending=True).head(5)
+
+                col_izq_sim, col_der_sim = st.columns(2)
+
+                # --- COLUMNA IZQUIERDA: ALMAS GEMELAS ---
+                with col_izq_sim:
+                    st.markdown("### 🤝 Almas Gemelas (Mayor Similitud)")
+                    st.caption("Mismo adn futbolístico... o estrategias sospechosamente clonadas.")
+                    for _, fila in top_afinidades.iterrows():
+                        pct = fila['Porcentaje']
+                        # Color dinámico: verde intenso si se parecen mucho
+                        color_alert = "#d1e7dd" if pct > 50 else "#f8f9fa"
+                        border_alert = "#a3cfbb" if pct > 50 else "#e2e8f0"
+                        
+                        st.markdown(f"""
+                            <div style="background:{color_alert}; padding:10px; border-radius:10px; border:1px solid {border_alert}; margin-bottom:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-weight:bold; color:#1e293b;">{fila['Jugador 1']} 🔄 {fila['Jugador 2']}</span>
+                                    <span style="font-size:1.1em; font-weight:800; color:#14532d;">{pct:.0f}%</span>
+                                </div>
+                                <small style="color:#475569;">Coinciden en <b>{fila['Coincidencias']}</b> de {fila['Total']} marcadores.</small>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                # --- COLUMNA DERECHA: ENEMIGOS ÍNTIMOS ---
+                with col_der_sim:
+                    st.markdown("### ⚔️ Enemigos Íntimos (Menor Similitud)")
+                    st.caption("Si uno dice blanco, el otro va con el negro. Choque total de visiones.")
+                    for _, fila in top_rivalidades.iterrows():
+                        pct = fila['Porcentaje']
+                        # Color dinámico: rojo/rosa suave si no coinciden casi en nada
+                        color_alert = "#f8d7da" if pct < 20 else "#f8f9fa"
+                        border_alert = "#f5c2c7" if pct < 20 else "#e2e8f0"
+                        
+                        st.markdown(f"""
+                            <div style="background:{color_alert}; padding:10px; border-radius:10px; border:1px solid {border_alert}; margin-bottom:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-weight:bold; color:#1e293b;">{fila['Jugador 1']} 🆚 {fila['Jugador 2']}</span>
+                                    <span style="font-size:1.1em; font-weight:800; color:#842029;">{pct:.0f}%</span>
+                                </div>
+                                <small style="color:#475569;">Coinciden en solo <b>{fila['Coincidencias']}</b> de {fila['Total']} marcadores.</small>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("Faltan datos cruzados para calcular el termómetro.")
+        else:
+            st.info("Esperando a que los usuarios rellenen la hoja de apuestas para buscar clones.")
+
+        st.divider()
             st.header("🌳 El Súper Bracket del Mundial")
             st.caption("Define las posiciones de los grupos, los mejores terceros y el camino a la gloria.")
             # --- ZONA DE EXPLICACIÓN DE PUNTUACIÓN DEL BRACKET ---
