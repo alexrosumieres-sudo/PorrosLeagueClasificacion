@@ -1042,32 +1042,73 @@ def calcular_puntos_bracket(user_bracket, real_bracket):
 
 def simular_temporada_completa(df_hero, df_p_all, df_r_all, df_b_all):
     """
-    Simulación de Montecarlo Pro: Proyecta el final de la porra 5.000 veces.
-    Considera: Puntos actuales, partidos pendientes según el ADN del usuario
-    y los puntos reales consolidados + pendientes del Súper Bracket.
+    Simulación de Montecarlo Ultra-PRO: Proyecta el final de la porra 5.000 veces.
+    Analiza el Bracket completo de cada usuario casilla por casilla y estima
+    dinámicamente sus puntos futuros ponderando cada elección según el NIVEL_EQUIPOS.
     """
     usuarios = df_hero['Usuario'].tolist()
     puntos_actuales = df_hero.set_index('Usuario')['Puntos'].to_dict()
     
-    # 1. Identificar partidos que faltan por jugar
+    # 1. Identificar partidos diarios pendientes
     pendientes = df_r_all[df_r_all['Finalizado'] == "NO"]
     num_pend_normal = len(pendientes[pendientes['Tipo'] != "Esquizo"])
     num_pend_esquizo = len(pendientes[pendientes['Tipo'] == "Esquizo"])
     
-    # 2. Rescatar Bracket del ADMIN (Estado actual del Mundial)
+    # 2. Rescatar Bracket del ADMIN (Para saber qué parte del torneo ya es real)
     admin_b = df_b_all[df_b_all['Usuario'].str.upper() == 'ADMIN']
     r_bracket = admin_b.iloc[0] if not admin_b.empty else None
     
-    # 3. Calcular puntos fijos del bracket que ya tienen los usuarios
-    puntos_bracket_reales = {}
+    # 3. PRE-PROCESAMIENTO: Calcular el "Score de Calidad y Probabilidad" del Bracket de cada usuario
+    # Evaluamos qué tan viable es el mapa del torneo de cada porrista
+    probabilidad_bracket_usuario = {}
+    
     for u in usuarios:
         u_bracket_row = df_b_all[df_b_all['Usuario'] == u]
-        if not u_bracket_row.empty and r_bracket is not None:
-            puntos_bracket_reales[u] = calcular_puntos_bracket(u_bracket_row.iloc[0], r_bracket)
-        else:
-            puntos_bracket_reales[u] = 0.0
+        if u_bracket_row.empty:
+            probabilidad_bracket_usuario[u] = 0.0
+            continue
+            
+        u_bracket = u_bracket_row.iloc[0]
+        score_fase_grupos = 0.0
+        score_eliminatorias = 0.0
+        
+        # A) Evaluar Fase de Grupos (Clasificados 1º y 2º)
+        for g in ["Grupo A", "Grupo B", "Grupo C", "Grupo D", "Grupo E", "Grupo F", 
+                  "Grupo G", "Grupo H", "Grupo I", "Grupo J", "Grupo K", "Grupo L"]:
+            eq1 = u_bracket.get(f"{g}_1")
+            eq2 = u_bracket.get(f"{g}_2")
+            
+            # Un equipo Nivel 1 tiene 85% de probabilidad de pasar. Un Nivel 5 un 20%.
+            if eq1 in NIVEL_EQUIPOS: score_fase_grupos += max(0.2, 1.0 - (NIVEL_EQUIPOS[eq1] - 1) * 0.16) * 0.5
+            if eq2 in NIVEL_EQUIPOS: score_fase_grupos += max(0.2, 1.0 - (NIVEL_EQUIPOS[eq2] - 1) * 0.16) * 0.5
+            
+        # B) Evaluar Supervivencia en Rondas de Eliminación Directa
+        # Octavos (W16)
+        for i in range(16):
+            eq = u_bracket.get(f"W16_{i}")
+            if eq in NIVEL_EQUIPOS: score_eliminatorias += max(0.15, 1.0 - (NIVEL_EQUIPOS[eq] - 1) * 0.20) * 0.5
+        # Cuartos (W8)
+        for i in range(8):
+            eq = u_bracket.get(f"W8_{i}")
+            if eq in NIVEL_EQUIPOS: score_eliminatorias += max(0.10, 1.0 - (NIVEL_EQUIPOS[eq] - 1) * 0.22) * 1.0
+        # Semis (W4)
+        for i in range(4):
+            eq = u_bracket.get(f"W4_{i}")
+            if eq in NIVEL_EQUIPOS: score_eliminatorias += max(0.05, 1.0 - (NIVEL_EQUIPOS[eq] - 1) * 0.24) * 1.5
+        # Finalistas (WS)
+        for i in range(2):
+            eq = u_bracket.get(f"WS_{i}")
+            if eq in NIVEL_EQUIPOS: score_eliminatorias += max(0.05, 1.0 - (NIVEL_EQUIPOS[eq] - 1) * 0.24) * 2.0
+            
+        # Campeón del Mundo
+        camp = u_bracket.get("Campeon")
+        if camp in NIVEL_EQUIPOS:
+            score_eliminatorias += max(0.02, 1.0 - (NIVEL_EQUIPOS[camp] - 1) * 0.24) * 4.0
+            
+        # Puntuación potencial total estimada del cuadro del usuario
+        probabilidad_bracket_usuario[u] = score_fase_grupos + score_eliminatorias
 
-    # 4. Calcular el "ADN de acierto" en porras diarias de cada usuario
+    # 4. Calcular el "ADN de acierto" diario de cada porrista
     perfil_usuario = {}
     df_terminados = df_r_all[df_r_all['Finalizado'] == "SI"]
     
@@ -1089,25 +1130,39 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, df_b_all):
             
         perfil_usuario[u] = {'n': media_n, 'e': media_e, 'std': desvio}
 
-    # 5. Bucle de Simulación (5.000 iteraciones)
+    # 5. Ejecución de Montecarlo (5.000 iteraciones)
     conteo_puestos = {u: [0] * len(usuarios) for u in usuarios}
     suma_puestos = {u: 0 for u in usuarios}
     
+    # Determinamos cuánto del bracket queda por jugar según los partidos que faltan
+    factor_bracket_restante = 1.0 if num_pend_normal > 20 else (num_pend_normal / 48.0)
+
     for _ in range(5000):
         resultados_iteracion = []
         
         for u in usuarios:
-            # Simulación de partidos diarios pendientes según su ADN
+            # A) Simulación de su rendimiento en partidos del día a día
             pts_n = np.random.normal(perfil_usuario[u]['n'], perfil_usuario[u]['std'], num_pend_normal).sum()
             pts_e = np.random.normal(perfil_usuario[u]['e'], perfil_usuario[u]['std'] * 1.5, num_pend_esquizo).sum()
             
-            # PROYECCIÓN DEL BRACKET REVOLUCIONADA:
-            # Si faltan muchos partidos, simulamos volatilidad del cuadro (picos de 0 a 6 puntos extra por eventos futuros)
-            # Si quedan menos de 5 partidos, la incertidumbre del bracket se reduce drásticamente.
-            incertidumbre_fase = random.uniform(0, 6.0) if num_pend_normal > 15 else random.uniform(0, 2.0)
+            # B) Simulación del Bracket inteligente usando el clasificador de nivel de equipos
+            # Introducemos una fluctuación competitiva orgánica (para simular sorpresas del Mundial)
+            fluctuacion_mundial = np.random.normal(1.0, 0.12)
+            puntos_proyectados_bracket = probabilidad_bracket_usuario[u] * factor_bracket_restante * fluctuacion_mundial
             
-            # Puntos totales = Puntos acumulados en la app + simulación partidos + proyección de su cuadro
-            total_sim = puntos_actuales[u] + max(0, pts_n) + max(0, pts_e) + (incertidumbre_fase * (perfil_usuario[u]['n'] * 1.5))
+            # C) Si el admin ya validó aciertos reales en la hoja, los sumamos limpiamente
+            puntos_ya_consolidados_bracket = 0.0
+            if r_bracket is not None:
+                u_bracket_row = df_b_all[df_b_all['Usuario'] == u]
+                if not u_bracket_row.empty:
+                    puntos_ya_consolidados_bracket = calcular_puntos_bracket(u_bracket_row.iloc[0], r_bracket)
+            
+            # Suma final del universo simulado
+            total_sim = (puntos_actuales[u] + 
+                         max(0, pts_n) + 
+                         max(0, pts_e) + 
+                         max(0, puntos_proyectados_bracket) - puntos_ya_consolidados_bracket)
+            
             resultados_iteracion.append((u, total_sim))
             
         resultados_iteracion.sort(key=lambda x: x[1], reverse=True)
