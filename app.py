@@ -792,25 +792,28 @@ FRASES_POR_PUESTO = {
         ("No era el plan.", "Anónimo"),
         ("Toca reflexionar.", "Anónimo"),
         ("Nada decidido.", "Anónimo"),
-        ("Seguimos vivos.", "Anónimo"),
-        ("¿Por qué?", "Mourinho"),
-        ("Fútbol es fútbol.", "Boskov"),
-        ("Ni fu ni fa.", "La grada"),
-        ("Más cerca del descenso que del podio.", "La Sotana vibes"),
-        ("Proyecto interesante... para 2028.", "La Sotana vibes"),
-        ("Equipo en construcción desde 1997.", "La Sotana vibes"),
-        ("Prometía mucho en pretemporada.", "La Sotana vibes"),
-        ("Dominamos en posesión moral.", "La Sotana vibes"),
-        ("Objetivo: no hacer el ridículo.", "La grada"),
-        ("Partido serio... durante 7 minutos.", "La Sotana vibes"),
-        ("Somos un meme.", "Twitter futbolero"),
-        ("Clasificación engañosa (para mal).", "La Sotana vibes"),
-        ("Competimos... a nuestra manera.", "La grada"),
-        ("Nos faltó todo.", "La Sotana vibes"),
-        ("Aspirábamos a más, conseguimos menos.", "La grada")
+        ("Seguimos vivos.", "Anónimo")
     ],
 
     6: [
+        ("Ni fu ni fa.", "La grada"),
+        ("Dominamos en posesión moral.", "La Sotana vibes"),
+        ("Prometía mucho en pretemporada.", "La Sotana vibes"),
+        ("Aspirábamos a más, conseguimos menos.", "La grada"),
+        ("Objetivo: no hacer el ridículo.", "La grada"),
+        ("El míster vende humo, nosotros compramos.", "La Sotana vibes"),
+        ("Salvamos los muebles, pero la casa se quema.", "La Sotana vibes"),
+        ("La prensa dice que jugamos bien. Mentira.", "La grada"),
+        ("Un punto que sabe a absolutamente nada.", "La Sotana vibes"),
+        ("Estancados en la mediocridad premium.", "La Sotana vibes"),
+        ("Empate técnico entre las ganas de jugar y las de irse de fiesta.", "La Sotana vibes"),
+        ("Un partido serio... durante 7 minutos.", "La Sotana vibes"),
+        ("Clasificación engañosa (para mal).", "La Sotana vibes"),
+        ("Competimos... a nuestra manera.", "La grada"),
+        ("Nos faltó todo.", "La Sotana vibes")
+    ],
+
+    7: [
         ("Prefiero no hablar.", "Mourinho"),
         ("Hay que levantarse.", "CR7"),
         ("Momento complicado.", "Anónimo"),
@@ -825,9 +828,10 @@ FRASES_POR_PUESTO = {
         ("Pelear hasta el final.", "Anónimo"),
         ("Esto se levanta.", "Anónimo"),
         ("Día duro.", "Anónimo"),
-        ("Paso atrás.", "Anónimo"),
-        ("Prefiero no hablar.", "Mourinho"),
-        ("Hay que levantarse.", "CR7"),
+        ("Paso atrás.", "Anónimo")
+    ],
+
+    8: [
         ("Defendemos con la mirada.", "La Sotana vibes"),
         ("El rival parecía el Brasil del 70.", "La Sotana vibes"),
         ("Proyecto ilusionante (para el rival).", "La grada"),
@@ -840,10 +844,12 @@ FRASES_POR_PUESTO = {
         ("Temporada histórica... para olvidar.", "La Sotana vibes"),
         ("El descenso nos guiña el ojo.", "La Sotana vibes"),
         ("Jugamos a sorprender… y lo logramos.", "La grada"),
-        ("El míster tiene un plan (nadie sabe cuál).", "La Sotana vibes")
+        ("El míster tiene un plan (nadie sabe cuál).", "La Sotana vibes"),
+        ("Somos un meme con patas.", "Twitter futbolero"),
+        ("Menos fútbol que una tarde en el Ikea.", "La Sotana vibes")
     ],
 
-    7: [
+    9: [
         ("Estamos en la UVI.", "Clemente"),
         ("Salimos como nunca...", "Di Stéfano"),
         ("Tocar fondo para impulsarse.", "Anónimo"),
@@ -858,8 +864,10 @@ FRASES_POR_PUESTO = {
         ("Con el agua al cuello.", "Anónimo"),
         ("Última bala.", "Anónimo"),
         ("Orgullo y corazón.", "Anónimo"),
-        ("Nunca rendirse.", "Anónimo"),
-        ("Estamos en la UVI.", "Clemente"),
+        ("Nunca rendirse.", "Anónimo")
+    ],
+
+    10: [
         ("Salimos como nunca perdemos como siempre", "Di Stéfano"),
         ("Descenso speedrun any%.", "La Sotana vibes"),
         ("El Titanic tenía mejor planificación.", "La Sotana vibes"),
@@ -873,7 +881,8 @@ FRASES_POR_PUESTO = {
         ("Esto ya es contenido.", "La Sotana vibes"),
         ("El descenso no es amenaza, es destino.", "La Sotana vibes"),
         ("Jugamos sin red.", "La grada"),
-        ("La clasificación no miente (ojalá lo hiciera).", "La Sotana vibes")
+        ("La clasificación no miente (ojalá lo hiciera).", "La Sotana vibes"),
+        ("Directos a la bancarrota moral.", "La Sotana vibes")
     ]
 }
 
