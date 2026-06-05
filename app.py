@@ -538,16 +538,68 @@ def generar_matriz_terceros(texto):
 MATRIZ_TERCEROS = generar_matriz_terceros(TEXTO_FIFA_TERCEROS)
 
 NIVEL_EQUIPOS = {
-    "Francia": 1, "Argentina": 1, "Brasil": 1, "Inglaterra": 1, "España": 1, "Portugal": 1,
-    "Alemania": 2, "Países Bajos": 2, "Uruguay": 2, "Croacia": 2, "Bélgica": 2, "Colombia": 2,
-    "Italia": 2, "Marruecos": 2, "Suiza": 3, "Japón": 3, "México": 3, "Estados Unidos": 3, 
-    "Senegal": 3, "Corea del Sur": 3, "República Checa": 3, "Turquía": 3, "Suecia": 3, "Austria": 3,
-    "Dinamarca": 3, "Ecuador": 3, "Noruega": 4, "Canadá": 4, "Paraguay": 4, "Australia": 4, 
-    "Costa de Marfil": 4, "Argelia": 4, "Egipto": 4, "Irán": 4, "Ghana": 4, "Bosnia Herzegovina": 4,
-    "Sudáfrica": 5, "Qatar": 5, "Haití": 5, "Escocia": 5, "Curaçao": 5, "Túnez": 5,
-    "Cabo Verde": 5, "Arabia Saudí": 5, "Iraq": 5, "Nueva Zelanda": 5, "Jordania": 5, 
-    "Congo": 5, "Uzbekistán": 5, "Panamá": 5
+    # Nivel 1 - Favoritos
+    "Argentina": 1,
+    "Francia": 1,
+    "España": 1,
+
+    # Nivel 2 - Aspirantes
+    "Brasil": 2,
+    "Inglaterra": 2,
+    "Portugal": 2,
+    "Alemania": 2,
+    "Países Bajos": 2,
+
+    # Nivel 3 - Muy competitivos
+    "Uruguay": 3,
+    "Croacia": 3,
+    "Colombia": 3,
+    "Marruecos": 3,
+    "Bélgica": 3,
+    "Japón": 3,
+
+    # Nivel 4 - Equipos peligrosos
+    "Suiza": 4,
+    "México": 4,
+    "Estados Unidos": 4,
+    "Senegal": 4,
+    "Corea del Sur": 4,
+    "República Checa": 4,
+    "Turquía": 4,
+    "Suecia": 4,
+    "Austria": 4,
+    "Ecuador": 4,
+    "Noruega": 4,
+
+    # Nivel 5 - Clase media
+    "Canadá": 5,
+    "Paraguay": 5,
+    "Australia": 5,
+    "Costa de Marfil": 5,
+    "Argelia": 5,
+    "Egipto": 5,
+    "Irán": 5,
+    "Ghana": 5,
+    "Bosnia Herzegovina": 5,
+    "Escocia": 5,
+    "Cabo Verde": 5,
+    "Arabia Saudí": 5,
+    "Uzbekistán": 5,
+    "Panamá": 5,
+
+    # Nivel 6 - Outsiders
+    "Sudáfrica": 6,
+    "Qatar": 6,
+    "Haití": 6,
+    "Curaçao": 6,
+    "Túnez": 6,
+    "Iraq": 6,
+    "Nueva Zelanda": 6,
+    "Jordania": 6,
+    "Congo": 6
 }
+
+
 CONTINENTES = {
     "Francia": "UEFA", "España": "UEFA", "Inglaterra": "UEFA", "Alemania": "UEFA", "Países Bajos": "UEFA",
     "Portugal": "UEFA", "Croacia": "UEFA", "Bélgica": "UEFA", "Suiza": "UEFA", "República Checa": "UEFA",
