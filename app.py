@@ -1040,28 +1040,38 @@ def calcular_puntos_bracket(user_bracket, real_bracket):
 
     return pts
 
-def simular_temporada_completa(df_hero, df_p_all, df_r_all):
+def simular_temporada_completa(df_hero, df_p_all, df_r_all, df_b_all):
     """
-    Simulación de Montecarlo: Proyecta el final de la porra 5.000 veces.
-    Considera: Puntos actuales, partidos pendientes (Normal/Esquizo) y 
-    una estimación de puntos de Bracket.
+    Simulación de Montecarlo Pro: Proyecta el final de la porra 5.000 veces.
+    Considera: Puntos actuales, partidos pendientes según el ADN del usuario
+    y los puntos reales consolidados + pendientes del Súper Bracket.
     """
-    # 1. Puntos actuales de cada usuario
     usuarios = df_hero['Usuario'].tolist()
     puntos_actuales = df_hero.set_index('Usuario')['Puntos'].to_dict()
     
-    # 2. Identificar partidos que faltan por jugar
+    # 1. Identificar partidos que faltan por jugar
     pendientes = df_r_all[df_r_all['Finalizado'] == "NO"]
     num_pend_normal = len(pendientes[pendientes['Tipo'] != "Esquizo"])
     num_pend_esquizo = len(pendientes[pendientes['Tipo'] == "Esquizo"])
     
-    # 3. Calcular el "ADN de acierto" de cada usuario (puntos medios por tipo)
-    # Si el usuario es nuevo, le asignamos una media estándar
+    # 2. Rescatar Bracket del ADMIN (Estado actual del Mundial)
+    admin_b = df_b_all[df_b_all['Usuario'].str.upper() == 'ADMIN']
+    r_bracket = admin_b.iloc[0] if not admin_b.empty else None
+    
+    # 3. Calcular puntos fijos del bracket que ya tienen los usuarios
+    puntos_bracket_reales = {}
+    for u in usuarios:
+        u_bracket_row = df_b_all[df_b_all['Usuario'] == u]
+        if not u_bracket_row.empty and r_bracket is not None:
+            puntos_bracket_reales[u] = calcular_puntos_bracket(u_bracket_row.iloc[0], r_bracket)
+        else:
+            puntos_bracket_reales[u] = 0.0
+
+    # 4. Calcular el "ADN de acierto" en porras diarias de cada usuario
     perfil_usuario = {}
     df_terminados = df_r_all[df_r_all['Finalizado'] == "SI"]
     
     for u in usuarios:
-        # Puntos conseguidos en partidos normales y esquizos para sacar su media
         u_p = df_p_all[df_p_all['Usuario'] == u]
         m_fin = pd.merge(u_p, df_terminados, on=['Jornada', 'Partido'])
         
@@ -1075,11 +1085,11 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all):
             media_e = m_fin[m_fin['Tipo'] == "Esquizo"]['Pts'].mean() if not m_fin[m_fin['Tipo'] == "Esquizo"].empty else 0.8
             desvio = m_fin['Pts'].std() if len(m_fin) > 1 else 0.2
         else:
-            media_n, media_e, desvio = 0.45, 0.9, 0.25 # Valores promedio base
+            media_n, media_e, desvio = 0.45, 0.9, 0.25
             
         perfil_usuario[u] = {'n': media_n, 'e': media_e, 'std': desvio}
 
-    # 4. Bucle de Simulación (5.000 iteraciones)
+    # 5. Bucle de Simulación (5.000 iteraciones)
     conteo_puestos = {u: [0] * len(usuarios) for u in usuarios}
     suma_puestos = {u: 0 for u in usuarios}
     
@@ -1087,38 +1097,34 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all):
         resultados_iteracion = []
         
         for u in usuarios:
-            # Puntos por partidos Normales
+            # Simulación de partidos diarios pendientes según su ADN
             pts_n = np.random.normal(perfil_usuario[u]['n'], perfil_usuario[u]['std'], num_pend_normal).sum()
-            # Puntos por partidos Esquizos
             pts_e = np.random.normal(perfil_usuario[u]['e'], perfil_usuario[u]['std'] * 1.5, num_pend_esquizo).sum()
             
-            # Estimación de Puntos de Bracket (esto es azaroso pero basado en competencia)
-            # Acertar campeón, pichichi, y avances da picos de puntos
-            pts_bracket = random.uniform(0, 5.0) if num_pend_normal > 10 else random.uniform(0, 1.5)
+            # PROYECCIÓN DEL BRACKET REVOLUCIONADA:
+            # Si faltan muchos partidos, simulamos volatilidad del cuadro (picos de 0 a 6 puntos extra por eventos futuros)
+            # Si quedan menos de 5 partidos, la incertidumbre del bracket se reduce drásticamente.
+            incertidumbre_fase = random.uniform(0, 6.0) if num_pend_normal > 15 else random.uniform(0, 2.0)
             
-            total_sim = puntos_actuales[u] + max(0, pts_n) + max(0, pts_e) + pts_bracket
+            # Puntos totales = Puntos acumulados en la app + simulación partidos + proyección de su cuadro
+            total_sim = puntos_actuales[u] + max(0, pts_n) + max(0, pts_e) + (incertidumbre_fase * (perfil_usuario[u]['n'] * 1.5))
             resultados_iteracion.append((u, total_sim))
             
-        # Ordenar por puntos de mayor a menor
         resultados_iteracion.sort(key=lambda x: x[1], reverse=True)
         
-        # Registrar posiciones
         for i, (u, pts) in enumerate(resultados_iteracion):
             conteo_puestos[u][i] += 1
             suma_puestos[u] += (i + 1)
 
-    # 5. Formatear resultados para la tabla
     data_final = []
     for u in usuarios:
         fila = {"Usuario": u}
         fila["Puesto Medio"] = suma_puestos[u] / 5000
-        # Convertir conteos a porcentajes
         for i in range(len(usuarios)):
             fila[f"P{i+1}"] = (conteo_puestos[u][i] / 5000) * 100
         data_final.append(fila)
         
-    df_sim = pd.DataFrame(data_final).sort_values("Puesto Medio")
-    return df_sim
+    return pd.DataFrame(data_final).sort_values("Puesto Medio")
 
 
 
@@ -1460,11 +1466,11 @@ else:
             # 1. Sacamos qué equipo puso el líder como campeón en su Bracket
             # (Asumiendo que tenemos una tabla llamada df_brackets)
             try:
-                equipo_fav = df_b_all[df_brackets['Usuario'] == lider['Usuario']]['Campeon'].values[0]
-                colores = COLORES_BANDERAS.get(equipo_fav, ["#ffd700", "#ffae00"]) # Oro si no hay
+                equipo_fav = df_b_all[df_b_all['Usuario'] == lider['Usuario']]['Campeon'].values[0]
+                colores = COLORES_BANDERAS.get(equipo_fav, ["#ffd700", "#ffae00"]) 
                 estilo_anillo = f"background: linear-gradient(45deg, {colores[0]}, {colores[1]});"
             except:
-                estilo_anillo = "" # Clase por defecto
+                estilo_anillo = ""
             
             # 2. En el HTML del Avatar
             st.markdown(f'<div class="ring-avatar" style="{estilo_anillo}">', unsafe_allow_html=True)
@@ -2989,10 +2995,8 @@ else:
             # --- BOTÓN DE EJECUCIÓN ---
             if st.button("🚀 LANZAR SIMULACIÓN MUNDIALISTA", use_container_width=True, type="primary"):
                 with st.spinner("🔮 El Oráculo está procesando 5.000 finales posibles..."):
-                    # Llamamos a la función de simulación (que debe usar calcular_puntos_wc internamente)
-                    # Nota: Asegúrate de que la función 'simular_temporada_completa' en tu código 
-                    # haya sido actualizada para usar la lógica de puntos del Mundial.
-                    df_sim = simular_temporada_completa(df_hero, df_p_all, df_r_all)
+                    # Le pasamos df_b_all como cuarto argumento
+                    df_sim = simular_temporada_completa(df_hero, df_p_all, df_r_all, df_b_all)
                 
                 st.success("✅ Simulación completada. Los dioses del fútbol han hablado.")
 
