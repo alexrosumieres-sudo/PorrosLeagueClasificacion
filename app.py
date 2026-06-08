@@ -1635,7 +1635,39 @@ else:
             
             with c4: 
                 st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
-        
+            
+            # --- NUEVO: OJO CON (REVELACIÓN) EN EL PANEL CENTRAL ---
+            if not es_admin:
+                st.markdown("<hr style='margin: 12px 0; border: none; border-top: 1px dashed #cbd5e1;'>", unsafe_allow_html=True)
+                
+                # Rescatamos el valor actual de PuntosBase
+                row_ojo = df_base[df_base['Usuario'] == st.session_state.user]
+                actual_ojo = str(row_ojo.iloc[0].get("Ojo_con", "Ninguno")) if not row_ojo.empty and "Ojo_con" in row_ojo.columns else "Ninguno"
+                if actual_ojo.lower() == "nan" or actual_ojo == "": actual_ojo = "Ninguno"
+                
+                todos_los_equipos = ["Ninguno"] + sorted(list(CONTINENTES.keys()))
+                idx_ojo = todos_los_equipos.index(actual_ojo) if actual_ojo in todos_los_equipos else 0
+                
+                c_txt, c_sel, c_btn = st.columns([1.5, 2.5, 1])
+                with c_txt:
+                    st.markdown("<div style='margin-top:6px; font-weight:bold; color:#d97706; font-size:0.85em;'>👀 Ojo con...</div>", unsafe_allow_html=True)
+                with c_sel:
+                    nuevo_ojo = st.selectbox("Revelación", todos_los_equipos, index=idx_ojo, label_visibility="collapsed", disabled=not mercado_abierto, key="ojo_central")
+                
+                # El botón de guardar solo aparece si cambian el valor
+                with c_btn:
+                    if mercado_abierto and nuevo_ojo != actual_ojo:
+                        if st.button("💾 Guardar", use_container_width=True, type="primary"):
+                            df_pb_upd = df_base.copy()
+                            idx_pb = df_pb_upd[df_pb_upd['Usuario'] == st.session_state.user].index
+                            if len(idx_pb) > 0:
+                                df_pb_upd.loc[idx_pb, 'Ojo_con'] = nuevo_ojo
+                            else:
+                                df_pb_upd = pd.concat([df_pb_upd, pd.DataFrame([{"Usuario": st.session_state.user, "Puntos": 0.0, "Ojo_con": nuevo_ojo}])], ignore_index=True)
+                            conn.update(worksheet="PuntosBase", data=df_pb_upd)
+                            st.cache_data.clear()
+                            st.rerun()
+
         st.markdown('</div>', unsafe_allow_html=True)
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
@@ -2432,7 +2464,12 @@ else:
                 u_bracket = df_b_all[df_b_all['Usuario'] == u]
                 if not u_bracket.empty and "Campeon" in u_bracket.columns:
                     campeon_usr = str(u_bracket.iloc[0]["Campeon"])
-    
+
+                # NUEVO: Rescatamos el 'Ojo con' de PuntosBase
+                pb_r = df_base[df_base['Usuario'] == u]
+                ojo_con_usr = str(pb_r['Ojo_con'].values[0]) if not pb_r.empty and 'Ojo_con' in pb_r.columns else "Ninguno"
+                if ojo_con_usr.lower() == "nan" or ojo_con_usr == "": ojo_con_usr = "Ninguno"
+
                 p_a = 0.0
                 if tipo_r == "General":
                     pb_r = df_base[df_base['Usuario'] == u]
@@ -2518,12 +2555,15 @@ else:
                     # Añadimos el logo al lado del nombre
                     st.markdown(f'<h4 style="margin:0; color:#1e293b; display: flex; align-items: center;">{row["Usuario"]} {logo_b64}</h4>', unsafe_allow_html=True)
                     
-                    # Mostramos su apuesta para el Mundial
-                    if mi_campeon != "Ninguno":
+                    # Mostramos su apuesta para el Mundial y su "Ojo con"
+                    if mi_campeon != "Ninguno" and str(mi_campeon).lower() != "nan":
                         st.markdown(f'<small style="color:{colores[0]}; font-weight:bold; font-size:0.75em; text-transform:uppercase;">ESCUDERÍA {mi_campeon}</small><br>', unsafe_allow_html=True)
                     
-                    st.markdown(f'<small style="color:#64748b; font-style:italic;">"{f_t[0]}"</small>', unsafe_allow_html=True)
+                    mi_ojo = row.get("Ojo_con", "Ninguno")
+                    if mi_ojo != "Ninguno" and str(mi_ojo).lower() != "nan":
+                        st.markdown(f'<small style="color:#d97706; font-weight:bold; font-size:0.85em;">👀 Ojo con: {mi_ojo}</small><br>', unsafe_allow_html=True)
                     
+                    st.markdown(f'<small style="color:#64748b; font-style:italic;">"{f_t[0]}"</small>', unsafe_allow_html=True)
                     # Barra de progreso con el color de su equipo
                     st.markdown(f"""
                         <div style="width: 80%; background-color: #f1f5f9; border-radius: 10px; height: 6px; margin-top: 5px;">
