@@ -1612,6 +1612,7 @@ else:
             st.markdown(f"<span style='color:#2baf2b; font-weight:bold; font-size:1.1em;'>{puntos_lagarto:.2f} Pts</span></div>", unsafe_allow_html=True)
 
         # --- COLUMNA DE DATOS DEL USUARIO Y CONTADOR ---
+        # --- COLUMNA DE DATOS DEL USUARIO Y CONTADOR ---
         with col_datos:
             st.markdown(f'<span class="section-tag">{"PANEL CONTROL" if es_admin else "TUS ESTADÍSTICAS"}</span>', unsafe_allow_html=True)
             c2, c3, c4 = st.columns(3)
@@ -1635,40 +1636,8 @@ else:
             
             with c4: 
                 st.markdown(f'<div class="kpi-box"><span class="kpi-label">Puntos Hoy</span><span class="kpi-value" style="color:#007bff;">{mi_puntos_hoy:.2f}</span></div>', unsafe_allow_html=True)
-            
-            # --- NUEVO: OJO CON (REVELACIÓN) EN EL PANEL CENTRAL ---
-            if not es_admin:
-                st.markdown("<hr style='margin: 15px 0; border: none; border-top: 2px dashed #cbd5e1;'>", unsafe_allow_html=True)
-                
-                # Rescatamos el valor actual de PuntosBase
-                row_ojo = df_base[df_base['Usuario'] == st.session_state.user]
-                actual_ojo = str(row_ojo.iloc[0].get("Ojo_con", "Ninguno")) if not row_ojo.empty and "Ojo_con" in row_ojo.columns else "Ninguno"
-                if actual_ojo.lower() == "nan" or actual_ojo == "": actual_ojo = "Ninguno"
-                
-                todos_los_equipos = ["Ninguno"] + sorted(list(CONTINENTES.keys()))
-                idx_ojo = todos_los_equipos.index(actual_ojo) if actual_ojo in todos_los_equipos else 0
-                
-                # Diseño a prueba de fallos: 2 columnas simples y título bien grande
-                c_sel, c_btn = st.columns([3, 1])
-                with c_sel:
-                    nuevo_ojo = st.selectbox("👀 Tu Equipo Revelación (Ojo con...):", todos_los_equipos, index=idx_ojo, disabled=not mercado_abierto, key="ojo_central")
-                
-                with c_btn:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True) # Para alinear el botón con la caja
-                    if mercado_abierto and nuevo_ojo != actual_ojo:
-                        if st.button("💾 Guardar", use_container_width=True, type="primary"):
-                            df_pb_upd = df_base.copy()
-                            idx_pb = df_pb_upd[df_pb_upd['Usuario'] == st.session_state.user].index
-                            if len(idx_pb) > 0:
-                                df_pb_upd.loc[idx_pb, 'Ojo_con'] = nuevo_ojo
-                            else:
-                                df_pb_upd = pd.concat([df_pb_upd, pd.DataFrame([{"Usuario": st.session_state.user, "Puntos": 0.0, "Ojo_con": nuevo_ojo}])], ignore_index=True)
-                            conn.update(worksheet="PuntosBase", data=df_pb_upd)
-                            st.cache_data.clear()
-                            st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True) # <- MUY IMPORTANTE QUE ESTO QUEDE AL FINAL
-
+        st.markdown('</div>', unsafe_allow_html=True)
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     # Busca esta línea y añade "📜 VAR" al final
     tabs = st.tabs([
@@ -1701,6 +1670,38 @@ else:
             st.info("Tu función es supervisar el Mundial y actualizar los resultados desde la pestaña **⚙️ Admin**.")
             st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=400)
         else:
+            # --- NUEVO: SECCIÓN OJO CON... (REVELACIÓN) ---
+            st.markdown("### 👀 Tu Equipo Revelación")
+            st.caption("¿Qué selección dará la sorpresa en el Mundial? ¡Se bloqueará en cuanto empiece el torneo!")
+            
+            # Rescatamos el valor actual de PuntosBase
+            row_ojo = df_base[df_base['Usuario'] == st.session_state.user]
+            actual_ojo = str(row_ojo.iloc[0].get("Ojo_con", "Ninguno")) if not row_ojo.empty and "Ojo_con" in row_ojo.columns else "Ninguno"
+            if actual_ojo.lower() == "nan" or actual_ojo == "": actual_ojo = "Ninguno"
+            
+            todos_los_equipos = ["Ninguno"] + sorted(list(CONTINENTES.keys()))
+            idx_ojo = todos_los_equipos.index(actual_ojo) if actual_ojo in todos_los_equipos else 0
+            
+            col_sel_ojo, col_btn_ojo = st.columns([3, 1])
+            with col_sel_ojo:
+                nuevo_ojo = st.selectbox("Ojo con...", todos_los_equipos, index=idx_ojo, disabled=not mercado_abierto, label_visibility="collapsed", key="ojo_apuestas")
+            
+            with col_btn_ojo:
+                if mercado_abierto and nuevo_ojo != actual_ojo:
+                    if st.button("💾 Guardar Revelación", use_container_width=True, type="primary"):
+                        df_pb_upd = df_base.copy()
+                        idx_pb = df_pb_upd[df_pb_upd['Usuario'] == st.session_state.user].index
+                        if len(idx_pb) > 0:
+                            df_pb_upd.loc[idx_pb, 'Ojo_con'] = nuevo_ojo
+                        else:
+                            df_pb_upd = pd.concat([df_pb_upd, pd.DataFrame([{"Usuario": st.session_state.user, "Puntos": 0.0, "Ojo_con": nuevo_ojo}])], ignore_index=True)
+                        conn.update(worksheet="PuntosBase", data=df_pb_upd)
+                        st.cache_data.clear()
+                        st.success("¡Guardado!")
+                        time.sleep(1)
+                        st.rerun()
+            
+            st.divider()
             # --- ZONA DE EXPLICACIÓN DE PUNTUACIÓN ---
             with st.container():
                 col_rules1, col_rules2 = st.columns(2)
