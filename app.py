@@ -1638,7 +1638,7 @@ else:
             
             # --- NUEVO: OJO CON (REVELACIÓN) EN EL PANEL CENTRAL ---
             if not es_admin:
-                st.markdown("<hr style='margin: 12px 0; border: none; border-top: 1px dashed #cbd5e1;'>", unsafe_allow_html=True)
+                st.markdown("<hr style='margin: 15px 0; border: none; border-top: 2px dashed #cbd5e1;'>", unsafe_allow_html=True)
                 
                 # Rescatamos el valor actual de PuntosBase
                 row_ojo = df_base[df_base['Usuario'] == st.session_state.user]
@@ -1648,14 +1648,13 @@ else:
                 todos_los_equipos = ["Ninguno"] + sorted(list(CONTINENTES.keys()))
                 idx_ojo = todos_los_equipos.index(actual_ojo) if actual_ojo in todos_los_equipos else 0
                 
-                c_txt, c_sel, c_btn = st.columns([1.5, 2.5, 1])
-                with c_txt:
-                    st.markdown("<div style='margin-top:6px; font-weight:bold; color:#d97706; font-size:0.85em;'>👀 Ojo con...</div>", unsafe_allow_html=True)
+                # Diseño a prueba de fallos: 2 columnas simples y título bien grande
+                c_sel, c_btn = st.columns([3, 1])
                 with c_sel:
-                    nuevo_ojo = st.selectbox("Revelación", todos_los_equipos, index=idx_ojo, label_visibility="collapsed", disabled=not mercado_abierto, key="ojo_central")
+                    nuevo_ojo = st.selectbox("👀 Tu Equipo Revelación (Ojo con...):", todos_los_equipos, index=idx_ojo, disabled=not mercado_abierto, key="ojo_central")
                 
-                # El botón de guardar solo aparece si cambian el valor
                 with c_btn:
+                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True) # Para alinear el botón con la caja
                     if mercado_abierto and nuevo_ojo != actual_ojo:
                         if st.button("💾 Guardar", use_container_width=True, type="primary"):
                             df_pb_upd = df_base.copy()
@@ -1668,7 +1667,7 @@ else:
                             st.cache_data.clear()
                             st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True) # <- MUY IMPORTANTE QUE ESTO QUEDE AL FINAL
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     # Busca esta línea y añade "📜 VAR" al final
