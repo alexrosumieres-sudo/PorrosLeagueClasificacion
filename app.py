@@ -980,8 +980,10 @@ def leer_datos(pestaña):
             for col in columnas_numericas:
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce').fillna(0.0)
+            if 'Ojo_con' in df.columns:
+                df['Ojo_con'] = df['Ojo_con'].astype(str).replace(['nan', 'NaN', 'None'], 'Ninguno').fillna('Ninguno')
             
-            # 3. Normalización de Prórroga (Opcional pero recomendado para tu nueva lógica)
+         # 3. Normalización de Prórroga (Opcional pero recomendado para tu nueva lógica)
             if 'Hubo_Prorroga' in df.columns:
                 df['Hubo_Prorroga'] = df['Hubo_Prorroga'].astype(str).str.upper().str.strip()
 
@@ -1690,11 +1692,22 @@ else:
                 if mercado_abierto and nuevo_ojo != actual_ojo:
                     if st.button("💾 Guardar Revelación", use_container_width=True, type="primary"):
                         df_pb_upd = df_base.copy()
+                        
+                        # 🔥 BLINDAJE CRÍTICO: Forzamos la columna a tipo String (Texto) para evitar el TypeError
+                        if 'Ojo_con' in df_pb_upd.columns:
+                            df_pb_upd['Ojo_con'] = df_pb_upd['Ojo_con'].astype(str)
+                        else:
+                            df_pb_upd['Ojo_con'] = "Ninguno"
+                            
                         idx_pb = df_pb_upd[df_pb_upd['Usuario'] == st.session_state.user].index
                         if len(idx_pb) > 0:
                             df_pb_upd.loc[idx_pb, 'Ojo_con'] = nuevo_ojo
                         else:
                             df_pb_upd = pd.concat([df_pb_upd, pd.DataFrame([{"Usuario": st.session_state.user, "Puntos": 0.0, "Ojo_con": nuevo_ojo}])], ignore_index=True)
+                        
+                        # Aseguramos que la columna no guarde flotantes raros como "nan" antes de subir
+                        df_pb_upd['Ojo_con'] = df_pb_upd['Ojo_con'].fillna("Ninguno")
+                        
                         conn.update(worksheet="PuntosBase", data=df_pb_upd)
                         st.cache_data.clear()
                         st.success("¡Guardado!")
