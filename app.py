@@ -2506,6 +2506,7 @@ else:
                         cols_mostrar = ['Partido', 'P_L', 'P_V']
                         if es_ronda_ko: cols_mostrar.append('P_Pasa')
                         st.table(p_futuras[p_futuras['Usuario'] == u][cols_mostrar])
+                     
     with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
             st.header("📊 Clasificación Premium")
             tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
@@ -2524,14 +2525,14 @@ else:
                 if not u_bracket.empty and "Campeon" in u_bracket.columns:
                     campeon_usr = str(u_bracket.iloc[0]["Campeon"])
 
-                # NUEVO: Rescatamos el 'Ojo con' de PuntosBase
+                # --- EL ARREGLO CRÍTICO AQUÍ ---
+                # Rescatamos el 'Ojo con' de PuntosBase para este usuario específico
                 pb_r = df_base[df_base['Usuario'] == u]
                 ojo_con_usr = str(pb_r['Ojo_con'].values[0]) if not pb_r.empty and 'Ojo_con' in pb_r.columns else "Ninguno"
                 if ojo_con_usr.lower() == "nan" or ojo_con_usr == "": ojo_con_usr = "Ninguno"
 
                 p_a = 0.0
                 if tipo_r == "General":
-                    pb_r = df_base[df_base['Usuario'] == u]
                     p_a = safe_float(pb_r['Puntos'].values[0]) if not pb_r.empty else 0.0
                     u_p_h = df_p_all[df_p_all['Usuario'] == u]
                     
@@ -2549,8 +2550,9 @@ else:
                             r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'],
                             getattr(r, 'P_Pasa', None), m.iloc[0].get('R_Pasa'), m.iloc[0].get('Hubo_Prorroga') == "SI"
                         )
-                        
-                pts_l.append({"Usuario": u, "Puntos": p_a, "Campeon": campeon_usr})
+                
+                # 🔥 PASO CLAVE: Metemos 'Ojo_con' dentro del diccionario para que df_rk lo tenga disponible
+                pts_l.append({"Usuario": u, "Puntos": p_a, "Campeon": campeon_usr, "Ojo_con": ojo_con_usr})
             
             df_rk = pd.DataFrame(pts_l).sort_values("Puntos", ascending=False).reset_index(drop=True)
             df_rk['Posicion'] = range(1, len(df_rk)+1)
