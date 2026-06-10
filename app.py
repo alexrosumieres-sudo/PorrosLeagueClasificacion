@@ -1882,62 +1882,63 @@ else:
             st.markdown("---")
             # --- BOTÓN DE GUARDADO ---
             st.markdown("---")
+            # --- BOTÓN DE GUARDADO ---
+            st.markdown("---")
             if st.button("💾 GUARDAR MIS PRONÓSTICOS", use_container_width=True, type="primary"):
-                # 1. Recuperamos lo que había guardado antes para poder comparar
+                # 1. Comparar con lo anterior para el log del VAR
                 preds_viejas = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
                 
                 if preds_viejas.empty:
                     log_msg = f"📝 Creó sus primeras predicciones del Mundial ({j_global})"
                 else:
-                    partidos_modificados = []
+                    cambios = []
+                    # Detectamos si es ronda de eliminación para activar el check de quién pasa
+                    es_ronda_ko = any(x in j_global for x in ["Dieciseisavos", "Octavos", "Cuartos", "Semis", "Final"])
+
                     for r_nuevo in env:
                         m_viejo = preds_viejas[preds_viejas['Partido'] == r_nuevo['Partido']]
                         if not m_viejo.empty:
-                            try:
-                                # 🔥 BLINDAJE: Forzamos a int() absoluto para evitar falsos positivos por decimales (2 vs 2.0)
-                                l_nuevo = int(float(r_nuevo['P_L']))
-                                v_nuevo = int(float(r_nuevo['P_V']))
-                                
-                                l_viejo = int(float(m_viejo.iloc[0]['P_L']))
-                                v_viejo = int(float(m_viejo.iloc[0]['P_V']))
-                                
-                                cambio_marcador = (l_nuevo != l_viejo) or (v_nuevo != v_viejo)
-                            except (ValueError, TypeError):
-                                # Por si acaso viene un valor vacío o corrupto
-                                cambio_marcador = True
+                            # Tu lógica original exacta con int():
+                            cambio_goles = (r_nuevo['P_L'] != int(m_viejo.iloc[0]['P_L'])) or (r_nuevo['P_V'] != int(m_viejo.iloc[0]['P_V']))
                             
-                            # Normalizamos strings para la comparación de quién pasa
-                            pasa_nuevo = str(r_nuevo.get('P_Pasa')).strip().lower()
-                            pasa_viejo = str(m_viejo.iloc[0].get('P_Pasa', 'None')).strip().lower()
-                            cambio_pasa = pasa_nuevo != pasa_viejo
-                            
-                            if cambio_marcador or cambio_pasa:
-                                partidos_modificados.append(r_nuevo['Partido'])
+                            # Lógica para controlar el bug del None vs NaN en eliminatorias
+                            cambio_pasa = False
+                            if es_ronda_ko:
+                                p_nuevo = str(r_nuevo.get('P_Pasa', '')).strip().lower()
+                                p_viejo = str(m_viejo.iloc[0].get('P_Pasa', '')).strip().lower()
+                                # Si los textos son 'nan' o 'none', los tratamos como vacíos para que no den falso positivo
+                                if p_nuevo in ['none', 'nan', '']: p_nuevo = 'vacio'
+                                if p_viejo in ['none', 'nan', '']: p_viejo = 'vacio'
+                                cambio_pasa = (p_nuevo != p_viejo)
+
+                            if cambio_goles or cambio_pasa:
+                                cambios.append(r_nuevo['Partido'])
                     
-                    if partidos_modificados:
-                        lista_partidos_txt = ", ".join(partidos_modificados)
+                    if cambios:
+                        lista_partidos_txt = ", ".join(cambios)
                         log_msg = f"🔄 Modificó sus porras en: {lista_partidos_txt} ({j_global})"
                     else:
-                        log_msg = f"📝 Re-guardó predicciones sin realizar cambios ({j_global})"
+                        log_msg = f"📝 Re-guardó predicciones sin cambios ({j_global})"
 
                 # 2. Actualizar base de datos (Predicciones)
                 otras_preds = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
                 df_final_p = pd.concat([otras_preds, pd.DataFrame(env)], ignore_index=True)
                 conn.update(worksheet="Predicciones", data=df_final_p)
                 
-                # 3. Escribir el mensaje ciego en el VAR (Logs)
+                # 3. Escribir en el VAR (Logs)
                 log_entry = pd.DataFrame([{
-                    "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"), 
-                    "Usuario": st.session_state.user, 
+                    "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Usuario": st.session_state.user,
                     "Accion": log_msg
                 }])
-                df_l_existente = leer_datos("Logs")
+                df_l_existente = conn.read(worksheet="Logs", ttl=0)
                 conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_entry], ignore_index=True))
                 
-                # 4. Feedback de la interfaz
+                # 4. Feedback y Refresco
                 st.cache_data.clear()
-                st.success(f"✅ ¡Porras guardadas! El VAR ha registrado: {log_msg}")
-                time.sleep(1.5)
+                st.cache_resource.clear()
+                st.success(f"✅ ¡Hecho! El VAR ha registrado: {log_msg}")
+                time.sleep(1.2)
                 st.rerun()
 
     with tabs[1]: # --- 🌳 PESTAÑA SUPER BRACKET (MUNDIAL 2026) ---
