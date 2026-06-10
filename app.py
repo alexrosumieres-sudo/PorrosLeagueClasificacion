@@ -1880,6 +1880,8 @@ else:
             st.markdown("---")
             # --- BOTÓN DE GUARDADO ---
             st.markdown("---")
+            # --- BOTÓN DE GUARDADO ---
+            st.markdown("---")
             if st.button("💾 GUARDAR MIS PRONÓSTICOS", use_container_width=True, type="primary"):
                 # 1. Recuperamos lo que había guardado antes para poder comparar
                 preds_viejas = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
@@ -1891,16 +1893,28 @@ else:
                     for r_nuevo in env:
                         m_viejo = preds_viejas[preds_viejas['Partido'] == r_nuevo['Partido']]
                         if not m_viejo.empty:
-                            # Comparamos si cambió el marcador Local, el Visitante o la elección de quién pasa (en KO)
-                            cambio_marcador = (int(r_nuevo['P_L']) != int(m_viejo.iloc[0]['P_L'])) or (int(r_nuevo['P_V']) != int(m_viejo.iloc[0]['P_V']))
-                            cambio_pasa = str(r_nuevo.get('P_Pasa')) != str(m_viejo.iloc[0].get('P_Pasa', 'None'))
+                            try:
+                                # 🔥 BLINDAJE: Forzamos a int() absoluto para evitar falsos positivos por decimales (2 vs 2.0)
+                                l_nuevo = int(float(r_nuevo['P_L']))
+                                v_nuevo = int(float(r_nuevo['P_V']))
+                                
+                                l_viejo = int(float(m_viejo.iloc[0]['P_L']))
+                                v_viejo = int(float(m_viejo.iloc[0]['P_V']))
+                                
+                                cambio_marcador = (l_nuevo != l_viejo) or (v_nuevo != v_viejo)
+                            except (ValueError, TypeError):
+                                # Por si acaso viene un valor vacío o corrupto
+                                cambio_marcador = True
+                            
+                            # Normalizamos strings para la comparación de quién pasa
+                            pasa_nuevo = str(r_nuevo.get('P_Pasa')).strip().lower()
+                            pasa_viejo = str(m_viejo.iloc[0].get('P_Pasa', 'None')).strip().lower()
+                            cambio_pasa = pasa_nuevo != pasa_viejo
                             
                             if cambio_marcador or cambio_pasa:
-                                # Guardamos el identificador del partido (Ej: "México-Sudáfrica")
                                 partidos_modificados.append(r_nuevo['Partido'])
                     
                     if partidos_modificados:
-                        # Creamos la lista de partidos separados por comas sin revelar los goles guardados
                         lista_partidos_txt = ", ".join(partidos_modificados)
                         log_msg = f"🔄 Modificó sus porras en: {lista_partidos_txt} ({j_global})"
                     else:
