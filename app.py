@@ -1878,21 +1878,52 @@ else:
 
             # --- BOTÓN DE GUARDADO ---
             st.markdown("---")
+            # --- BOTÓN DE GUARDADO ---
+            st.markdown("---")
             if st.button("💾 GUARDAR MIS PRONÓSTICOS", use_container_width=True, type="primary"):
-                # Actualizar base de datos (Predicciones)
+                # 1. Recuperamos lo que había guardado antes para poder comparar
+                preds_viejas = df_p_all[(df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global)]
+                
+                if preds_viejas.empty:
+                    log_msg = f"📝 Creó sus primeras predicciones del Mundial ({j_global})"
+                else:
+                    partidos_modificados = []
+                    for r_nuevo in env:
+                        m_viejo = preds_viejas[preds_viejas['Partido'] == r_nuevo['Partido']]
+                        if not m_viejo.empty:
+                            # Comparamos si cambió el marcador Local, el Visitante o la elección de quién pasa (en KO)
+                            cambio_marcador = (int(r_nuevo['P_L']) != int(m_viejo.iloc[0]['P_L'])) or (int(r_nuevo['P_V']) != int(m_viejo.iloc[0]['P_V']))
+                            cambio_pasa = str(r_nuevo.get('P_Pasa')) != str(m_viejo.iloc[0].get('P_Pasa', 'None'))
+                            
+                            if cambio_marcador or cambio_pasa:
+                                # Guardamos el identificador del partido (Ej: "México-Sudáfrica")
+                                partidos_modificados.append(r_nuevo['Partido'])
+                    
+                    if partidos_modificados:
+                        # Creamos la lista de partidos separados por comas sin revelar los goles guardados
+                        lista_partidos_txt = ", ".join(partidos_modificados)
+                        log_msg = f"🔄 Modificó sus porras en: {lista_partidos_txt} ({j_global})"
+                    else:
+                        log_msg = f"📝 Re-guardó predicciones sin realizar cambios ({j_global})"
+
+                # 2. Actualizar base de datos (Predicciones)
                 otras_preds = df_p_all[~((df_p_all['Usuario'] == st.session_state.user) & (df_p_all['Jornada'] == j_global))]
                 df_final_p = pd.concat([otras_preds, pd.DataFrame(env)], ignore_index=True)
                 conn.update(worksheet="Predicciones", data=df_final_p)
                 
-                # Registro en el VAR (Logs)
-                log_msg = f"📝 Actualizó sus porras del Mundial ({j_global})"
-                log_entry = pd.DataFrame([{"Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"), "Usuario": st.session_state.user, "Accion": log_msg}])
+                # 3. Escribir el mensaje ciego en el VAR (Logs)
+                log_entry = pd.DataFrame([{
+                    "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"), 
+                    "Usuario": st.session_state.user, 
+                    "Accion": log_msg
+                }])
                 df_l_existente = leer_datos("Logs")
                 conn.update(worksheet="Logs", data=pd.concat([df_l_existente, log_entry], ignore_index=True))
                 
+                # 4. Feedback de la interfaz
                 st.cache_data.clear()
-                st.success("✅ ¡Porras guardadas! El VAR ha registrado tu movimiento.")
-                time.sleep(1.2)
+                st.success(f"✅ ¡Porras guardadas! El VAR ha registrado: {log_msg}")
+                time.sleep(1.5)
                 st.rerun()
 
     with tabs[1]: # --- 🌳 PESTAÑA SUPER BRACKET (MUNDIAL 2026) ---
