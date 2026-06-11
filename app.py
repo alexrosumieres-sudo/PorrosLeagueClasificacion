@@ -2313,10 +2313,10 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
 
-                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (MAPEADO A COLUMNAS REALES DE EXCEL) ---
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (BLINDADO ANTI-NAN) ---
                         st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
                         
-                        # Mapeo exacto de IDs de partido a las columnas reales del archivo Brackets.csv
+                        # Mapeo exacto de IDs de partido a las columnas reales de tu base de datos
                         MAPEO_COLUMNAS_MUNDIAL = {
                             # Dieciseisavos (Partidos 73 al 88 -> G16_0 al G16_15)
                             **{73 + i: f"G16_{i}" for i in range(16)},
@@ -2346,22 +2346,25 @@ else:
                                 num_llaves = total_equipos // 2
                                 
                                 for p_idx in range(num_llaves):
-                                    if total_equipos == 4: # Cuartos: llave 1 (97 vs 99), llave 2 (98 vs 100)
+                                    if total_equipos == 4: # Cuartos: m97 vs m99, m98 vs m100
                                         id_loc = 97 + p_idx
                                         id_vis = 97 + p_idx + 2
-                                    elif total_equipos == 2: # Semis: 101 vs 102
+                                    elif total_equipos == 2: # Semis: m101 vs m102
                                         id_loc = 101
                                         id_vis = 102
                                     else: # 16vos y 8vos consecutivos
                                         id_loc = inicio_id + (p_idx * 2)
                                         id_vis = inicio_id + (p_idx * 2) + 1
                                         
-                                    # Obtenemos el nombre real de la columna usando el Mapeo Estricto
                                     col_local_real = MAPEO_COLUMNAS_MUNDIAL.get(id_loc)
                                     col_vis_real = MAPEO_COLUMNAS_MUNDIAL.get(id_vis)
                                     
-                                    eq_local = r_row.get(col_local_real, "Vacío") if col_local_real else "Vacío"
-                                    eq_vis = r_row.get(col_vis_real, "Vacío") if col_vis_real else "Vacío"
+                                    val_local = r_row.get(col_local_real) if col_local_real else None
+                                    val_vis = r_row.get(col_vis_real) if col_vis_real else None
+                                    
+                                    # 🔥 ESCUDO CRÍTICO: Si el valor es NaN de Pandas, None o un texto vacío, forzamos a "Vacío"
+                                    eq_local = "Vacío" if pd.isna(val_local) or str(val_local).strip() in ["", "nan", "None"] else str(val_local)
+                                    eq_vis = "Vacío" if pd.isna(val_vis) or str(val_vis).strip() in ["", "nan", "None"] else str(val_vis)
                                     
                                     txt_llave = f"Llave {p_idx + 1}" if num_llaves > 1 else "Cruce Finalista"
                                     st.markdown(f"<small style='color:#94a3b8; font-weight:bold; margin-left:5px;'>• {txt_llave}</small>", unsafe_allow_html=True)
