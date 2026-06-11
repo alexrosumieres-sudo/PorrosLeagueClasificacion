@@ -2309,7 +2309,7 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
 
-                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (MEJORADO CON CRUCES ⚔️) ---
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (ESTRUCTURADO POR LLAVES ⚔️) ---
                         st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
                         
                         rondas_visor = [
@@ -2327,10 +2327,10 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
                                 
-                                # Calculamos cuántas llaves/partidos tiene esta ronda (la mitad de la cuenta de equipos)
+                                # Calculamos cuántas llaves independientes tiene esta ronda
                                 num_partidos = cuenta // 2
                                 
-                                # Iteramos partido a partido para agrupar los dos contrincantes
+                                # Iteramos partido a partido para separarlos visualmente
                                 for p_idx in range(num_partidos):
                                     idx_local = p_idx * 2
                                     idx_visitante = p_idx * 2 + 1
@@ -2338,25 +2338,29 @@ else:
                                     eq_local = r_row.get(f"{prefijo}_{idx_local}", "Vacío")
                                     eq_vis = r_row.get(f"{prefijo}_{idx_visitante}", "Vacío")
                                     
-                                    # Renderizamos el cruce en una sola fila limpia
+                                    # Metemos una etiqueta clara para romper la verticalidad
+                                    # Si es Semifinal ponemos simplemente "Cruce", si son Cuartos ponemos "Llave 1", "Llave 2"...
+                                    txt_llave = f"Llave {p_idx + 1}" if num_partidos > 1 else "Cruce Finalista"
+                                    st.markdown(f"<small style='color:#94a3b8; font-weight:bold; margin-left:5px;'>• {txt_llave}</small>", unsafe_allow_html=True)
+                                    
+                                    # Renderizamos el cruce real enfrentado
                                     c_loc, c_vs, c_vis = st.columns([2, 0.5, 2])
                                     
                                     with c_loc:
                                         st.markdown(f"""
-                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                                <small style="color:#94a3b8; font-size:0.7em; font-weight:bold; display:block;">{tag_f} • Ranura {idx_local+1}</small>
+                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
+                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">{tag_f} • Pos {idx_local+1}</small>
                                                 <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_local}</span>
                                             </div>
                                         """, unsafe_allow_html=True)
                                         
                                     with c_vs:
-                                        # Espada cruzada estática en el centro para indicar el versus de esa llave
                                         st.markdown("<div style='text-align:center; margin-top:12px; font-size:1.1em; color:#94a3b8; font-weight:900;'>⚔️</div>", unsafe_allow_html=True)
                                         
                                     with c_vis:
                                         st.markdown(f"""
-                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                                <small style="color:#94a3b8; font-size:0.7em; font-weight:bold; display:block;">{tag_f} • Ranura {idx_visitante+1}</small>
+                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
+                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">{tag_f} • Pos {idx_visitante+1}</small>
                                                 <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_vis}</span>
                                             </div>
                                         """, unsafe_allow_html=True)
