@@ -2374,16 +2374,7 @@ else:
                                             </div>
                                         """, unsafe_allow_html=True)
                                         
-                                    with c_vs:
-                                        st.markdown("<div style='text-align:center; margin-top:12px; font-size:1.1em; color:#94a3b8; font-weight:900;'>⚔️</div>", unsafe_allow_html=True)
-                                        
-                                    with c_vis:
-                                        st.markdown(f"""
-                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
-                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">{tag_f} • Pos {idx_visitante+1}</small>
-                                                <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_vis}</span>
-                                            </div>
-                                        """, unsafe_allow_html=True)
+                                
 
                         # --- COLA DEL BRACKET: FINAL ---
                         st.markdown("""
