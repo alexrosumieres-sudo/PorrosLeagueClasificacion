@@ -2076,7 +2076,7 @@ else:
                     for i, (loc, vis) in enumerate(cruces_16):
                         with cols_16[i // 4]:
                             st.markdown(f"<small style='color:#6c757d;'>Partido {73+i}</small>", unsafe_allow_html=True)
-                            def_w16 = b_prev.iloc[0][f"M{73+i}"] if not b_prev.empty and f"M{73+i}" in b_prev.columns else loc
+                            def_w16 = b_prev.iloc[0][f"m{73+i}"] if not b_prev.empty and f"m{73+i}" in b_prev.columns else loc
                             res_16 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w16) if def_w16 in [loc, vis] else 0, key=f"radio_16_{i}", disabled=not puede_editar)
                             ganadores_16.append(res_16)
 
@@ -2093,7 +2093,7 @@ else:
                     for i, (loc, vis) in enumerate(cruces_8):
                         with cols_8[i // 2]:
                             st.markdown(f"<small style='color:#6c757d;'>Partido {89+i}</small>", unsafe_allow_html=True)
-                            def_w8 = b_prev.iloc[0][f"M{89+i}"] if not b_prev.empty and f"M{89+i}" in b_prev.columns else loc
+                            def_w8 = b_prev.iloc[0][f"m{89+i}"] if not b_prev.empty and f"m{89+i}" in b_prev.columns else loc
                             res_8 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w8) if def_w8 in [loc, vis] else 0, key=f"radio_8_{i}", disabled=not puede_editar)
                             ganadores_8.append(res_8)
 
@@ -2108,7 +2108,7 @@ else:
                     for i, (loc, vis) in enumerate(cruces_4):
                         with cols_4[i // 2]:
                             st.markdown(f"<small style='color:#6c757d;'>Partido {97+i}</small>", unsafe_allow_html=True)
-                            def_w4 = b_prev.iloc[0][f"M{97+i}"] if not b_prev.empty and f"M{97+i}" in b_prev.columns else loc
+                            def_w4 = b_prev.iloc[0][f"m{97+i}"] if not b_prev.empty and f"m{97+i}" in b_prev.columns else loc
                             res_4 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w4) if def_w4 in [loc, vis] else 0, key=f"radio_4_{i}", disabled=not puede_editar)
                             ganadores_4.append(res_4)
 
@@ -2120,7 +2120,7 @@ else:
                         loc, vis = ganadores_4[i], ganadores_4[i+1]
                         with cols_2[i // 2]:
                             st.markdown(f"<small style='color:#6c757d;'>Partido {101+(i//2)}</small>", unsafe_allow_html=True)
-                            def_ws = b_prev.iloc[0][f"M{101+(i//2)}"] if not b_prev.empty and f"M{101+(i//2)}" in b_prev.columns else loc
+                            def_ws = b_prev.iloc[0][f"m{101+(i//2)}"] if not b_prev.empty and f"m{101+(i//2)}" in b_prev.columns else loc
                             ws = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_ws) if def_ws in [loc, vis] else 0, key=f"radio_s_{i}", disabled=not puede_editar)
                             ganadores_semi.append(ws)
                             perdedores_semi.append(vis if ws == loc else loc)
@@ -2164,11 +2164,11 @@ else:
                                     datos[f"{g}_2"] = ganadores_grupos[f"{g}_2"]
                                     datos[f"{g}_3"] = ganadores_grupos[f"{g}_3"]
                                 
-                                # Guardado exacto usando los nombres reales de columnas M73-M102
-                                for i, v in enumerate(ganadores_16): datos[f"M{73+i}"] = v
-                                for i, v in enumerate(ganadores_8): datos[f"M{89+i}"] = v
-                                for i, v in enumerate(ganadores_4): datos[f"M{97+i}"] = v
-                                for i, v in enumerate(ganadores_semi): datos[f"M{101+i}"] = v
+                                # Guardado exacto usando las columnas m73-m102 (en minúsculas)
+                                for i, v in enumerate(ganadores_16): datos[f"m{73+i}"] = v
+                                for i, v in enumerate(ganadores_8): datos[f"m{89+i}"] = v
+                                for i, v in enumerate(ganadores_4): datos[f"m{97+i}"] = v
+                                for i, v in enumerate(ganadores_semi): datos[f"m{101+i}"] = v
 
                                 df_b_act = pd.concat([df_b_all[df_b_all['Usuario'] != st.session_state.user], pd.DataFrame([datos])], ignore_index=True)
                                 conn.update(worksheet="Brackets", data=df_b_act)
@@ -2312,14 +2312,14 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
 
-                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (MAPEADO CORRECTO M73-M102) ---
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (CORREGIDO EN MINÚSCULAS m73-m102) ---
                         st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
                         
                         rondas_config = [
-                            ("Dieciseisavos de Final", 73, 16, "#f8fafc", "M"),
-                            ("Octavos de Final", 89, 8, "#f1f5f9", "M"),
-                            ("Cuartos de Final", 97, 4, "#e2e8f0", "M"),
-                            ("Semifinales", 101, 2, "#cbd5e1", "M")
+                            ("Dieciseisavos de Final", 73, 16, "#f8fafc", "m"),
+                            ("Octavos de Final", 89, 8, "#f1f5f9", "m"),
+                            ("Cuartos de Final", 97, 4, "#e2e8f0", "m"),
+                            ("Semifinales", 101, 2, "#cbd5e1", "m")
                         ]
                         
                         for nombre_fase, inicio_id, total_equipos, bg_color, pref_col in rondas_config:
@@ -2333,19 +2333,16 @@ else:
                                 num_llaves = total_equipos // 2
                                 
                                 for p_idx in range(num_llaves):
-                                    # Emparejamiento lineal exacto de los IDs de los partidos de tu Excel
-                                    id_loc = inicio_id + (p_idx * 2)
-                                    id_vis = inicio_id + (p_idx * 2) + 1
-                                    
-                                    # Modificación especial para Semifinales y Cuartos: Tus columnas del Excel son M97, M98, M99, M100 y M101, M102
-                                    if total_equipos == 4:
+                                    # Emparejamiento lineal fiel a la estructura interna del Excel
+                                    if total_equipos == 4: # Cuartos: m97 vs m99, m98 vs m100
                                         id_loc = 97 + p_idx
                                         id_vis = 97 + p_idx + 2
-                                        if p_idx == 1:
-                                            id_loc, id_vis = 98, 100
-                                    elif total_equipos == 2:
+                                    elif total_equipos == 2: # Semis: m101 vs m102
                                         id_loc = 101
                                         id_vis = 102
+                                    else: # 16vos y 8vos consecutivos normales
+                                        id_loc = inicio_id + (p_idx * 2)
+                                        id_vis = inicio_id + (p_idx * 2) + 1
                                         
                                     eq_local = r_row.get(f"{pref_col}{id_loc}", "Vacío")
                                     eq_vis = r_row.get(f"{pref_col}{id_vis}", "Vacío")
