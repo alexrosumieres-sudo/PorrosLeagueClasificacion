@@ -2309,7 +2309,7 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
 
-                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (ESTRUCTURADO Y CORREGIDO) ---
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (ORDEN LINEAL FIEL AL EXCEL) ---
                         st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
                         
                         rondas_visor = [
@@ -2329,36 +2329,25 @@ else:
                                 
                                 num_partidos = cuenta // 2
                                 
-                                # Iteramos por el número de partidos reales de la ronda
+                                # Recorremos secuencialmente los partidos (0 contra 1, 2 contra 3...) tal y como se diseñó en tu porra
                                 for p_idx in range(num_partidos):
-                                    # Mapeo de índices corregido para respetar las llaves cruzadas del torneo
-                                    if cuenta == 4: # Cuartos de Final cruzados (1 vs 3 y 2 vs 4)
-                                        idx_local = p_idx
-                                        idx_visitante = p_idx + 2
-                                    elif cuenta == 16: # Dieciseisavos (Cruces intermedios si tu árbol lo requiere, si no, lineal)
-                                        idx_local = p_idx * 2
-                                        idx_visitante = p_idx * 2 + 1
-                                    elif cuenta == 8: # Octavos de Final (Cruces si van alternos)
-                                        idx_local = p_idx * 2
-                                        idx_visitante = p_idx * 2 + 1
-                                    else: # Semifinales (0 vs 1)
-                                        idx_local = p_idx * 2
-                                        idx_visitante = p_idx * 2 + 1
+                                    idx_local = p_idx * 2
+                                    idx_visitante = p_idx * 2 + 1
                                     
                                     eq_local = r_row.get(f"{prefijo}_{idx_local}", "Vacío")
                                     eq_vis = r_row.get(f"{prefijo}_{idx_visitante}", "Vacío")
                                     
-                                    # Etiqueta limpia del partido para romper la continuidad vertical
+                                    # Ponemos el título de la Llave para romper la sensación de columna vertical
                                     txt_llave = f"Llave {p_idx + 1}" if num_partidos > 1 else "Cruce Finalista"
                                     st.markdown(f"<small style='color:#94a3b8; font-weight:bold; margin-left:5px;'>• {txt_llave}</small>", unsafe_allow_html=True)
                                     
-                                    # Renderizado en columnas con el Versus central
+                                    # Estructura horizontal limpia con Versus central
                                     c_loc, c_vs, c_vis = st.columns([2, 0.5, 2])
                                     
                                     with c_loc:
                                         st.markdown(f"""
                                             <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
-                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">{tag_f} • Ranura {idx_local+1}</small>
+                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">{tag_f} • Pos {idx_local+1}</small>
                                                 <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_local}</span>
                                             </div>
                                         """, unsafe_allow_html=True)
@@ -2369,7 +2358,7 @@ else:
                                     with c_vis:
                                         st.markdown(f"""
                                             <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
-                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">{tag_f} • Ranura {idx_visitante+1}</small>
+                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">{tag_f} • Pos {idx_visitante+1}</small>
                                                 <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_vis}</span>
                                             </div>
                                         """, unsafe_allow_html=True)
