@@ -2313,29 +2313,20 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
 
-                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (BLINDADO ANTI-NAN) ---
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (BLINDAJE ABSOLUTO DE COLUMNAS) ---
                         st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
                         
-                        # Mapeo exacto de IDs de partido a las columnas reales de tu base de datos
-                        MAPEO_COLUMNAS_MUNDIAL = {
-                            # Dieciseisavos (Partidos 73 al 88 -> G16_0 al G16_15)
-                            **{73 + i: f"G16_{i}" for i in range(16)},
-                            # Octavos (Partidos 89 al 96 -> G8_0 al G8_7)
-                            **{89 + i: f"G8_{i}" for i in range(8)},
-                            # Cuartos (Partidos 97 al 100 -> G4_0 al G4_3)
-                            **{97 + i: f"G4_{i}" for i in range(4)},
-                            # Semifinales (Partidos 101 y 102 -> G2_0 y G2_1)
-                            101: "G2_0", 102: "G2_1"
-                        }
+                        # 🔥 BLINDAJE ULTRA-PRO: Limpiamos espacios y pasamos a minúsculas las llaves del rival para evitar fallos del CSV
+                        dict_rival_limpio = {str(k).strip().lower(): v for k, v in r_row.to_dict().items()}
                         
                         rondas_config = [
-                            ("Dieciseisavos de Final", 73, 16, "#f8fafc"),
-                            ("Octavos de Final", 89, 8, "#f1f5f9"),
-                            ("Cuartos de Final", 97, 4, "#e2e8f0"),
-                            ("Semifinales", 101, 2, "#cbd5e1")
+                            ("Dieciseisavos de Final", 73, 16, "#f8fafc", "m"),
+                            ("Octavos de Final", 89, 8, "#f1f5f9", "m"),
+                            ("Cuartos de Final", 97, 4, "#e2e8f0", "m"),
+                            ("Semifinales", 101, 2, "#cbd5e1", "m")
                         ]
                         
-                        for nombre_fase, inicio_id, total_equipos, bg_color in rondas_config:
+                        for nombre_fase, inicio_id, total_equipos, bg_color, pref_col in rondas_config:
                             with st.container():
                                 st.markdown(f"""
                                     <div style="background:{bg_color}; padding:10px 15px; border-radius:8px; margin-top:15px; margin-bottom:10px;">
@@ -2346,25 +2337,27 @@ else:
                                 num_llaves = total_equipos // 2
                                 
                                 for p_idx in range(num_llaves):
+                                    # Mapeo exacto secuencial basado en los partidos de tu porra
                                     if total_equipos == 4: # Cuartos: m97 vs m99, m98 vs m100
                                         id_loc = 97 + p_idx
                                         id_vis = 97 + p_idx + 2
                                     elif total_equipos == 2: # Semis: m101 vs m102
                                         id_loc = 101
                                         id_vis = 102
-                                    else: # 16vos y 8vos consecutivos
+                                    else: # 16vos y 8vos secuenciales
                                         id_loc = inicio_id + (p_idx * 2)
                                         id_vis = inicio_id + (p_idx * 2) + 1
                                         
-                                    col_local_real = MAPEO_COLUMNAS_MUNDIAL.get(id_loc)
-                                    col_vis_real = MAPEO_COLUMNAS_MUNDIAL.get(id_vis)
+                                    # Buscamos en nuestro diccionario blindado libre de espacios raros
+                                    clave_loc = f"{pref_col}{id_loc}"
+                                    clave_vis = f"{pref_col}{id_vis}"
                                     
-                                    val_local = r_row.get(col_local_real) if col_local_real else None
-                                    val_vis = r_row.get(col_vis_real) if col_vis_real else None
+                                    eq_local = dict_rival_limpio.get(clave_loc, "Vacío")
+                                    eq_vis = dict_rival_limpio.get(clave_vis, "Vacío")
                                     
-                                    # 🔥 ESCUDO CRÍTICO: Si el valor es NaN de Pandas, None o un texto vacío, forzamos a "Vacío"
-                                    eq_local = "Vacío" if pd.isna(val_local) or str(val_local).strip() in ["", "nan", "None"] else str(val_local)
-                                    eq_vis = "Vacío" if pd.isna(val_vis) or str(val_vis).strip() in ["", "nan", "None"] else str(val_vis)
+                                    # Si por algún motivo sigue dando Vacío, probamos en Mayúsculas por desesperación decorativa
+                                    if eq_local == "Vacío": eq_local = dict_rival_limpio.get(clave_loc.upper(), "Vacío")
+                                    if eq_vis == "Vacío": eq_vis = dict_rival_limpio.get(clave_vis.upper(), "Vacío")
                                     
                                     txt_llave = f"Llave {p_idx + 1}" if num_llaves > 1 else "Cruce Finalista"
                                     st.markdown(f"<small style='color:#94a3b8; font-weight:bold; margin-left:5px;'>• {txt_llave}</small>", unsafe_allow_html=True)
