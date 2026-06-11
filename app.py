@@ -1348,7 +1348,7 @@ def get_now_madrid():
     return datetime.datetime.now(tz).replace(tzinfo=None)
 
 # Fecha y hora del partido inaugural (Ejemplo: 11 de Junio a las 21:00)
-FECHA_INAUGURAL = datetime.datetime(2026, 6, 10, 21, 0, 0)
+FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
 mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
 
 # --- 3. APP ---
@@ -1965,7 +1965,7 @@ else:
             """)
 
         FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
-        mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
+        mercado_abierto = False# get_now_madrid() < FECHA_INAUGURAL
         es_admin = (st.session_state.user.upper() == "ADMIN")
         puede_editar = mercado_abierto or es_admin
 
