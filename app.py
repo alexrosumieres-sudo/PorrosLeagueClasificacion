@@ -2165,10 +2165,11 @@ else:
                                     datos[f"{g}_3"] = ganadores_grupos[f"{g}_3"]
                                 
                                 # Guardado exacto usando las columnas m73-m102 (en minúsculas)
-                                for i, v in enumerate(ganadores_16): datos[f"m{73+i}"] = v
-                                for i, v in enumerate(ganadores_8): datos[f"m{89+i}"] = v
-                                for i, v in enumerate(ganadores_4): datos[f"m{97+i}"] = v
-                                for i, v in enumerate(ganadores_semi): datos[f"m{101+i}"] = v
+                                for i, v in enumerate(ganadores_16): datos[f"G16_{i}"] = v
+                                for i, v in enumerate(ganadores_8):  datos[f"G8_{i}"] = v
+                                for i, v in enumerate(ganadores_4):  datos[f"G4_{i}"] = v
+                                datos["G2_0"] = ganadores_semi[0]
+                                datos["G2_1"] = ganadores_semi[1]
 
                                 df_b_act = pd.concat([df_b_all[df_b_all['Usuario'] != st.session_state.user], pd.DataFrame([datos])], ignore_index=True)
                                 conn.update(worksheet="Brackets", data=df_b_act)
@@ -2312,17 +2313,29 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
 
-                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (CORREGIDO EN MINÚSCULAS m73-m102) ---
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (MAPEADO A COLUMNAS REALES DE EXCEL) ---
                         st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
                         
+                        # Mapeo exacto de IDs de partido a las columnas reales del archivo Brackets.csv
+                        MAPEO_COLUMNAS_MUNDIAL = {
+                            # Dieciseisavos (Partidos 73 al 88 -> G16_0 al G16_15)
+                            **{73 + i: f"G16_{i}" for i in range(16)},
+                            # Octavos (Partidos 89 al 96 -> G8_0 al G8_7)
+                            **{89 + i: f"G8_{i}" for i in range(8)},
+                            # Cuartos (Partidos 97 al 100 -> G4_0 al G4_3)
+                            **{97 + i: f"G4_{i}" for i in range(4)},
+                            # Semifinales (Partidos 101 y 102 -> G2_0 y G2_1)
+                            101: "G2_0", 102: "G2_1"
+                        }
+                        
                         rondas_config = [
-                            ("Dieciseisavos de Final", 73, 16, "#f8fafc", "m"),
-                            ("Octavos de Final", 89, 8, "#f1f5f9", "m"),
-                            ("Cuartos de Final", 97, 4, "#e2e8f0", "m"),
-                            ("Semifinales", 101, 2, "#cbd5e1", "m")
+                            ("Dieciseisavos de Final", 73, 16, "#f8fafc"),
+                            ("Octavos de Final", 89, 8, "#f1f5f9"),
+                            ("Cuartos de Final", 97, 4, "#e2e8f0"),
+                            ("Semifinales", 101, 2, "#cbd5e1")
                         ]
                         
-                        for nombre_fase, inicio_id, total_equipos, bg_color, pref_col in rondas_config:
+                        for nombre_fase, inicio_id, total_equipos, bg_color in rondas_config:
                             with st.container():
                                 st.markdown(f"""
                                     <div style="background:{bg_color}; padding:10px 15px; border-radius:8px; margin-top:15px; margin-bottom:10px;">
@@ -2333,19 +2346,22 @@ else:
                                 num_llaves = total_equipos // 2
                                 
                                 for p_idx in range(num_llaves):
-                                    # Emparejamiento lineal fiel a la estructura interna del Excel
-                                    if total_equipos == 4: # Cuartos: m97 vs m99, m98 vs m100
+                                    if total_equipos == 4: # Cuartos: llave 1 (97 vs 99), llave 2 (98 vs 100)
                                         id_loc = 97 + p_idx
                                         id_vis = 97 + p_idx + 2
-                                    elif total_equipos == 2: # Semis: m101 vs m102
+                                    elif total_equipos == 2: # Semis: 101 vs 102
                                         id_loc = 101
                                         id_vis = 102
-                                    else: # 16vos y 8vos consecutivos normales
+                                    else: # 16vos y 8vos consecutivos
                                         id_loc = inicio_id + (p_idx * 2)
                                         id_vis = inicio_id + (p_idx * 2) + 1
                                         
-                                    eq_local = r_row.get(f"{pref_col}{id_loc}", "Vacío")
-                                    eq_vis = r_row.get(f"{pref_col}{id_vis}", "Vacío")
+                                    # Obtenemos el nombre real de la columna usando el Mapeo Estricto
+                                    col_local_real = MAPEO_COLUMNAS_MUNDIAL.get(id_loc)
+                                    col_vis_real = MAPEO_COLUMNAS_MUNDIAL.get(id_vis)
+                                    
+                                    eq_local = r_row.get(col_local_real, "Vacío") if col_local_real else "Vacío"
+                                    eq_vis = r_row.get(col_vis_real, "Vacío") if col_vis_real else "Vacío"
                                     
                                     txt_llave = f"Llave {p_idx + 1}" if num_llaves > 1 else "Cruce Finalista"
                                     st.markdown(f"<small style='color:#94a3b8; font-weight:bold; margin-left:5px;'>• {txt_llave}</small>", unsafe_allow_html=True)
