@@ -2362,8 +2362,437 @@ else:
                                                 <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_vis}</span>
                                             </div>
                                         """, unsafe_allow_html=True)
-                                        
+                                   with tabs[1]: # --- 🌳 PESTAÑA SUPER BRACKET (MUNDIAL 2026) ---
+        st.markdown("## 🌳 El Súper Bracket del Mundial")
+        st.caption("Define tus posiciones de los grupos, los mejores terceros y el camino a la gloria.")
+
+        # --- REGLAMENTO EXPANDIBLE ---
+        with st.expander("📊 📜 Ver Reglamento de Puntos del Súper Bracket", expanded=False):
+            st.markdown("""
+            A diferencia de la porra diaria, el Súper Bracket premia la **supervivencia** de tus equipos seleccionados y los cruces exactos:
+            
+            | Hito o Fase Alcanzada | Puntos por Acierto |
+            | :--- | :--- |
+            | 🏁 **Clasificados de Grupo** (1º y 2º puesto) | **+0.50 pts** por equipo exacto |
+            | 🎯 **Elegir Mejor Tercero** clasificado | **+0.50 pts** por equipo acertado |
+            | 🛡️ **Avance a Octavos de Final** | **+0.50 pts** por equipo que metes en la fase |
+            | 📊 **Avance a Cuartos de Final** | **+1.00 pto** por equipo que metes en la fase |
+            | ⚔️ **Avance a Semifinales** | **+1.50 pts** por equipo que metes en la fase |
+            | 🥇 **Avance a la Gran Final** | **+2.00 pts** por equipo que metes en la fase |
+            | 🏆 **Acertar Campeón del Mundo** | **+4.00 pts** |
+            
+            **🔥 Bonus Extra por Cruces Exactos:**
+            Si clavas los dos equipos que se enfrentan en una llave (sin importar el orden de local/visitante), te llevas un bonus adicional: **+0.50 pts** en 16vos, **+1.00 pto** en 8vos y 4tos, y **+2.00 pts** en la Final.
+            """)
+
+        FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
+        mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
+        es_admin = (st.session_state.user.upper() == "ADMIN")
+        puede_editar = mercado_abierto or es_admin
+
+        # --- CONTROL DE ESTADO DEL MERCADO ---
+        if mercado_abierto:
+            st.success(f"🔓 **MERCADO ABIERTO.** Tienes hasta el 11 de junio a las 21:00 para guardar tu cuadro.")
+        else:
+            st.error(f"🔒 **MERCADO CERRADO.** Los cuadros están blindados. ¡Es hora de espiar a los rivales!")
+
+        # --- CARGA Y RENDERIZACIÓN ---
+        df_b_all = leer_datos("Brackets")
+        
+        # Creamos sub-pestañas internas: Editar tu cuadro / Espiar Rivales
+        if puede_editar:
+            tab_mi_cuadro, tab_espiar = st.tabs(["✍️ Rellenar Mi Cuadro", "👁️ Espiar Rivales (Bloqueado)"])
+        else:
+            tab_mi_cuadro, tab_espiar = st.tabs(["📋 Mi Cuadro Guardado", "👁️ El Selector Panini (Espiar Rivales)"])
+
+        # ==========================================
+        # SUB-TAB 1: FORMULARIO DE EDICIÓN / CONSULTA PROPIA
+        # ==========================================
+        with tab_mi_cuadro:
+            b_prev = df_b_all[df_b_all['Usuario'] == st.session_state.user]
+            
+            st.subheader("1️⃣ Posiciones de la Fase de Grupos")
+            ganadores_grupos = {}
+            todos_los_terceros = []
+
+            c_g1, c_g2, c_g3 = st.columns(3)
+            for idx, (nombre_g, equipos) in enumerate(GRUPOS_2026.items()):
+                target_col = [c_g1, c_g2, c_g3][idx % 3]
+                with target_col:
+                    with st.container(border=True):
+                        st.markdown(f"**{nombre_g}**")
+                        def_p1 = b_prev.iloc[0][f"{nombre_g}_1"] if not b_prev.empty else equipos[0]
+                        def_p2 = b_prev.iloc[0][f"{nombre_g}_2"] if not b_prev.empty else equipos[1]
+                        def_p3 = b_prev.iloc[0][f"{nombre_g}_3"] if not b_prev.empty else equipos[2]
+
+                        p1 = st.selectbox(f"1º", equipos, index=equipos.index(def_p1) if def_p1 in equipos else 0, key=f"p1_{nombre_g}", disabled=not puede_editar)
+                        op2 = [e for e in equipos if e != p1]
+                        p2 = st.selectbox(f"2º", op2, index=op2.index(def_p2) if def_p2 in op2 else 0, key=f"p2_{nombre_g}", disabled=not puede_editar)
+                        op3 = [e for e in op2 if e != p2]
+                        p3 = st.selectbox(f"3º", op3, index=op3.index(def_p3) if def_p3 in op3 else 0, key=f"p3_{nombre_g}", disabled=not puede_editar)
+                        p4 = [e for e in op3 if e != p3][0]
+                        st.caption(f"4º puesto: {p4}")
+
+                        ganadores_grupos[f"{nombre_g}_1"] = p1
+                        ganadores_grupos[f"{nombre_g}_2"] = p2
+                        ganadores_grupos[f"{nombre_g}_3"] = p3
+                        todos_los_terceros.append(p3)
+
+            st.divider()
+            st.subheader("🎯 2️⃣ Elección de Mejores Terceros")
+            def_terc_str = b_prev.iloc[0]["MejoresTerceros"] if not b_prev.empty and "MejoresTerceros" in b_prev.columns else ""
+            def_terceros_list = def_terc_str.split(",") if def_terc_str else []
+            
+            seleccion_terceros = st.multiselect(
+                "Selecciona exactamente 8 terceros para avanzar:",
+                options=todos_los_terceros,
+                default=[t for t in def_terceros_list if t in todos_los_terceros],
+                max_selections=8,
+                key="ms_terceros",
+                disabled=not puede_editar
+            )
+
+            if len(seleccion_terceros) < 8:
+                st.warning(f"⚠️ Seleccionados: {len(seleccion_terceros)}/8 mejores terceros. El árbol de eliminación se activará cuando completes los 8.")
+            else:
+                st.subheader("🏟️ 3️⃣ Dieciseisavos de Final (Matriz FIFA)")
+                grupos_3ros = []
+                mapa_pais_letra = {}
+                for pais in seleccion_terceros:
+                    for g_name in GRUPOS_2026.keys():
+                        if ganadores_grupos[f"{g_name}_3"] == pais:
+                            letra = g_name.replace("Grupo ", "")
+                            grupos_3ros.append(letra)
+                            mapa_pais_letra[letra] = pais
+                            break
+                
+                clave_3ros = "".join(sorted(grupos_3ros))
+                
+                if clave_3ros not in MATRIZ_TERCEROS:
+                    st.error("❌ ¡Combinación Imposible! Según la FIFA, es matemáticamente inviable que pasen esos 8 terceros juntos por cuadrante. Cambia tus terceros.")
+                else: 
+                    cruces_3ros = MATRIZ_TERCEROS[clave_3ros]
+                    cruces_16 = [
+                        (ganadores_grupos["Grupo A_2"], ganadores_grupos["Grupo B_2"]),
+                        (ganadores_grupos["Grupo E_1"], mapa_pais_letra[cruces_3ros["1E"]]),
+                        (ganadores_grupos["Grupo F_1"], ganadores_grupos["Grupo C_2"]),
+                        (ganadores_grupos["Grupo C_1"], ganadores_grupos["Grupo F_2"]),
+                        (ganadores_grupos["Grupo I_1"], mapa_pais_letra[cruces_3ros["1I"]]),
+                        (ganadores_grupos["Grupo E_2"], ganadores_grupos["Grupo I_2"]),
+                        (ganadores_grupos["Grupo A_1"], mapa_pais_letra[cruces_3ros["1A"]]),
+                        (ganadores_grupos["Grupo L_1"], mapa_pais_letra[cruces_3ros["1L"]]),
+                        (ganadores_grupos["Grupo D_1"], mapa_pais_letra[cruces_3ros["1D"]]),
+                        (ganadores_grupos["Grupo G_1"], mapa_pais_letra[cruces_3ros["1G"]]),
+                        (ganadores_grupos["Grupo K_2"], ganadores_grupos["Grupo L_2"]),
+                        (ganadores_grupos["Grupo H_1"], ganadores_grupos["Grupo J_2"]),
+                        (ganadores_grupos["Grupo B_1"], mapa_pais_letra[cruces_3ros["1B"]]),
+                        (ganadores_grupos["Grupo J_1"], ganadores_grupos["Grupo H_2"]),
+                        (ganadores_grupos["Grupo K_1"], mapa_pais_letra[cruces_3ros["1K"]]),
+                        (ganadores_grupos["Grupo D_2"], ganadores_grupos["Grupo G_2"]) 
+                    ]
+
+                    ganadores_16 = []
+                    cols_16 = st.columns(4)
+                    for i, (loc, vis) in enumerate(cruces_16):
+                        with cols_16[i // 4]:
+                            st.markdown(f"<small style='color:#6c757d;'>Partido {73+i}</small>", unsafe_allow_html=True)
+                            def_w16 = b_prev.iloc[0][f"M{73+i}"] if not b_prev.empty and f"M{73+i}" in b_prev.columns else loc
+                            res_16 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w16) if def_w16 in [loc, vis] else 0, key=f"radio_16_{i}", disabled=not puede_editar)
+                            ganadores_16.append(res_16)
+
+                    st.subheader("🛡️ 4️⃣ Octavos de Final")
+                    cruces_8 = [
+                        (ganadores_16[1], ganadores_16[4]), (ganadores_16[0], ganadores_16[2]),
+                        (ganadores_16[3], ganadores_16[5]), (ganadores_16[6], ganadores_16[7]),
+                        (ganadores_16[10], ganadores_16[11]), (ganadores_16[8], ganadores_16[9]),
+                        (ganadores_16[13], ganadores_16[15]), (ganadores_16[12], ganadores_16[14])
+                    ]
+                    
+                    ganadores_8 = []
+                    cols_8 = st.columns(4)
+                    for i, (loc, vis) in enumerate(cruces_8):
+                        with cols_8[i // 2]:
+                            st.markdown(f"<small style='color:#6c757d;'>Partido {89+i}</small>", unsafe_allow_html=True)
+                            def_w8 = b_prev.iloc[0][f"M{89+i}"] if not b_prev.empty and f"M{89+i}" in b_prev.columns else loc
+                            res_8 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w8) if def_w8 in [loc, vis] else 0, key=f"radio_8_{i}", disabled=not puede_editar)
+                            ganadores_8.append(res_8)
+
+                    st.subheader("📊 5️⃣ Cuartos de Final")
+                    cruces_4 = [
+                        (ganadores_8[0], ganadores_8[1]), (ganadores_8[4], ganadores_8[5]),
+                        (ganadores_8[2], ganadores_8[3]), (ganadores_8[6], ganadores_8[7]) 
+                    ]
+                    
+                    ganadores_4 = []
+                    cols_4 = st.columns(2)
+                    for i, (loc, vis) in enumerate(cruces_4):
+                        with cols_4[i // 2]:
+                            st.markdown(f"<small style='color:#6c757d;'>Partido {97+i}</small>", unsafe_allow_html=True)
+                            def_w4 = b_prev.iloc[0][f"M{97+i}"] if not b_prev.empty and f"M{97+i}" in b_prev.columns else loc
+                            res_4 = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_w4) if def_w4 in [loc, vis] else 0, key=f"radio_4_{i}", disabled=not puede_editar)
+                            ganadores_4.append(res_4)
+
+                    st.subheader("⚔️ 6️⃣ Semifinales")
+                    cols_2 = st.columns(2)
+                    ganadores_semi = []
+                    perdedores_semi = []
+                    for i in range(0, 4, 2):
+                        loc, vis = ganadores_4[i], ganadores_4[i+1]
+                        with cols_2[i // 2]:
+                            st.markdown(f"<small style='color:#6c757d;'>Partido {101+(i//2)}</small>", unsafe_allow_html=True)
+                            def_ws = b_prev.iloc[0][f"M{101+(i//2)}"] if not b_prev.empty and f"M{101+(i//2)}" in b_prev.columns else loc
+                            ws = st.radio(f"{loc} vs {vis}", [loc, vis], index=[loc, vis].index(def_ws) if def_ws in [loc, vis] else 0, key=f"radio_s_{i}", disabled=not puede_editar)
+                            ganadores_semi.append(ws)
+                            perdedores_semi.append(vis if ws == loc else loc)
+
+                    st.divider()
+                    col_f, col_t = st.columns(2)
+                    with col_t:
+                        st.subheader("🥉 Tercer Puesto")
+                        t3_l, t3_v = perdedores_semi[0], perdedores_semi[1]
+                        def_t3 = b_prev.iloc[0]["TercerPuesto"] if not b_prev.empty and "TercerPuesto" in b_prev.columns else t3_l
+                        res_t3 = st.selectbox("Ganador Bronce", [t3_l, t3_v], index=[t3_l, t3_v].index(def_t3) if def_t3 in [t3_l, t3_v] else 0, key="sb_t3", disabled=not puede_editar)
+                    
+                    with col_f:
+                        st.subheader("🏆 Gran Final")
+                        f_l, f_v = ganadores_semi[0], ganadores_semi[1]
+                        def_cam = b_prev.iloc[0]["Campeon"] if not b_prev.empty and "Campeon" in b_prev.columns else f_l
+                        campeon = st.selectbox("CAMPEÓN DEL MUNDO", [f_l, f_v], index=[f_l, f_v].index(def_cam) if def_cam in [f_l, f_v] else 0, key="sb_final", disabled=not puede_editar)
+                        st.markdown(f"<h2 style='text-align:center; color:#ffd700;'>🥇 {campeon}</h2>", unsafe_allow_html=True)
+
+                    st.divider()
+                    st.subheader("⚽ 8️⃣ Premios Individuales")
+                    clp1, clp2, clp3 = st.columns(3)
+                    with clp1:
+                        def_pi = b_prev.iloc[0]["Pichichi"] if not b_prev.empty and "Pichichi" in b_prev.columns else ""
+                        pichichi = st.text_input("Pichichi (Goleador)", value=def_pi, disabled=not puede_editar)
+                    with clp2:
+                        def_za = b_prev.iloc[0]["Zamora"] if not b_prev.empty and "Zamora" in b_prev.columns else ""
+                        zamora = st.text_input("Zamora (Portero)", value=def_za, disabled=not puede_editar)
+                    with clp3:
+                        def_mv = b_prev.iloc[0]["MVP"] if not b_prev.empty and "MVP" in b_prev.columns else ""
+                        mvp = st.text_input("MVP del Torneo", value=def_mv, disabled=not puede_editar)
+
+                    if puede_editar:
+                        st.markdown("---")
+                        texto_boton = "👑 GUARDAR BRACKET OFICIAL (ADMIN)" if es_admin else "💾 GUARDAR TODO EL BRACKET Y PREMIOS"
+                        if st.button(texto_boton, use_container_width=True, type="primary"):
+                            try:
+                                datos = {"Usuario": st.session_state.user, "MejoresTerceros": ",".join(seleccion_terceros), "TercerPuesto": res_t3, "Campeon": campeon, "Pichichi": pichichi, "Zamora": zamora, "MVP": mvp}
+                                for g in GRUPOS_2026.keys():
+                                    datos[f"{g}_1"] = ganadores_grupos[f"{g}_1"]
+                                    datos[f"{g}_2"] = ganadores_grupos[f"{g}_2"]
+                                    datos[f"{g}_3"] = ganadores_grupos[f"{g}_3"]
                                 
+                                # Guardado exacto usando los nombres reales de columnas M73-M102
+                                for i, v in enumerate(ganadores_16): datos[f"M{73+i}"] = v
+                                for i, v in enumerate(ganadores_8): datos[f"M{89+i}"] = v
+                                for i, v in enumerate(ganadores_4): datos[f"M{97+i}"] = v
+                                for i, v in enumerate(ganadores_semi): datos[f"M{101+i}"] = v
+
+                                df_b_act = pd.concat([df_b_all[df_b_all['Usuario'] != st.session_state.user], pd.DataFrame([datos])], ignore_index=True)
+                                conn.update(worksheet="Brackets", data=df_b_act)
+                                
+                                log_e = pd.DataFrame([{"Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"), "Usuario": st.session_state.user, "Accion": f"🌳 BRACKET: Actualizó su cuadro completo. Campeón: {campeon}"}])
+                                conn.update(worksheet="Logs", data=pd.concat([leer_datos("Logs"), log_e], ignore_index=True))
+                                
+                                st.success("✅ ¡Bracket guardado en la base de datos!")
+                                st.balloons()
+                                st.cache_data.clear()
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error al guardar: {e}")
+
+        # ==========================================
+        # SUB-TAB 2: EL VISOR PANINI (ESPIAR BRACKETS)
+        # ==========================================
+        with tab_espiar:
+            if mercado_abierto:
+                st.info("🔒 **Sección Blindada.** Los cuadros de tus rivales se revelarán de forma automática hoy a las **21:00**, justo cuando ruede el balón inaugural.")
+                st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnh6Znd6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6Z3Z6JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/fNuXfHoZY3nqE/giphy.gif", width=350)
+            else:
+                if df_b_all.empty:
+                    st.warning("⚠️ No hay Brackets guardados en la base de datos todavía.")
+                else:
+                    usuarios_con_cuadro = df_b_all['Usuario'].unique().tolist()
+                    usuarios_espiar = [u for u in u_jugadores if u in usuarios_con_cuadro and u != st.session_state.user]
+                    
+                    if not usuarios_espiar:
+                        st.info("De momento eres el único porrista que ha completado el cuadro. ¡Tus rivales van tarde!")
+                    else:
+                        st.markdown("### 👥 Escoge un porrista para ver su Mundial ideal")
+                        
+                        # --- DISEÑO DEL CROMO PANINI SUPERIOR ---
+                        columnas_panini = st.columns(len(usuarios_espiar) if len(usuarios_espiar) <= 8 else 8)
+                        
+                        if 'rival_seleccionado' not in st.session_state:
+                            st.session_state.rival_seleccionado = usuarios_espiar[0]
+                            
+                        for i, rival_u in enumerate(usuarios_espiar):
+                            col_target = columnas_panini[i % 8]
+                            with col_target:
+                                r_bracket_row = df_b_all[df_b_all['Usuario'] == rival_u].iloc[0]
+                                c_fav = r_bracket_row.get('Campeon', 'Ninguno')
+                                colores_b = COLORES_BANDERAS.get(c_fav, ["#cbd5e1", "#94a3b8"])
+                                
+                                es_act = st.session_state.rival_seleccionado == rival_u
+                                border_style = f"3px solid {colores_b[0]}" if es_act else "1px solid #e2e8f0"
+                                bg_style = "#f8fafc" if es_act else "#ffffff"
+                                
+                                st.markdown(f"""
+                                    <div style="background:{bg_style}; border:{border_style}; border-radius:12px; padding:8px; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                                        <div style="background: linear-gradient(135deg, {colores_b[0]}, {colores_b[1]}); width:12px; height:12px; border-radius:50%; margin: 0 auto 4px auto;"></div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                
+                                if st.button(f"👤 {rival_u}", key=f"btn_panini_{rival_u}", use_container_width=True):
+                                    st.session_state.rival_seleccionado = rival_u
+                                    st.rerun()
+
+                        # --- VISTA COMPLETA DEL RIVAL SELECCIONADO ---
+                        u_target = st.session_state.rival_seleccionado
+                        r_row = df_b_all[df_b_all['Usuario'] == u_target].iloc[0]
+                        
+                        st.markdown("---")
+                        
+                        # Porcentaje de afinidad dinámico
+                        pct_coincidencia = 0.0
+                        columnas_b_cols = [c for c in df_b_all.columns if c not in ['Usuario', 'Usuario_Lower']]
+                        if columnas_b_cols:
+                            df_piv = df_b_all[df_b_all['Usuario'].isin([st.session_state.user, u_target])].set_index('Usuario')[columnas_b_cols].T.fillna("N/A")
+                            if st.session_state.user in df_piv.columns and u_target in df_piv.columns:
+                                exact_matches = np.sum(df_piv[st.session_state.user].astype(str).str.strip().str.lower() == df_piv[u_target].astype(str).str.strip().str.lower())
+                                pct_coincidencia = (exact_matches / len(columnas_b_cols)) * 100
+
+                        # Cabecera Premium
+                        c_target = r_row.get('Campeon', 'Ninguno')
+                        col_r = COLORES_BANDERAS.get(c_target, ["#1e293b", "#64748b"])
+                        
+                        st.markdown(f"""
+                            <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-left: 8px solid {col_r[0]}; border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #e2e8f0; margin-bottom:20px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                                    <div>
+                                        <span style="font-size:0.75em; background:{col_r[0]}; color:white; padding:3px 10px; border-radius:20px; font-weight:bold;">CUADRO DE APUESTAS</span>
+                                        <h3 style="margin:5px 0 0 0; color:#0f172a;">El Mundial de {u_target}</h3>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <span style="font-size:1.6em; font-weight:900; color:{col_r[0]};">{pct_coincidencia:.1f}%</span><br>
+                                        <small style="color:#64748b; font-weight:bold; text-transform:uppercase;">🤝 Afinidades contigo</small>
+                                    </div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                        # CARD 1: RESUMEN FLASH
+                        st.markdown("#### 🏆 Pronósticos Magistrales e Individuales")
+                        c_card1, c_card2, c_card3 = st.columns(3)
+                        
+                        with c_card1:
+                            st.markdown(f"""
+                                <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:15px; text-align:center; height:100%;">
+                                    <span style="font-size:2em;">🏆</span><br>
+                                    <small style="color:#64748b; font-weight:bold;">CAMPEÓN DEL MUNDO</small><br>
+                                    <b style="font-size:1.2em; color:#0f172a;">{r_row.get('Campeon', 'No definido')}</b>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                        with c_card2:
+                            st.markdown(f"""
+                                <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:15px; text-align:center; height:100%;">
+                                    <span style="font-size:2em;">🥇</span><br>
+                                    <small style="color:#64748b; font-weight:bold;">MÁXIMO GOLEADOR (PICHICHI)</small><br>
+                                    <b style="font-size:1.2em; color:#0f172a;">{r_row.get('Pichichi', 'No definido')}</b>
+                                </div>
+                            """, unsafe_allow_html=True)
+                            
+                        with c_card3:
+                            st.markdown(f"""
+                                <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:15px; text-align:center; height:100%;">
+                                    <span style="font-size:2em;">🌟</span><br>
+                                    <small style="color:#64748b; font-weight:bold;">MVP DEL TORNEO</small><br>
+                                    <b style="font-size:1.2em; color:#0f172a;">{r_row.get('MVP', 'No definido')}</b>
+                                </div>
+                            """, unsafe_allow_html=True)
+
+                        st.write("")
+
+                        # CARD 2: MAPA DE CLASIFICADOS DE GRUPO
+                        st.markdown("#### 🏁 Sus Clasificados en Fase de Grupos")
+                        cols_g_view = st.columns(4)
+                        for idx_g, g_key in enumerate(GRUPOS_2026.keys()):
+                            col_g_target = cols_g_view[idx_g % 4]
+                            letra_g = g_key.replace("Grupo ", "")
+                            with col_g_target:
+                                st.markdown(f"""
+                                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:10px; margin-bottom:10px;">
+                                        <div style="font-weight:bold; color:#3b82f6; border-bottom:1px solid #f1f5f9; padding-bottom:4px; margin-bottom:6px; font-size:0.85em;">GRUPO {letra_g}</div>
+                                        <div style="font-size:0.9em; color:#1e293b;">🥇 1º: <b>{r_row.get(f"{g_key}_1")}</b></div>
+                                        <div style="font-size:0.9em; color:#475569;">🥈 2º: <b>{r_row.get(f"{g_key}_2")}</b></div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (MAPEADO CORRECTO M73-M102) ---
+                        st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
+                        
+                        rondas_config = [
+                            ("Dieciseisavos de Final", 73, 16, "#f8fafc", "M"),
+                            ("Octavos de Final", 89, 8, "#f1f5f9", "M"),
+                            ("Cuartos de Final", 97, 4, "#e2e8f0", "M"),
+                            ("Semifinales", 101, 2, "#cbd5e1", "M")
+                        ]
+                        
+                        for nombre_fase, inicio_id, total_equipos, bg_color, pref_col in rondas_config:
+                            with st.container():
+                                st.markdown(f"""
+                                    <div style="background:{bg_color}; padding:10px 15px; border-radius:8px; margin-top:15px; margin-bottom:10px;">
+                                        <span style="font-weight:bold; font-size:0.9em; color:#475569; text-transform:uppercase;">{nombre_fase}</span>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                                
+                                num_llaves = total_equipos // 2
+                                
+                                for p_idx in range(num_llaves):
+                                    # Emparejamiento lineal exacto de los IDs de los partidos de tu Excel
+                                    id_loc = inicio_id + (p_idx * 2)
+                                    id_vis = inicio_id + (p_idx * 2) + 1
+                                    
+                                    # Modificación especial para Semifinales y Cuartos: Tus columnas del Excel son M97, M98, M99, M100 y M101, M102
+                                    if total_equipos == 4:
+                                        id_loc = 97 + p_idx
+                                        id_vis = 97 + p_idx + 2
+                                        if p_idx == 1:
+                                            id_loc, id_vis = 98, 100
+                                    elif total_equipos == 2:
+                                        id_loc = 101
+                                        id_vis = 102
+                                        
+                                    eq_local = r_row.get(f"{pref_col}{id_loc}", "Vacío")
+                                    eq_vis = r_row.get(f"{pref_col}{id_vis}", "Vacío")
+                                    
+                                    txt_llave = f"Llave {p_idx + 1}" if num_llaves > 1 else "Cruce Finalista"
+                                    st.markdown(f"<small style='color:#94a3b8; font-weight:bold; margin-left:5px;'>• {txt_llave}</small>", unsafe_allow_html=True)
+                                    
+                                    c_loc, c_vs, c_vis = st.columns([2, 0.5, 2])
+                                    
+                                    with c_loc:
+                                        st.markdown(f"""
+                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
+                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">Partido {id_loc}</small>
+                                                <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_local}</span>
+                                            </div>
+                                        """, unsafe_allow_html=True)
+                                        
+                                    with c_vs:
+                                        st.markdown("<div style='text-align:center; margin-top:12px; font-size:1.1em; color:#94a3b8; font-weight:900;'>⚔️</div>", unsafe_allow_html=True)
+                                        
+                                    with c_vis:
+                                        st.markdown(f"""
+                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
+                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">Partido {id_vis}</small>
+                                                <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_vis}</span>
+                                            </div>
+                                        """, unsafe_allow_html=True)
 
                         # --- COLA DEL BRACKET: FINAL ---
                         st.markdown("""
