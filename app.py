@@ -1965,7 +1965,7 @@ else:
             Si clavas los dos equipos que se enfrentan en una llave (sin importar el orden de local/visitante), te llevas un bonus adicional: **+0.50 pts** en 16vos, **+1.00 pto** en 8vos y 4tos, y **+2.00 pts** en la Final.
             """)
 
-        FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
+        FECHA_INAUGURAL = datetime.datetime(2026, 6, 10, 21, 0, 0)
         mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
         es_admin = (st.session_state.user.upper() == "ADMIN")
         puede_editar = mercado_abierto or es_admin
