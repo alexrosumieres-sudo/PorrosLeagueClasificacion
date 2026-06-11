@@ -2318,7 +2318,7 @@ else:
 
                         # Función auxiliar interna para limpiar nulos/NaNs y dar un texto limpio
                         def obtener_equipo_limpio(fila_df, nombre_columna):
-                            if col_name not in fila_df:
+                            if nombre_columna not in fila_df:
                                 return "Vacío"
                             val = fila_df[nombre_columna]
                             if pd.isna(val) or str(val).strip() in ["", "nan", "NaN", "None", "null"]:
