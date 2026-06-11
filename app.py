@@ -1349,7 +1349,7 @@ def get_now_madrid():
 
 # Fecha y hora del partido inaugural (Ejemplo: 11 de Junio a las 21:00)
 FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
-mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
+mercado_abierto = False #get_now_madrid() < FECHA_INAUGURAL
 
 # --- 3. APP ---
 st.set_page_config(page_title="Porros League 2026", page_icon="⚽", layout="wide")
