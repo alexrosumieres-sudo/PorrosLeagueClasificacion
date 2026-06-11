@@ -2313,62 +2313,80 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
 
-                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (BLINDAJE ABSOLUTO DE COLUMNAS) ---
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (ESTRUCTURA DE DATOS REAL DEL CSV) ---
                         st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
-                        
-                        # 🔥 BLINDAJE ULTRA-PRO: Limpiamos espacios y pasamos a minúsculas las llaves del rival para evitar fallos del CSV
-                        dict_rival_limpio = {str(k).strip().lower(): v for k, v in r_row.to_dict().items()}
-                        
-                        rondas_config = [
-                            ("Dieciseisavos de Final", 73, 16, "#f8fafc", "m"),
-                            ("Octavos de Final", 89, 8, "#f1f5f9", "m"),
-                            ("Cuartos de Final", 97, 4, "#e2e8f0", "m"),
-                            ("Semifinales", 101, 2, "#cbd5e1", "m")
+
+                        # Función auxiliar interna para limpiar nulos/NaNs y dar un texto limpio
+                        def obtener_equipo_limpio(fila_df, nombre_columna):
+                            if col_name not in fila_df:
+                                return "Vacío"
+                            val = fila_df[nombre_columna]
+                            if pd.isna(val) or str(val).strip() in ["", "nan", "NaN", "None", "null"]:
+                                return "Vacío"
+                            return str(val).strip()
+
+                        # Configuración de las fases mapeadas 1:1 con las columnas reales de tu Brackets.csv
+                        fases_mundial = [
+                            {
+                                "titulo": "Dieciseisavos de Final",
+                                "prefijo": "G16_",
+                                "total_partidos": 8,   # 16 equipos = 8 partidos/llaves
+                                "bg_color": "#f8fafc"
+                            },
+                            {
+                                "titulo": "Octavos de Final",
+                                "prefijo": "G8_",
+                                "total_partidos": 4,   # 8 equipos = 4 partidos/llaves
+                                "bg_color": "#f1f5f9"
+                            },
+                            {
+                                "titulo": "Cuartos de Final",
+                                "prefijo": "G4_",
+                                "total_partidos": 2,   # 4 equipos = 2 partidos/llaves
+                                "bg_color": "#e2e8f0"
+                            },
+                            {
+                                "titulo": "Semifinales",
+                                "prefijo": "G2_",
+                                "total_partidos": 1,   # 2 equipos = 1 partido/llave
+                                "bg_color": "#cbd5e1"
+                            }
                         ]
-                        
-                        for nombre_fase, inicio_id, total_equipos, bg_color, pref_col in rondas_config:
+
+                        # Renderizamos cada fase usando el mapeo exacto de tu base de datos
+                        for fase in fases_mundial:
                             with st.container():
                                 st.markdown(f"""
-                                    <div style="background:{bg_color}; padding:10px 15px; border-radius:8px; margin-top:15px; margin-bottom:10px;">
-                                        <span style="font-weight:bold; font-size:0.9em; color:#475569; text-transform:uppercase;">{nombre_fase}</span>
+                                    <div style="background:{fase['bg_color']}; padding:10px 15px; border-radius:8px; margin-top:15px; margin-bottom:10px;">
+                                        <span style="font-weight:bold; font-size:0.9em; color:#475569; text-transform:uppercase;">{fase['titulo']}</span>
                                     </div>
                                 """, unsafe_allow_html=True)
                                 
-                                num_llaves = total_equipos // 2
-                                
-                                for p_idx in range(num_llaves):
-                                    # Mapeo exacto secuencial basado en los partidos de tu porra
-                                    if total_equipos == 4: # Cuartos: m97 vs m99, m98 vs m100
-                                        id_loc = 97 + p_idx
-                                        id_vis = 97 + p_idx + 2
-                                    elif total_equipos == 2: # Semis: m101 vs m102
-                                        id_loc = 101
-                                        id_vis = 102
-                                    else: # 16vos y 8vos secuenciales
-                                        id_loc = inicio_id + (p_idx * 2)
-                                        id_vis = inicio_id + (p_idx * 2) + 1
-                                        
-                                    # Buscamos en nuestro diccionario blindado libre de espacios raros
-                                    clave_loc = f"{pref_col}{id_loc}"
-                                    clave_vis = f"{pref_col}{id_vis}"
+                                for p_idx in range(fase["total_partidos"]):
+                                    # En tu CSV las parejas van emparejadas como: (0, 1), (2, 3), (4, 5)...
+                                    idx_local = p_idx * 2
+                                    idx_vis = (p_idx * 2) + 1
                                     
-                                    eq_local = dict_rival_limpio.get(clave_loc, "Vacío")
-                                    eq_vis = dict_rival_limpio.get(clave_vis, "Vacío")
+                                    col_local = f"{fase['prefijo']}{idx_local}"
+                                    col_vis = f"{fase['prefijo']}{idx_vis}"
                                     
-                                    # Si por algún motivo sigue dando Vacío, probamos en Mayúsculas por desesperación decorativa
-                                    if eq_local == "Vacío": eq_local = dict_rival_limpio.get(clave_loc.upper(), "Vacío")
-                                    if eq_vis == "Vacío": eq_vis = dict_rival_limpio.get(clave_vis.upper(), "Vacío")
+                                    # Extraemos los nombres de los equipos limpiando los NaN
+                                    eq_local = obtener_equipo_limpio(r_row, col_local)
+                                    eq_vis = obtener_equipo_limpio(r_row, col_vis)
                                     
-                                    txt_llave = f"Llave {p_idx + 1}" if num_llaves > 1 else "Cruce Finalista"
+                                    # Título visual de la llave
+                                    txt_llave = f"Llave {p_idx + 1}" if fase["total_partidos"] > 1 else "Cruce Finalista"
                                     st.markdown(f"<small style='color:#94a3b8; font-weight:bold; margin-left:5px;'>• {txt_llave}</small>", unsafe_allow_html=True)
                                     
                                     c_loc, c_vs, c_vis = st.columns([2, 0.5, 2])
                                     
                                     with c_loc:
+                                        # Cambia de color si el partido está vacío o tiene equipo real
+                                        color_texto = "#94a3b8" if eq_local == "Vacío" else "#0f172a"
                                         st.markdown(f"""
                                             <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
-                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">Partido {id_loc}</small>
-                                                <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_local}</span>
+                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">Posición {idx_local}</small>
+                                                <span style="font-weight:bold; color:{color_texto}; font-size:0.95em;">{eq_local}</span>
                                             </div>
                                         """, unsafe_allow_html=True)
                                         
@@ -2376,10 +2394,11 @@ else:
                                         st.markdown("<div style='text-align:center; margin-top:12px; font-size:1.1em; color:#94a3b8; font-weight:900;'>⚔️</div>", unsafe_allow_html=True)
                                         
                                     with c_vis:
+                                        color_texto = "#94a3b8" if eq_vis == "Vacío" else "#0f172a"
                                         st.markdown(f"""
                                             <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:10px;">
-                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">Partido {id_vis}</small>
-                                                <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_vis}</span>
+                                                <small style="color:#64748b; font-size:0.7em; font-weight:500; display:block;">Posición {idx_vis}</small>
+                                                <span style="font-weight:bold; color:{color_texto}; font-size:0.95em;">{eq_vis}</span>
                                             </div>
                                         """, unsafe_allow_html=True)
 
