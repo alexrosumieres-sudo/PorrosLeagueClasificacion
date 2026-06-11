@@ -2309,7 +2309,7 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
 
-                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO ---
+                        # --- CARD 3: EL ÁRBOL VERTICAL FLUIDO (MEJORADO CON CRUCES ⚔️) ---
                         st.markdown("#### 🏟️ El Camino del Cuadro (Rondas Eliminatorias)")
                         
                         rondas_visor = [
@@ -2322,19 +2322,42 @@ else:
                         for nombre_r, prefijo, cuenta, bg_color, tag_f in rondas_visor:
                             with st.container():
                                 st.markdown(f"""
-                                    <div style="background:{bg_color}; padding:10px 15px; border-radius:8px; margin-top:15px; margin-bottom:5px;">
+                                    <div style="background:{bg_color}; padding:10px 15px; border-radius:8px; margin-top:15px; margin-bottom:10px;">
                                         <span style="font-weight:bold; font-size:0.9em; color:#475569; text-transform:uppercase;">{nombre_r}</span>
                                     </div>
                                 """, unsafe_allow_html=True)
                                 
-                                col_r_items = st.columns(4)
-                                for i_item in range(cuenta):
-                                    with col_r_items[i_item % 4]:
-                                        val_equipo = r_row.get(f"{prefijo}_{i_item}", "Vacio")
+                                # Calculamos cuántas llaves/partidos tiene esta ronda (la mitad de la cuenta de equipos)
+                                num_partidos = cuenta // 2
+                                
+                                # Iteramos partido a partido para agrupar los dos contrincantes
+                                for p_idx in range(num_partidos):
+                                    idx_local = p_idx * 2
+                                    idx_visitante = p_idx * 2 + 1
+                                    
+                                    eq_local = r_row.get(f"{prefijo}_{idx_local}", "Vacío")
+                                    eq_vis = r_row.get(f"{prefijo}_{idx_visitante}", "Vacío")
+                                    
+                                    # Renderizamos el cruce en una sola fila limpia
+                                    c_loc, c_vs, c_vis = st.columns([2, 0.5, 2])
+                                    
+                                    with c_loc:
                                         st.markdown(f"""
-                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02); margin-bottom:5px;">
-                                                <small style="color:#94a3b8; font-size:0.7em; font-weight:bold; display:block;">{tag_f} • Ranura {i_item+1}</small>
-                                                <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{val_equipo}</span>
+                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                                <small style="color:#94a3b8; font-size:0.7em; font-weight:bold; display:block;">{tag_f} • Ranura {idx_local+1}</small>
+                                                <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_local}</span>
+                                            </div>
+                                        """, unsafe_allow_html=True)
+                                        
+                                    with c_vs:
+                                        # Espada cruzada estática en el centro para indicar el versus de esa llave
+                                        st.markdown("<div style='text-align:center; margin-top:12px; font-size:1.1em; color:#94a3b8; font-weight:900;'>⚔️</div>", unsafe_allow_html=True)
+                                        
+                                    with c_vis:
+                                        st.markdown(f"""
+                                            <div style="background:white; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                                                <small style="color:#94a3b8; font-size:0.7em; font-weight:bold; display:block;">{tag_f} • Ranura {idx_visitante+1}</small>
+                                                <span style="font-weight:bold; color:#0f172a; font-size:0.95em;">{eq_vis}</span>
                                             </div>
                                         """, unsafe_allow_html=True)
 
