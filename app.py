@@ -1021,20 +1021,48 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=Non
     
     if p_l == r_l and p_v == r_v:
         puntos += 1.0  # Pleno (Resultado exacto)
+    elif def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=None, hubo_prorroga=False):
+    # 1. ESCUDO: Forzamos a que todo sea número. Si hay un nulo o texto, devolvemos 0.
+    try:
+        p_l = int(float(p_l))
+        p_v = int(float(p_v))
+        r_l = int(float(r_l))
+        r_v = int(float(r_v))
+    except (ValueError, TypeError):
+        return 0.0
+
+    puntos_base = 0.0
+    
+    # 2. Lógica de Puntos Base (Marcador a los 90')
+    signo_p = (p_l > p_v) - (p_l < p_v)
+    signo_r = (r_l > r_v) - (r_l < r_v)
+    
+    if p_l == r_l and p_v == r_v:
+        puntos_base += 1.0  # Pleno (Resultado exacto)
     elif signo_p == signo_r:
         if signo_p != 0 and (p_l - p_v == r_l - r_v):
-            puntos += 0.75 # Diferencia de goles exacta
+            puntos_base += 0.75 # Diferencia de goles exacta
         else:
-            puntos += 0.5  # Acierto de signo (1X2)
+            puntos_base += 0.5  # Acierto de signo (1X2)
             
     # 3. Lógica para partidos de Eliminatoria (Quien pasa de ronda)
-    if tipo_partido in ["Octavos", "Cuartos", "Semis", "Final"]:
-        # Si hubo prórroga/penaltis y el usuario acertó quién pasaba
+    puntos_pasa = 0.0
+    if tipo_partido in ["Octavos", "Cuartos", "Semis", "Final"] or hubo_prorroga:
         if p_pasa and r_pasa and p_pasa != "Ninguno" and r_pasa != "Ninguno":
             if p_pasa == r_pasa:
-                puntos += 0.5
+                puntos_pasa += 0.5
+
+    # 4. 🔥 APLICACIÓN DE MULTIPLICADORES DINÁMICOS
+    # Si quieres que sea TRIPLE (como dice tu texto de apuestas), multiplicamos por 3.
+    # Si prefieres el doble, cambia el 3.0 por 2.0 y el 2.0 por 1.5.
+    if tipo_partido == "Esquizo":
+        total_puntos = (puntos_base * 3.0) + (puntos_pasa * 2.0) # El bonus de pasar pasa de 0.5 a 1.0
+    elif tipo_partido == "Doble":
+        total_puntos = (puntos_base * 2.0) + puntos_pasa
+    else:
+        total_puntos = puntos_base + puntos_pasa
                 
-    return puntos
+    return total_puntos
 
 def calcular_puntos_bracket(user_bracket, real_bracket):
     """
@@ -1180,7 +1208,7 @@ def simular_temporada_completa(df_hero, df_p_all, df_r_all, df_b_all):
             media_e = m_fin[m_fin['Tipo'] == "Esquizo"]['Pts'].mean() if not m_fin[m_fin['Tipo'] == "Esquizo"].empty else 0.8
             desvio = m_fin['Pts'].std() if len(m_fin) > 1 else 0.2
         else:
-            media_n, media_e, desvio = 0.45, 0.9, 0.25
+            media_n, media_e, desvio = 0.45, 1.35, 0.25
             
         perfil_usuario[u] = {'n': media_n, 'e': media_e, 'std': desvio}
 
