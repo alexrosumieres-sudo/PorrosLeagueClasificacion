@@ -1013,24 +1013,6 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=Non
     except (ValueError, TypeError):
         return 0.0
 
-    puntos = 0.0
-    
-    # 2. Lógica de Puntos Normal
-    signo_p = (p_l > p_v) - (p_l < p_v)
-    signo_r = (r_l > r_v) - (r_l < r_v)
-    
-    if p_l == r_l and p_v == r_v:
-        puntos += 1.0  # Pleno (Resultado exacto)
-    elif def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=None, hubo_prorroga=False):
-    # 1. ESCUDO: Forzamos a que todo sea número. Si hay un nulo o texto, devolvemos 0.
-    try:
-        p_l = int(float(p_l))
-        p_v = int(float(p_v))
-        r_l = int(float(r_l))
-        r_v = int(float(r_v))
-    except (ValueError, TypeError):
-        return 0.0
-
     puntos_base = 0.0
     
     # 2. Lógica de Puntos Base (Marcador a los 90')
