@@ -1020,12 +1020,12 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=Non
     signo_r = (r_l > r_v) - (r_l < r_v)
     
     if p_l == r_l and p_v == r_v:
-        puntos_base += 1.0  # Pleno (Resultado exacto)
+    puntos += 1.0  # Pleno
     elif signo_p == signo_r:
         if signo_p != 0 and (p_l - p_v == r_l - r_v):
-            puntos_base += 0.75 # Diferencia de goles exacta
+            puntos += 0.75 # Diferencia
         else:
-            puntos_base += 0.5  # Acierto de signo (1X2)
+            puntos += 0.5  # Signo
             
     # 3. Lógica para partidos de Eliminatoria (Quien pasa de ronda)
     puntos_pasa = 0.0
