@@ -3409,100 +3409,109 @@ else:
  
     with tabs[8]: # --- 🎲 ORÁCULO (EL DESTINO DE LA FASE) ---
         if usa_oraculo:
-            with st.spinner("🔮 El Oráculo está analizando 5.000 futuros posibles..."):
-                # Llamamos a la versión del oráculo que simula 90' + Prórrogas
-                prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
+            st.subheader(f"🎲 El Oráculo de la Fase: {j_global}")
+            st.caption("Calcula las probabilidades de victoria en tiempo real de cada jugador para esta jornada basándose en los partidos que quedan.")
             
-            if prob:
-                st.subheader(f"🔮 Probabilidades de Victoria: {j_global}")
-                st.caption("Análisis en tiempo real de quién ganará esta fase según los partidos que quedan.")
+            # --- BOTÓN DE DISPARO MANDATORIO ---
+            if st.button("🔮 CONSULTAR AL ORÁCULO (CALCULAR)", use_container_width=True, type="primary"):
+                with st.spinner("🔮 El Oráculo está analizando todos los escenarios posibles..."):
+                    # Llamamos a la versión del oráculo que simula 90' + Prórrogas
+                    prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
                 
-                # --- DISEÑO: Gráfico Izquierda | Lista Derecha ---
-                col_izq, col_der = st.columns([1.6, 1], gap="medium")
-
-                with col_izq:
-                    # --- GRÁFICO DE TENDENCIA ---
-                    df_hist = leer_datos("HistoricoOraculo")
+                if prob:
+                    st.success("✨ El destino ha sido calculado con éxito.")
                     
-                    if not df_hist.empty and 'Jornada' in df_hist.columns:
-                        df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
-                        
-                        if not df_hist_j.empty:
-                            # Limpieza de datos para el gráfico
-                            df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
-                            df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], errors='coerce')
-                            df_hist_j = df_hist_j.sort_values('Fecha_DT')
+                    # --- DISEÑO: Gráfico Izquierda | Lista Derecha ---
+                    col_izq, col_der = st.columns([1.6, 1], gap="medium")
 
-                            fig_evo = px.line(
-                                df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
-                                markers=True, line_shape="spline",
-                                color_discrete_sequence=px.colors.qualitative.Pastel
-                            )
-                            fig_evo.update_layout(
-                                yaxis_range=[-2, 102], 
-                                hovermode="x unified", 
-                                xaxis_title="Evolución durante la jornada",
-                                yaxis_title="Opciones de ganar la fase (%)",
-                                height=450, 
-                                legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5)
-                            )
-                            st.plotly_chart(fig_evo, use_container_width=True)
+                    with col_izq:
+                        # --- GRÁFICO DE TENDENCIA ---
+                        df_hist = leer_datos("HistoricoOraculo")
+                        
+                        if not df_hist.empty and 'Jornada' in df_hist.columns:
+                            df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
+                            
+                            if not df_hist_j.empty:
+                                # Limpieza de datos para el gráfico
+                                df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
+                                df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], errors='coerce')
+                                df_hist_j = df_hist_j.sort_values('Fecha_DT')
+
+                                fig_evo = px.line(
+                                    df_hist_j, x="Fecha_DT", y="Probabilidad", color="Usuario",
+                                    markers=True, line_shape="spline",
+                                    color_discrete_sequence=px.colors.qualitative.Pastel
+                                )
+                                fig_evo.update_layout(
+                                    yaxis_range=[-2, 102], 
+                                    hovermode="x unified", 
+                                    xaxis_title="Evolución durante la jornada",
+                                    yaxis_title="Opciones de ganar la fase (%)",
+                                    height=450, 
+                                    legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5)
+                                )
+                                st.plotly_chart(fig_evo, use_container_width=True)
+                            else:
+                                st.info("⌛ Recopilando datos para el gráfico de tendencias...")
                         else:
-                            st.info("⌛ Recopilando datos para el gráfico de tendencias...")
-                            st.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmNrNjVlaW0xZzM0MWxubDQyZGhla3V4eXVnMHU5eHcwN3NxamRtMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Jap1tdjahS0rm/giphy.gif", width=250)
+                            st.info("⌛ No hay histórico disponible todavía para esta jornada.")
 
-                with col_der:
-                    # --- LISTADO DE SUPERVIVIENTES ---
-                    st.markdown("#### 🎯 Supervivientes")
-                    
-                    # Ordenamos de mayor a menor probabilidad
-                    for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
-                        vivo = v > 0
-                        card_bg = "#f0fff4" if vivo else "#fff5f5"
-                        card_border = "#2baf2b" if vivo else "#ff4b4b"
+                    with col_der:
+                        # --- LISTADO DE SUPERVIVIENTES ---
+                        st.markdown("#### 🎯 Supervivientes")
                         
-                        # Cálculo del Delta (Trend)
-                        delta = 0.0
-                        if not df_hist.empty:
-                            u_h = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
-                            if len(u_h) > 1:
-                                try:
-                                    v_pre = float(str(u_h.iloc[-2]['Probabilidad']).replace(',', '.'))
-                                    delta = v - v_pre
-                                except: pass
-                        
-                        color_d = "green" if delta > 0 else "red"
-                        icon_d = "▲" if delta > 0 else "▼"
-                        
-                        # HTML de la tarjeta de probabilidad
-                        st.markdown(f"""
-                            <div style="background:{card_bg}; padding:12px; border-radius:10px; border-left:5px solid {card_border}; margin-bottom:10px; opacity: {1.0 if vivo else 0.5};">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span style="font-weight:bold; color:#31333F;">{'🟢' if vivo else '💀'} {u}</span>
-                                    <span style="font-size:1.3em; font-weight:900; color:{card_border};">{v:.1f}%</span>
+                        # Ordenamos de mayor a menor probabilidad
+                        for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
+                            vivo = v > 0
+                            card_bg = "#f0fff4" if vivo else "#fff5f5"
+                            card_border = "#2baf2b" if vivo else "#ff4b4b"
+                            
+                            # Cálculo del Delta (Trend)
+                            delta = 0.0
+                            if not df_hist.empty:
+                                u_h = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
+                                if len(u_h) > 1:
+                                    try:
+                                        v_pre = float(str(u_h.iloc[-2]['Probabilidad']).replace(',', '.'))
+                                        delta = v - v_pre
+                                    except: pass
+                            
+                            color_d = "green" if delta > 0 else "red"
+                            icon_d = "▲" if delta > 0 else "▼"
+                            
+                            # HTML de la tarjeta de probabilidad
+                            st.markdown(f"""
+                                <div style="background:{card_bg}; padding:12px; border-radius:10px; border-left:5px solid {card_border}; margin-bottom:10px; opacity: {1.0 if vivo else 0.5};">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-weight:bold; color:#31333F;">{'🟢' if vivo else '💀'} {u}</span>
+                                        <span style="font-size:1.3em; font-weight:900; color:{card_border};">{v:.1f}%</span>
+                                    </div>
+                                    <div style="text-align:right; font-size:0.8em; color:{color_d if vivo else '#999'};">
+                                        {f'{icon_d} {abs(delta):.1f}%' if vivo and delta != 0 else ('ELIMINADO' if not vivo else 'ESTABLE')}
+                                    </div>
                                 </div>
-                                <div style="text-align:right; font-size:0.8em; color:{color_d if vivo else '#999'};">
-                                    {f'{icon_d} {abs(delta):.1f}%' if vivo and delta != 0 else ('ELIMINADO' if not vivo else 'ESTABLE')}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        if vivo:
-                            st.progress(min(v/100, 1.0))
-                        else:
-                            st.divider()
+                            """, unsafe_allow_html=True)
+                            
+                            if vivo:
+                                st.progress(min(v/100, 1.0))
+                            else:
+                                st.divider()
 
-                # --- CELEBRACIÓN DE VICTORIA ---
-                if any(v >= 95 for v in prob.values()):
-                    virtual_ganador = max(prob, key=prob.get)
-                    st.balloons()
-                    st.success(f"🏆 El Oráculo ha dictado sentencia: **{virtual_ganador}** tiene pie y medio en el Olimpo.")
-
+                    # --- CELEBRACIÓN DE VICTORIA ---
+                    if any(v >= 95 for v in prob.values()):
+                        virtual_ganador = max(prob, key=prob.get)
+                        st.balloons()
+                        st.success(f"🏆 El Oráculo ha dictado sentencia: **{virtual_ganador}** tiene pie y medio en el Olimpo.")
+            else:
+                # Mensaje de espera estático (no consume recursos)
+                st.info("💡 Pulsa el botón superior para calcular las probabilidades matemáticas de la jornada en tiempo real.")
+                st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=400)
         else:
-            # Estado cuando hay demasiados partidos o ninguno
-            st.info("🔮 El Oráculo está meditando... Se activará cuando queden entre 1 y 3 partidos para cerrar la fase.")
+            # Estado cuando hay demasiados partidos o ninguno pendientes
+            st.info("🔮 El Oráculo está meditando... Se activará automáticamente cuando queden entre 1 y 3 partidos para cerrar la fase.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", use_container_width=True)
-    
+
+ 
     with tabs[9]: # --- ⚙️ PANEL DE CONTROL ADMIN (MUNDIAL 2026) ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
