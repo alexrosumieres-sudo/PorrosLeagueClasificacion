@@ -699,6 +699,17 @@ JORNADAS = {
         ("Croacia", "Ghana"), ("Panamá", "Inglaterra"),
         ("Colombia", "Portugal"), ("Congo", "Uzbekistán"),
         ("Argelia", "Austria"), ("Jordania", "Argentina")
+
+     "Dieciseisavos": [
+        ("Sudáfrica", "Canadá"), ("Brasil", "Japón"),
+        ("Alemania", "Paraguay"), ("Países Bajos", "Marruecos"),
+        ("Costa de Marfil", "Noruega"), ("Francia", "Suecia"),
+        ("México", "Ecuador"), ("Inglaterra", "Congo"),
+        ("Bélgica", "Senegal"), ("Estados Unidos", "Bosnia Herzegovina"),
+        ("España", "Austria"), ("Portugal", "Croacia"),
+        ("Suiza", "Argelia"), ("Australia", "Egipto"),
+        ("Argentina", "Cabo Verde"), ("Colombia", "Ghana")
+    ]
     ]}
 
 LOGOS = {
