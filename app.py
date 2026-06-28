@@ -709,7 +709,6 @@ JORNADAS = {
         ("España", "Austria"), ("Portugal", "Croacia"),
         ("Suiza", "Argelia"), ("Australia", "Egipto"),
         ("Argentina", "Cabo Verde"), ("Colombia", "Ghana")
-    ]
     ]}
 
 LOGOS = {
