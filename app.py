@@ -698,7 +698,7 @@ JORNADAS = {
         ("Egipto", "Irán"), ("Nueva Zelanda", "Bélgica"),
         ("Croacia", "Ghana"), ("Panamá", "Inglaterra"),
         ("Colombia", "Portugal"), ("Congo", "Uzbekistán"),
-        ("Argelia", "Austria"), ("Jordania", "Argentina")
+        ("Argelia", "Austria"), ("Jordania", "Argentina")],
 
      "Dieciseisavos": [
         ("Sudáfrica", "Canadá"), ("Brasil", "Japón"),
