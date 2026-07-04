@@ -708,7 +708,8 @@ JORNADAS = {
         ("Bélgica", "Senegal"), ("Estados Unidos", "Bosnia Herzegovina"),
         ("España", "Austria"), ("Portugal", "Croacia"),
         ("Suiza", "Argelia"), ("Australia", "Egipto"),
-        ("Argentina", "Cabo Verde"), ("Colombia", "Ghana")],
+        ("Argentina", "Cabo Verde"), ("Colombia", "Ghana")
+     ],
       "Octavos": [
         ("Canadá", "Marruecos"),
         ("Paraguay", "Francia"),
@@ -718,7 +719,7 @@ JORNADAS = {
         ("Estados Unidos", "Bélgica"),
         ("Argentina", "Egipto"),
         ("Suiza", "Colombia")]
-    ]}
+    }
 
 LOGOS = {
     # Grupo A
