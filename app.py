@@ -717,7 +717,7 @@ JORNADAS = {
         ("Portugal", "España"),
         ("Estados Unidos", "Bélgica"),
         ("Argentina", "Egipto"),
-        ("Suiza", "Colombia")
+        ("Suiza", "Colombia")]
     ]}
 
 LOGOS = {
