@@ -718,7 +718,12 @@ JORNADAS = {
         ("Portugal", "España"),
         ("Estados Unidos", "Bélgica"),
         ("Argentina", "Egipto"),
-        ("Suiza", "Colombia")]
+        ("Suiza", "Colombia")],
+     "Cuartos": [
+            ("Francia", "Marruecos"),
+            ("España", "Bélgica"),
+            ("Noruega", "Inglaterra"),
+            ("Argentina", "Suiza")]
     }
 
 LOGOS = {
