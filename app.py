@@ -1046,14 +1046,15 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=Non
     signo_r = (r_l > r_v) - (r_l < r_v)
     
     if p_l == r_l and p_v == r_v:
-        # --- RESULTADO EXACTO ---
+        # --- RESULTADO EXACTO (1.00 pt / 3.00 pts) ---
         puntos_totales += 3.0 if tipo_partido == "Esquizo" else 1.0
     elif signo_p == signo_r:
-        if signo_p != 0 and (p_l - p_v == r_l - r_v):
-            # --- DIFERENCIA DE GOLES ---
+        # AL QUITAR 'signo_p != 0', TODOS LOS EMPATES NO EXACTOS CAEN AQUÍ DIRECTAMENTE
+        if p_l - p_v == r_l - r_v:
+            # --- DIFERENCIA DE GOLES (0.75 pts / 1.50 pts) ---
             puntos_totales += 1.50 if tipo_partido == "Esquizo" else 0.75
         else:
-            # --- SIGNO (1X2) ---
+            # --- SIGNO (1X2) (0.50 pts / 1.00 pt) ---
             puntos_totales += 1.00 if tipo_partido == "Esquizo" else 0.50
 
     # ----------------------------------------------------
@@ -1066,7 +1067,7 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=Non
         # Verificamos que ambos campos tengan una predicción y un resultado válido
         if p_pasa and r_pasa and p_pasa != "Ninguno" and r_pasa != "Ninguno":
             if p_pasa == r_pasa:
-                # --- BONUS CLASIFICACIÓN ---
+                # --- BONUS CLASIFICACIÓN (+0.50 pts / +1.00 pt) ---
                 puntos_totales += 1.00 if tipo_partido == "Esquizo" else 0.50
                 
     return puntos_totales
