@@ -1060,15 +1060,19 @@ def calcular_puntos_wc(p_l, p_v, r_l, r_v, tipo_partido, p_pasa=None, r_pasa=Non
     # ----------------------------------------------------
     # 2. REGLA ESPECIAL DE ELIMINATORIAS (PRÓRROGA / PASA RONDA)
     # ----------------------------------------------------
-    # Validamos si es una jornada de K.O. o si el admin marcó que hubo prórroga
-    es_eliminatoria = any(x in str(tipo_partido) for x in ["Dieciseisavos", "Octavos", "Cuartos", "Semis", "Final"])
+    # Limpiamos los datos para evitar que pandas nos cuele un "nan", "None" o espacios en blanco
+    p_pasa_str = str(p_pasa).strip()
+    r_pasa_str = str(r_pasa).strip()
     
-    if es_eliminatoria or hubo_prorroga:
-        # Verificamos que ambos campos tengan una predicción y un resultado válido
-        if p_pasa and r_pasa and p_pasa != "Ninguno" and r_pasa != "Ninguno":
-            if p_pasa == r_pasa:
-                # --- BONUS CLASIFICACIÓN (+0.50 pts / +1.00 pt) ---
-                puntos_totales += 1.00 if tipo_partido == "Esquizo" else 0.50
+    es_p_valido = p_pasa_str not in ["None", "nan", "", "Ninguno"]
+    es_r_valido = r_pasa_str not in ["None", "nan", "", "Ninguno"]
+
+    # Si el usuario apostó quién pasaba y el Admin puso quién pasaba, se compara directamente.
+    # Así no dependemos de si el admin olvidó marcar "Hubo Prórroga" o del tipo de jornada.
+    if es_p_valido and es_r_valido:
+        if p_pasa_str == r_pasa_str:
+            # --- BONUS CLASIFICACIÓN (+0.50 pts / +1.00 pt) ---
+            puntos_totales += 1.00 if tipo_partido == "Esquizo" else 0.50
                 
     return puntos_totales
  
