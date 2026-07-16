@@ -726,7 +726,10 @@ JORNADAS = {
             ("Argentina", "Suiza")],
      "Semis": [
             ("Francia", "España"),
-            ("Inglaterra", "Argentina")]
+            ("Inglaterra", "Argentina")],
+    "Final y 3/4 Puesto": [
+            ("Francia", "Inglaterra"),
+            ("España", "Argentina")]
     }
 
 LOGOS = {
