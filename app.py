@@ -2100,9 +2100,7 @@ else:
                 
             FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
             mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
-            
 
-            
             if not mercado_abierto:
                 if es_admin:
                     st.warning("👑 **MODO ADMIN.** El mercado está cerrado para los jugadores, pero tú tienes permisos para actualizar el Cuadro Oficial.")
