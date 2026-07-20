@@ -2101,6 +2101,9 @@ else:
             FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
             mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
 
+            es_admin = st.session_state.rol == "admin"
+            puede_editar = mercado_abierto or es_admin
+
             if not mercado_abierto:
                 if es_admin:
                     st.warning("👑 **MODO ADMIN.** El mercado está cerrado para los jugadores, pero tú tienes permisos para actualizar el Cuadro Oficial.")
