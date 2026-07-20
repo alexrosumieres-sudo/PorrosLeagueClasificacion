@@ -2101,9 +2101,7 @@ else:
             FECHA_INAUGURAL = datetime.datetime(2026, 6, 11, 21, 0, 0)
             mercado_abierto = get_now_madrid() < FECHA_INAUGURAL
             
-            # --- NUEVO: LLAVE MAESTRA DEL ADMIN ---
-            es_admin = (st.session_state.user == "ADMIN")
-            puede_editar = mercado_abierto or es_admin
+
             
             if not mercado_abierto:
                 if es_admin:
