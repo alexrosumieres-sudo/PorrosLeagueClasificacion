@@ -278,9 +278,17 @@ else:
     df_historial = leer_datos("Historial_Consolidado") # <-- NUEVO
     df_logs_all = leer_datos("Logs")
     # --- 🛡️ MURO DE SEGURIDAD (Añade esto aquí) ---
-    if df_r_all.empty or df_p_all.empty or df_u_all.empty:
+    # --- 🛡️ MURO DE SEGURIDAD (MODO INICIO DE TEMPORADA) ---
+    # Solo bloqueamos si no cargan los usuarios. Es normal que Predicciones y Resultados estén vacíos en la J1.
+    if df_u_all.empty:
         st.info("⌛ El VAR está conectando con los satélites... (Cargando datos)")
         st.stop()
+        
+    # Blindaje extra: Si las tablas están vacías (sin datos), nos aseguramos de que no den error al buscar columnas
+    if df_p_all.empty and 'Usuario' not in df_p_all.columns:
+        df_p_all = pd.DataFrame(columns=["Usuario", "Jornada", "Partido", "P_L", "P_V", "Publica"])
+    if df_r_all.empty and 'Jornada' not in df_r_all.columns:
+        df_r_all = pd.DataFrame(columns=["Jornada", "Partido", "Tipo", "R_L", "R_V", "Hora_Inicio", "Finalizado"])
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
