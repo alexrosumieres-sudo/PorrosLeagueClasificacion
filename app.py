@@ -1584,6 +1584,7 @@ else:
                     })
                 
                 st.divider()
+                
                 if st.button("🏟️ GUARDAR RESULTADOS JORNADA", use_container_width=True):
                     ahora_fresca = get_now_madrid()
                     logs_adm = []
@@ -1612,8 +1613,8 @@ else:
                     st.cache_data.clear()
                     st.success(f"✅ Datos guardados.")
                     st.rerun()
-                 
-               st.divider()
+                
+                st.divider()
                 st.subheader(f"🔒 Sellar y Consolidar {j_global}")
                 st.warning("⚠️ Pulsa esto SOLO cuando la jornada haya terminado por completo. La app calculará los puntos de todos y los guardará en el historial definitivo.")
                 
