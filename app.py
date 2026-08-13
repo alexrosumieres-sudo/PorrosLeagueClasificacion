@@ -816,9 +816,6 @@ else:
             elif pos == 2: medal_html = '<span style="font-size:1.5em;">🥈</span>'
             elif pos == 3: medal_html = '<span style="font-size:1.5em;">🥉</span>'
 
-            # Frase aleatoria
-            f_t = random.choice(FRASES_POR_PUESTO.get(pos if pos <= 7 else 7))
-            
             # Cálculo de barra de progreso (Puntos respecto al líder)
             porcentaje = (pts_actuales / pts_lider * 100) if pts_lider > 0 else 0
 
@@ -838,7 +835,7 @@ else:
             
             with c3: # Nombre y Frase
                 st.markdown(f'<h4 style="margin:0; color:#1e293b;">{row["Usuario"]}</h4>', unsafe_allow_html=True)
-                st.markdown(f'<small style="color:#64748b; font-style:italic;">"{f_t[0]}"</small>', unsafe_allow_html=True)
+            
                 # Mini barra de progreso estética
                 st.markdown(f"""
                     <div style="width: 80%; background-color: #f1f5f9; border-radius: 10px; height: 6px; margin-top: 8px;">
