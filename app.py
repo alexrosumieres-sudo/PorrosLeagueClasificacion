@@ -23,14 +23,14 @@ NIVEL_EQUIPOS = {
 
     # NIVEL 3: Clase Media-Baja (Zona tranquila pero sin alardes)
     "Osasuna": 3, "Espanyol": 3, "Athletic": 3, "Rayo": 3, 
-    "Valencia": 3, "Girona": 3, "Alavés": 3,
+    "Valencia": 3, "Alavés": 3,
 
     # NIVEL 4: El Barrizal (Peleando el descenso y colistas)
-    "Mallorca": 4, "Sevilla": 4, "Elche": 4, "Levante": 4, "Oviedo": 4
+    "Sevilla": 4, "Elche": 4, "Levante": 4, "Racing": 4, "Málaga": 4, "Deportivo": 4
 }
 
 
-JORNADAS = {
+JORNADAS = {"Jornada 1": [("Alavés", "Getafe"), ("Sevilla", "Rayo"), ("Racing", "Villarreal"), ("Espanyol", "Levante"), ("Deportivo", "Elche"), ("Atlético", "Málaga"), ("Valencia", "Betis"), ("Real Madrid", "R. Sociedad"), ("Celta", "Osasuna"), ("Barcelona", "Athletic")]
     
 }
 
@@ -41,7 +41,8 @@ LOGOS = {
     "Girona": f"{LOGOS_DIR}girona.jpeg", "Osasuna": f"{LOGOS_DIR}osasuna.jpeg", "Getafe": f"{LOGOS_DIR}getafe.jpeg",
     "Celta": f"{LOGOS_DIR}celta.jpeg", "Mallorca": f"{LOGOS_DIR}mallorca.jpeg", "Villarreal": f"{LOGOS_DIR}villarreal.jpeg",
     "Alavés": f"{LOGOS_DIR}alaves.jpeg", "Espanyol": f"{LOGOS_DIR}espanyol.jpeg", "Betis": f"{LOGOS_DIR}betis.jpeg",
-    "Levante": f"{LOGOS_DIR}levante.jpeg", "Oviedo": f"{LOGOS_DIR}oviedo.jpeg",
+    "Levante": f"{LOGOS_DIR}levante.jpeg", "Oviedo": f"{LOGOS_DIR}oviedo.jpeg","Racing": f"{LOGOS_DIR}racing.jpg", 
+    "Málaga": f"{LOGOS_DIR}malaga.jpg","Deportivo": f"{LOGOS_DIR}deportivo.jpg",
     
     # --- EQUIPOS CHAMPIONS
     "Galatasaray": f"{LOGOS_DIR}Galatasaray.png",
@@ -765,29 +766,27 @@ else:
     
     with tabs[2]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
-        pts_l = []
         
-        # 1. Cálculo de puntos (Tu lógica original se mantiene igual de sólida)
-        for u in u_jugadores:
-            if tipo_r == "General":
-                pb_r = df_base[df_base['Usuario'] == u]
-                p_b = safe_float(pb_r['Puntos'].values[0]) if not pb_r.empty else 0.0
-                u_p_h = df_p_all[df_p_all['Usuario'] == u]
-            else: 
-                p_b, u_p_h = 0.0, df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)]
+        if tipo_r == "General":
+            # ¡TRUCO DE RENDIMIENTO! Usamos la general que ya se calculó en el Dashboard Hero
+            df_rk = df_hero.copy()
+            pts_lider = df_rk.iloc[0]['Puntos'] if not df_rk.empty else 0
+            total_usuarios = len(df_rk)
+        else:
+            pts_l = []
+            for u in u_jugadores:
+                p_a = 0.0
+                u_p_h = df_p_all[(df_p_all['Usuario']==u) & (df_p_all['Jornada']==j_global)]
+                for r in u_p_h.itertuples():
+                    m = df_r_all[(df_r_all['Jornada']==r.Jornada)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
+                    if not m.empty: 
+                        p_a += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                pts_l.append({"Usuario": u, "Puntos": p_a})
             
-            p_a = p_b
-            for r in u_p_h.itertuples():
-                m = df_r_all[(df_r_all['Jornada']==r.Jornada)&(df_r_all['Partido']==r.Partido)&(df_r_all['Finalizado']=="SI")]
-                if not m.empty: 
-                    p_a += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-            pts_l.append({"Usuario": u, "Puntos": p_a})
-        
-        df_rk = pd.DataFrame(pts_l).sort_values("Puntos", ascending=False).reset_index(drop=True)
-        df_rk['Posicion'] = range(1, len(df_rk)+1)
-        
-        pts_lider = df_rk.iloc[0]['Puntos'] if not df_rk.empty else 0
-        total_usuarios = len(df_rk)
+            df_rk = pd.DataFrame(pts_l).sort_values("Puntos", ascending=False).reset_index(drop=True)
+            df_rk['Posicion'] = range(1, len(df_rk)+1)
+            pts_lider = df_rk.iloc[0]['Puntos'] if not df_rk.empty else 0
+            total_usuarios = len(df_rk)
 
         # 2. Renderizado de Tarjetas
         for i, row in df_rk.iterrows():
@@ -885,8 +884,7 @@ else:
         nombres_hist = [h[0] for h in hist_ganadores]
         
         # Para calcular el líder jornada a jornada, necesitamos el acumulado
-        pts_acumulados = {u: safe_float(df_base[df_base['Usuario'] == u]['Puntos'].values[0]) if not df_base[df_base['Usuario'] == u].empty else 0.0 for u in u_jugadores}
-
+        pts_acumulados = {u: safe_float(df_historial[df_historial['Usuario'] == u]['Puntos_Base'].values[0]) if not df_historial[df_historial['Usuario'] == u].empty else 0.0 for u in u_jugadores}
         for j_n in JORNADAS.keys():
             partidos_j = df_r_all[df_r_all['Jornada'] == j_n]
             fin_j = partidos_j[partidos_j['Finalizado'] == "SI"]
@@ -1121,11 +1119,12 @@ else:
             historia_data = []
 
             # Puntos iniciales (Base J24)
-            puntos_acum = {u: safe_float(df_base[df_base['Usuario'] == u]['Puntos'].values[0]) if not df_base[df_base['Usuario'] == u].empty else 0.0 for u in u_jugadores}
+            # Puntos iniciales (Base desde Historial)
+            puntos_acum = {u: safe_float(df_historial[df_historial['Usuario'] == u]['Puntos_Base'].values[0]) if not df_historial[df_historial['Usuario'] == u].empty else 0.0 for u in u_jugadores}
 
             # Añadir punto de partida
             for u, p in puntos_acum.items():
-                historia_data.append({"Jornada": "J24", "Usuario": u, "Puntos": float(p)})
+                historia_data.append({"Jornada": "Inicio", "Usuario": u, "Puntos": float(p)})
 
             # Calcular evolución jornada a jornada
             for j in j_finalizadas:
@@ -1162,7 +1161,7 @@ else:
                     y=y_axis, 
                     color="Usuario",
                     markers=True,
-                    category_orders={"Jornada": ["J24"] + list(j_finalizadas)},
+                    category_orders={"Jornada": ["Inicio"] + list(j_finalizadas)},
                     title=titulo,
                     color_discrete_sequence=px.colors.qualitative.Bold
                 )
@@ -1443,20 +1442,28 @@ else:
             with t_bases:
                 st.subheader("Configurar Puntos Iniciales")
                 st.info("Usa esto para definir la base fija de cada jugador.")
-                upd_b = []
+                df_hist_bases = df_historial.copy()
+                
                 for u in u_jugadores:
-                    pb_row = df_base[df_base['Usuario'] == u]
-                    pts_actuales = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
+                    pb_row = df_hist_bases[df_hist_bases['Usuario'] == u]
+                    pts_actuales = safe_float(pb_row['Puntos_Base'].values[0]) if not pb_row.empty else 0.0
                     
                     col_u, col_p = st.columns([2, 1])
                     col_u.markdown(f"**{u}**")
-                    nuevo_val = col_p.number_input(f"Pts base {u}", value=pts_actuales, step=0.5, key=f"adm_b_{u}", label_visibility="collapsed")
-                    upd_b.append({"Usuario": u, "Puntos": nuevo_val})
+                    nuevo_val = col_p.number_input(f"Pts base {u}", value=float(pts_actuales), step=0.5, key=f"adm_b_{u}", label_visibility="collapsed")
+                    
+                    # Actualizamos la copia del dataframe
+                    idx = df_hist_bases[df_hist_bases['Usuario'] == u].index
+                    if not idx.empty:
+                        df_hist_bases.loc[idx, 'Puntos_Base'] = nuevo_val
+                    else:
+                        nueva_fila = pd.DataFrame([{"Usuario": u, "Puntos_Base": nuevo_val, "Total_Acumulado": nuevo_val, "Ultima_Jornada": ""}])
+                        df_hist_bases = pd.concat([df_hist_bases, nueva_fila], ignore_index=True)
                 
                 if st.button("💾 Guardar Todos los Puntos Base", use_container_width=True):
-                    conn.update(worksheet="PuntosBase", data=pd.DataFrame(upd_b))
+                    conn.update(worksheet="Historial_Consolidado", data=df_hist_bases)
                     st.cache_data.clear()
-                    st.success("✅ Puntos base actualizados.")
+                    st.success("✅ Puntos base actualizados en el historial consolidado.")
                     time.sleep(1)
                     st.rerun()
 
