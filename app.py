@@ -1480,24 +1480,24 @@ else:
                     submit_ajuste = st.form_submit_button("⚖️ Aplicar Ajuste y Notificar al VAR", use_container_width=True)
 
                 if submit_ajuste:
-                  if concepto.strip() == "":
-                      st.error("❌ Debes indicar un concepto para el ajuste.")
-                  elif pts_ajuste == 0:
-                      st.warning("⚠️ El ajuste es 0, no se han realizado cambios.")
-                  else:
-                      df_hist_copy = df_historial.copy()
-                      
-                      # Si el usuario existe, le sumamos los puntos al Acumulado y al historial de Ajustes
-                      if u_target in df_hist_copy['Usuario'].values:
-                          idx = df_hist_copy[df_hist_copy['Usuario'] == u_target].index
-                          df_hist_copy.loc[idx, 'Total_Acumulado'] = safe_float(df_hist_copy.loc[idx, 'Total_Acumulado'].values[0]) + float(pts_ajuste)
-                          df_hist_copy.loc[idx, 'Puntos_Base'] = safe_float(df_hist_copy.loc[idx, 'Puntos_Base'].values[0]) + float(pts_ajuste)
-                      else:
-                          # Si es nuevo, lo creamos
-                          nueva_fila = pd.DataFrame([{"Usuario": u_target, "Puntos_Base": float(pts_ajuste), "Total_Acumulado": float(pts_ajuste), "Ultima_Jornada": ""}])
-                          df_hist_copy = pd.concat([df_hist_copy, nueva_fila], ignore_index=True)
-                      
-                      conn.update(worksheet="Historial_Consolidado", data=df_hist_copy)
+                    if concepto.strip() == "":
+                        st.error("❌ Debes indicar un concepto para el ajuste.")
+                    elif pts_ajuste == 0:
+                        st.warning("⚠️ El ajuste es 0, no se han realizado cambios.")
+                    else:
+                        df_hist_copy = df_historial.copy()
+                        
+                        # Si el usuario existe, le sumamos los puntos al Acumulado y al historial de Ajustes
+                        if u_target in df_hist_copy['Usuario'].values:
+                            idx = df_hist_copy[df_hist_copy['Usuario'] == u_target].index
+                            df_hist_copy.loc[idx, 'Total_Acumulado'] = safe_float(df_hist_copy.loc[idx, 'Total_Acumulado'].values[0]) + float(pts_ajuste)
+                            df_hist_copy.loc[idx, 'Puntos_Base'] = safe_float(df_hist_copy.loc[idx, 'Puntos_Base'].values[0]) + float(pts_ajuste)
+                        else:
+                            # Si es nuevo, lo creamos
+                            nueva_fila = pd.DataFrame([{"Usuario": u_target, "Puntos_Base": float(pts_ajuste), "Total_Acumulado": float(pts_ajuste), "Ultima_Jornada": ""}])
+                            df_hist_copy = pd.concat([df_hist_copy, nueva_fila], ignore_index=True)
+                        
+                        conn.update(worksheet="Historial_Consolidado", data=df_hist_copy)
 
                         # 4. Registrar en el VAR (Logs)
                         ahora_madrid = get_now_madrid()
