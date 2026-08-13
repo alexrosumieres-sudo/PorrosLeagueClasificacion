@@ -1612,41 +1612,42 @@ else:
                     st.cache_data.clear()
                     st.success(f"✅ Datos guardados.")
                     st.rerun()
+                 
                st.divider()
-               st.subheader(f"🔒 Sellar y Consolidar {j_global}")
-               st.warning("⚠️ Pulsa esto SOLO cuando la jornada haya terminado por completo. La app calculará los puntos de todos y los guardará en el historial definitivo.")
-               
-               if st.button(f"Consolidar Puntos de la {j_global}", type="primary"):
-                   df_hist_upd = df_historial.copy()
-                   
-                   # 1. Nos aseguramos de que exista la columna de la jornada (ej. "J25")
-                   if j_global not in df_hist_upd.columns:
-                       df_hist_upd[j_global] = 0.0
-               
-                   # 2. Calculamos los puntos de la jornada para cada usuario
-                   for u in u_jugadores:
-                       pts_jornada = 0.0
-                       u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
-                       res_j = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
-                       
-                       for r in u_p.itertuples():
-                           m = res_j[res_j['Partido'] == r.Partido]
-                           if not m.empty:
-                               pts_jornada += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-                       
-                       # 3. Guardamos los datos en la fila del usuario
-                       idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
-                       if not idx.empty:
-                           df_hist_upd.loc[idx, j_global] = pts_jornada
-                           df_hist_upd.loc[idx, 'Total_Acumulado'] = safe_float(df_hist_upd.loc[idx, 'Total_Acumulado'].values[0]) + pts_jornada
-                           df_hist_upd.loc[idx, 'Ultima_Jornada'] = j_global
-               
-                   # 4. Actualizamos el Excel
-                   conn.update(worksheet="Historial_Consolidado", data=df_hist_upd)
-                   st.cache_data.clear()
-                   st.success(f"✅ ¡{j_global} consolidada con éxito! La app ahora es un cohete.")
-                   time.sleep(2)
-                   st.rerun()
+                st.subheader(f"🔒 Sellar y Consolidar {j_global}")
+                st.warning("⚠️ Pulsa esto SOLO cuando la jornada haya terminado por completo. La app calculará los puntos de todos y los guardará en el historial definitivo.")
+                
+                if st.button(f"Consolidar Puntos de la {j_global}", type="primary"):
+                    df_hist_upd = df_historial.copy()
+                    
+                    # 1. Nos aseguramos de que exista la columna de la jornada (ej. "J25")
+                    if j_global not in df_hist_upd.columns:
+                        df_hist_upd[j_global] = 0.0
+                
+                    # 2. Calculamos los puntos de la jornada para cada usuario
+                    for u in u_jugadores:
+                        pts_jornada = 0.0
+                        u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
+                        res_j = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
+                        
+                        for r in u_p.itertuples():
+                            m = res_j[res_j['Partido'] == r.Partido]
+                            if not m.empty:
+                                pts_jornada += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                        
+                        # 3. Guardamos los datos en la fila del usuario
+                        idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
+                        if not idx.empty:
+                            df_hist_upd.loc[idx, j_global] = pts_jornada
+                            df_hist_upd.loc[idx, 'Total_Acumulado'] = safe_float(df_hist_upd.loc[idx, 'Total_Acumulado'].values[0]) + pts_jornada
+                            df_hist_upd.loc[idx, 'Ultima_Jornada'] = j_global
+                
+                    # 4. Actualizamos el Excel
+                    conn.update(worksheet="Historial_Consolidado", data=df_hist_upd)
+                    st.cache_data.clear()
+                    st.success(f"✅ ¡{j_global} consolidada con éxito! La app ahora es un cohete.")
+                    time.sleep(2)
+                    st.rerun()
         else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
