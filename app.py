@@ -29,50 +29,9 @@ NIVEL_EQUIPOS = {
     "Mallorca": 4, "Sevilla": 4, "Elche": 4, "Levante": 4, "Oviedo": 4
 }
 
-# Datos oficiales tras la Jornada 24 (Base para el simulador)
-STATS_LALIGA_BASE = {
-    "Real Madrid": {"PJ": 24, "V": 19, "E": 3, "D": 2, "GF": 53, "GC": 19, "Pts": 60},
-    "Barcelona": {"PJ": 24, "V": 19, "E": 1, "D": 4, "GF": 64, "GC": 25, "Pts": 58},
-    "Villarreal": {"PJ": 24, "V": 15, "E": 3, "D": 6, "GF": 45, "GC": 26, "Pts": 48},
-    "Atlético": {"PJ": 24, "V": 13, "E": 6, "D": 5, "GF": 38, "GC": 21, "Pts": 45},
-    "Betis": {"PJ": 24, "V": 11, "E": 8, "D": 5, "GF": 39, "GC": 29, "Pts": 41},
-    "Espanyol": {"PJ": 24, "V": 10, "E": 5, "D": 9, "GF": 29, "GC": 33, "Pts": 35},
-    "Celta": {"PJ": 24, "V": 8, "E": 10, "D": 6, "GF": 32, "GC": 27, "Pts": 34},
-    "R. Sociedad": {"PJ": 24, "V": 8, "E": 7, "D": 9, "GF": 34, "GC": 35, "Pts": 31},
-    "Athletic": {"PJ": 24, "V": 9, "E": 4, "D": 11, "GF": 27, "GC": 34, "Pts": 31},
-    "Osasuna": {"PJ": 24, "V": 8, "E": 6, "D": 10, "GF": 28, "GC": 28, "Pts": 30},
-    "Getafe": {"PJ": 24, "V": 8, "E": 5, "D": 11, "GF": 20, "GC": 28, "Pts": 29},
-    "Girona": {"PJ": 24, "V": 7, "E": 8, "D": 9, "GF": 24, "GC": 38, "Pts": 29},
-    "Sevilla": {"PJ": 24, "V": 7, "E": 5, "D": 12, "GF": 31, "GC": 39, "Pts": 26},
-    "Alavés": {"PJ": 24, "V": 7, "E": 5, "D": 12, "GF": 21, "GC": 30, "Pts": 26},
-    "Valencia": {"PJ": 24, "V": 6, "E": 8, "D": 10, "GF": 25, "GC": 37, "Pts": 26},
-    "Elche": {"PJ": 24, "V": 5, "E": 10, "D": 9, "GF": 31, "GC": 35, "Pts": 25},
-    "Rayo": {"PJ": 23, "V": 6, "E": 7, "D": 10, "GF": 21, "GC": 30, "Pts": 25},
-    "Mallorca": {"PJ": 24, "V": 6, "E": 6, "D": 12, "GF": 29, "GC": 39, "Pts": 24},
-    "Levante": {"PJ": 24, "V": 4, "E": 6, "D": 14, "GF": 26, "GC": 41, "Pts": 18},
-    "Oviedo": {"PJ": 23, "V": 3, "E": 7, "D": 13, "GF": 13, "GC": 36, "Pts": 16},
-}
 
 JORNADAS = {
-    "Jornada 25": [("Athletic", "Elche"), ("R. Sociedad", "Oviedo"), ("Betis", "Rayo"), ("Osasuna", "Real Madrid"), ("Atlético", "Espanyol"), ("Getafe", "Sevilla"), ("Barcelona", "Levante"), ("Celta", "Mallorca"), ("Villarreal", "Valencia"), ("Alavés", "Girona")],
-    "Jornada 26": [("Levante", "Alavés"), ("Rayo", "Athletic"), ("Barcelona", "Villarreal"), ("Mallorca", "R. Sociedad"), ("Oviedo", "Atlético"), ("Elche", "Espanyol"), ("Valencia", "Osasuna"), ("Betis", "Sevilla"), ("Girona", "Celta"), ("Real Madrid", "Getafe")],
-    "Jornada 27": [("Osasuna", "Mallorca"), ("Getafe", "Betis"), ("Levante", "Girona"), ("Atlético", "R. Sociedad"), ("Celta", "Real Madrid"), ("Villarreal", "Elche"), ("Athletic", "Barcelona"), ("Sevilla", "Rayo"), ("Valencia", "Alavés"), ("Espanyol", "Oviedo")],
-    "Octavos Champions IDA": [("Galatasaray", "Liverpool"), ("Atalanta", "Bayern Múnich"), ("Atlético", "Tottenham H."), ("Newcastle United", "Barcelona"),  ("Bayer Leverkusen", "Arsenal"), ("Bodø/Glimt", "Sp. Portugal"), ("PSG", "Chelsea"), ("Real Madrid", "M. City")],
-    "Jornada 28": [("Alavés", "Villarreal"), ("Girona", "Athletic"), ("Atlético", "Getafe"), ("Oviedo", "Valencia"), ("Real Madrid", "Elche"), ("Mallorca", "Espanyol"), ("Barcelona", "Sevilla"), ("Betis", "Celta"), ("Real Sociedad", "Osasuna"), ("Rayo", "Levante")],
-    "Octavos Champions VUELTA": [("Sp. Portugal", "Bodø/Glimt"), ("Arsenal", "Bayer Leverkusen"), ("Chelsea", "PSG"), ("M. City", "Real Madrid"), ("Barcelona", "Newcastle United"), ("Bayern Múnich", "Atalanta"), ("Liverpool", "Galatasaray"), ("Tottenham H.", "Atlético")],
-    "Jornada 29": [("Athletic", "Betis"), ("Barcelona", "Rayo"), ("Celta", "Alavés"), ("Elche", "Mallorca"), ("Espanyol", "Getafe"), ("Levante", "Oviedo"), ("Osasuna", "Girona"), ("Real Madrid", "Atlético"), ("Sevilla", "Valencia"), ("Villarreal", "R. Sociedad")],
-    "Jornada 30": [("Alavés", "Osasuna"), ("Atlético", "Barcelona"), ("Getafe", "Athletic"), ("Girona", "Villarreal"), ("Mallorca", "Real Madrid"), ("Rayo", "Elche"), ("Betis", "Espanyol"), ("Oviedo", "Sevilla"), ("R. Sociedad", "Levante"), ("Valencia", "Celta")],
-    "Cuartos Champions IDA": [("Real Madrid", "Bayern Múnich"), ("Sp. Portugal", "Arsenal"), ("Barcelona", "Atlético"), ("PSG", "Liverpool")],
-    "Jornada 31": [("Athletic", "Villarreal"), ("Barcelona", "Espanyol"), ("Celta", "Oviedo"), ("Elche", "Valencia"), ("Levante", "Getafe"), ("Mallorca", "Rayo"), ("Osasuna", "Betis"), ("Real Madrid", "Girona"), ("R. Sociedad", "Alavés"), ("Sevilla", "Atlético")],
-    "Cuartos Champions VUELTA": [("Atlético", "Barcelona"), ("Liverpool", "PSG"), ("Bayern Múnich", "Real Madrid"),("Arsenal", "Sp. Portugal")],
-    "Jornada 33": [("Athletic", "Osasuna"), ("Barcelona", "Celta"), ("Elche", "Atlético"), ("Girona", "Betis"), ("Levante", "Sevilla"), ("Mallorca", "Valencia"), ("Rayo", "Espanyol"), ("Real Madrid", "Alavés"), ("Oviedo", "Villarreal"), ("R. Sociedad", "Getafe")],
-    "Jornada 32": [("Alavés", "Mallorca"), ("Atlético", "Athletic"), ("Espanyol", "Levante"), ("Getafe", "Barcelona"), ("Osasuna", "Sevilla"), ("Rayo", "R. Sociedad"), ("Betis", "Real Madrid"), ("Oviedo", "Elche"), ("Valencia", "Girona"), ("Villarreal", "Celta")],
-    "Semis Champions": [("PSG", "Bayern Múnich"), ("Atlético", "Arsenal"), ("Bayern Múnich", "PSG"),("Arsenal", "Atlético")],
-    "Jornada 34": [("Alavés", "Athletic"), ("Celta", "Elche"), ("Espanyol", "Real Madrid"), ("Getafe", "Rayo"), ("Girona", "Mallorca"), ("Osasuna", "Barcelona"), ("Betis", "Oviedo"), ("Sevilla", "R. Sociedad"), ("Valencia", "Atlético"), ("Villarreal", "Levante")],
-    "Jornada 35": [("Athletic", "Valencia"), ("Atlético", "Celta"), ("Barcelona", "Real Madrid"), ("Elche", "Alavés"), ("Levante", "Osasuna"), ("Mallorca", "Villarreal"), ("Rayo", "Girona"), ("Oviedo", "Getafe"), ("R. Sociedad", "Betis"), ("Sevilla", "Espanyol")],
-    "Jornada 36": [("Alavés", "Barcelona"), ("Celta", "Levante"), ("Espanyol", "Athletic"), ("Getafe", "Mallorca"), ("Girona", "R. Sociedad"), ("Osasuna", "Atlético"), ("Betis", "Elche"), ("Real Madrid", "Oviedo"), ("Valencia", "Rayo"), ("Villarreal", "Sevilla")],
-    "Jornada 37": [("Athletic", "Celta"), ("Atlético", "Girona"), ("Barcelona", "Betis"), ("Elche", "Getafe"), ("Levante", "Mallorca"), ("Osasuna", "Espanyol"), ("Rayo", "Villarreal"), ("Oviedo", "Alavés"), ("R. Sociedad", "Valencia"), ("Sevilla", "Real Madrid")],
-    "Jornada 38": [("Alavés", "Rayo"), ("Celta", "Sevilla"), ("Espanyol", "R. Sociedad"), ("Getafe", "Osasuna"), ("Girona", "Elche"), ("Mallorca", "Oviedo"), ("Betis", "Levante"), ("Real Madrid", "Athletic"), ("Valencia", "Barcelona"), ("Villarreal", "Atlético")]
+    
 }
 
 LOGOS = {
@@ -101,186 +60,6 @@ LOGOS = {
 }
 
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
-
-# --- FRASES MÍTICAS ---
-FRASES_POR_PUESTO = {
-    1: [
-        ("Ganar, ganar y volver a ganar.", "Luis Aragonés"),
-        ("Siuuuuu.", "CR7"),
-        ("Ganar no es lo más importante, es lo único.", "Luis Aragonés"),
-        ("Los segundos son los primeros de los perdedores.", "Ayrton Senna"),
-        ("El éxito es la suma de pequeños esfuerzos repetidos cada día.", "Anónimo"),
-        ("Somos los mejores.", "Pep Guardiola"),
-        ("El trabajo da sus frutos.", "Carlo Ancelotti"),
-        ("Mentalidad ganadora.", "Cristiano Ronaldo"),
-        ("El campeón se levanta siempre.", "Anónimo"),
-        ("Nada supera a la victoria.", "Anónimo"),
-        ("Objetivo cumplido.", "Anónimo"),
-        ("Esto es para la historia.", "Anónimo"),
-        ("Nacidos para ganar.", "Anónimo"),
-        ("Arriba del todo.", "Anónimo"),
-        ("La cima es nuestra.", "Anónimo")
-    ],
-
-    2: [
-        ("Perder una final es lo peor.", "Messi"),
-        ("Lo intentamos.", "Sergio Ramos"),
-        ("Estuvimos cerca.", "Anónimo"),
-        ("Duele, pero volveremos.", "Anónimo"),
-        ("Caer está permitido, levantarse es obligatorio.", "Anónimo"),
-        ("Nos faltó muy poco.", "Anónimo"),
-        ("Aprendemos de las derrotas.", "Anónimo"),
-        ("El próximo será nuestro.", "Anónimo"),
-        ("Orgullosos del equipo.", "Anónimo"),
-        ("No fue suficiente.", "Anónimo"),
-        ("Rozando la gloria.", "Anónimo"),
-        ("Competimos hasta el final.", "Anónimo"),
-        ("Subcampeones con honor.", "Anónimo"),
-        ("Volveremos más fuertes.", "Anónimo"),
-        ("A un paso del sueño.", "Anónimo")
-    ],
-
-    3: [
-        ("Partido a partido.", "Simeone"),
-        ("Ni tan mal.", "Anónimo"),
-        ("El podio siempre es buen lugar.", "Anónimo"),
-        ("Sumar siempre es importante.", "Anónimo"),
-        ("Objetivo cumplido a medias.", "Anónimo"),
-        ("Regularidad ante todo.", "Anónimo"),
-        ("Constancia y trabajo.", "Anónimo"),
-        ("Paso firme.", "Anónimo"),
-        ("Siempre competitivos.", "Anónimo"),
-        ("Temporada sólida.", "Anónimo"),
-        ("Ahí estamos.", "Anónimo"),
-        ("En la pelea.", "Anónimo"),
-        ("Trabajo silencioso.", "Anónimo"),
-        ("Punto a punto.", "Anónimo"),
-        ("Ni arriba ni abajo.", "Anónimo")
-    ],
-
-    4: [
-        ("El fútbol es así.", "Boskov"),
-        ("Hay que seguir.", "Ancelotti"),
-        ("Nos faltó ese último paso.", "Anónimo"),
-        ("Morir en la orilla.", "Anónimo"),
-        ("A las puertas de todo.", "Anónimo"),
-        ("Casi, pero no.", "Anónimo"),
-        ("Nos quedamos ahí.", "Anónimo"),
-        ("Buen intento.", "Anónimo"),
-        ("Detalles que marcan diferencias.", "Anónimo"),
-        ("Aprender y mejorar.", "Anónimo"),
-        ("El año que viene más.", "Anónimo"),
-        ("Competimos bien.", "Anónimo"),
-        ("No alcanzó.", "Anónimo"),
-        ("Todo suma.", "Anónimo"),
-        ("Seguimos creciendo.", "Anónimo")
-    ],
-
-    5: [
-        ("¿Por qué?", "Mourinho"),
-        ("Fútbol es fútbol.", "Boskov"),
-        ("A veces se gana, a veces se aprende.", "Anónimo"),
-        ("Temporada irregular.", "Anónimo"),
-        ("Podría haber sido peor.", "Anónimo"),
-        ("Ni frío ni calor.", "Anónimo"),
-        ("En tierra de nadie.", "Anónimo"),
-        ("Sin pena ni gloria.", "Anónimo"),
-        ("Mucho que mejorar.", "Anónimo"),
-        ("Hay margen.", "Anónimo"),
-        ("Esto es largo.", "Anónimo"),
-        ("No era el plan.", "Anónimo"),
-        ("Toca reflexionar.", "Anónimo"),
-        ("Nada decidido.", "Anónimo"),
-        ("Seguimos vivos.", "Anónimo"),
-        ("¿Por qué?", "Mourinho"),
-        ("Fútbol es fútbol.", "Boskov"),
-        ("Ni fu ni fa.", "La grada"),
-        ("Más cerca del descenso que del podio.", "La Sotana vibes"),
-        ("Proyecto interesante... para 2028.", "La Sotana vibes"),
-        ("Equipo en construcción desde 1997.", "La Sotana vibes"),
-        ("Prometía mucho en pretemporada.", "La Sotana vibes"),
-        ("Dominamos en posesión moral.", "La Sotana vibes"),
-        ("Objetivo: no hacer el ridículo.", "La grada"),
-        ("Partido serio... durante 7 minutos.", "La Sotana vibes"),
-        ("Somos un meme.", "Twitter futbolero"),
-        ("Clasificación engañosa (para mal).", "La Sotana vibes"),
-        ("Competimos... a nuestra manera.", "La grada"),
-        ("Nos faltó todo.", "La Sotana vibes"),
-        ("Aspirábamos a más, conseguimos menos.", "La grada")
-    ],
-
-    6: [
-        ("Prefiero no hablar.", "Mourinho"),
-        ("Hay que levantarse.", "CR7"),
-        ("Momento complicado.", "Anónimo"),
-        ("Esto no ha terminado.", "Anónimo"),
-        ("Toca sufrir.", "Anónimo"),
-        ("Hay que apretar los dientes.", "Anónimo"),
-        ("Salir del bache.", "Anónimo"),
-        ("Unidos saldremos.", "Anónimo"),
-        ("Trabajo y más trabajo.", "Anónimo"),
-        ("Remar contra corriente.", "Anónimo"),
-        ("No bajamos los brazos.", "Anónimo"),
-        ("Pelear hasta el final.", "Anónimo"),
-        ("Esto se levanta.", "Anónimo"),
-        ("Día duro.", "Anónimo"),
-        ("Paso atrás.", "Anónimo"),
-        ("Prefiero no hablar.", "Mourinho"),
-        ("Hay que levantarse.", "CR7"),
-        ("Defendemos con la mirada.", "La Sotana vibes"),
-        ("El rival parecía el Brasil del 70.", "La Sotana vibes"),
-        ("Proyecto ilusionante (para el rival).", "La grada"),
-        ("Nos remontan hasta en el FIFA.", "La Sotana vibes"),
-        ("Más blandos que el pan de molde.", "La Sotana vibes"),
-        ("El VAR tampoco nos salva.", "La grada"),
-        ("Estamos probando cosas (ninguna funciona).", "La Sotana vibes"),
-        ("Entrenamos sin balón, se nota.", "La Sotana vibes"),
-        ("Nuestro objetivo es participar.", "La grada"),
-        ("Temporada histórica... para olvidar.", "La Sotana vibes"),
-        ("El descenso nos guiña el ojo.", "La Sotana vibes"),
-        ("Jugamos a sorprender… y lo logramos.", "La grada"),
-        ("El míster tiene un plan (nadie sabe cuál).", "La Sotana vibes")
-    ],
-
-    7: [
-        ("Estamos en la UVI.", "Clemente"),
-        ("Salimos como nunca...", "Di Stéfano"),
-        ("Tocar fondo para impulsarse.", "Anónimo"),
-        ("Situación crítica.", "Anónimo"),
-        ("Hora de reaccionar.", "Anónimo"),
-        ("No queda margen.", "Anónimo"),
-        ("Sufrir para sobrevivir.", "Anónimo"),
-        ("Cada punto es oro.", "Anónimo"),
-        ("Final tras final.", "Anónimo"),
-        ("Salvar la categoría.", "Anónimo"),
-        ("Resistir es ganar.", "Anónimo"),
-        ("Con el agua al cuello.", "Anónimo"),
-        ("Última bala.", "Anónimo"),
-        ("Orgullo y corazón.", "Anónimo"),
-        ("Nunca rendirse.", "Anónimo"),
-        ("Estamos en la UVI.", "Clemente"),
-        ("Salimos como nunca perdemos como siempre", "Di Stéfano"),
-        ("Descenso speedrun any%.", "La Sotana vibes"),
-        ("El Titanic tenía mejor planificación.", "La Sotana vibes"),
-        ("Nos pitan y no sabemos si es penalti o final.", "La grada"),
-        ("Somos el sparring oficial de la liga.", "La Sotana vibes"),
-        ("Cada jornada, un trauma nuevo.", "La Sotana vibes"),
-        ("El calendario pide perdón.", "La grada"),
-        ("Defensa de mantequilla.", "La Sotana vibes"),
-        ("Tenemos más excusas que puntos.", "La Sotana vibes"),
-        ("Modo supervivencia activado.", "La grada"),
-        ("Esto ya es contenido.", "La Sotana vibes"),
-        ("El descenso no es amenaza, es destino.", "La Sotana vibes"),
-        ("Jugamos sin red.", "La grada"),
-        ("La clasificación no miente (ojalá lo hiciera).", "La Sotana vibes")
-    ]
-}
-
-LOGROS_DATA = {
-    "guru": {"icon": "🔮", "name": "El Gurú", "desc": "Pleno en Esquizo."},
-    "cima": {"icon": "🏔️", "name": "En la Cima", "desc": "Líder general."},
-    "pleno": {"icon": "💯", "name": "Pleno", "desc": "Puntuado en los 10."}
-}
 
 # --- 2. FUNCIONES DE APOYO ---
 @st.cache_data(ttl=10) # TTL bajo para que los cambios del admin se vean rápido
@@ -492,7 +271,11 @@ else:
     # 1. CARGA DE DATOS
     df_perf = leer_datos("ImagenesPerfil")
     # Cargamos también los logs para que ChatG-O-L los vea
-    df_r_all, df_p_all, df_u_all, df_base, df_logs_all = leer_datos("Resultados"), leer_datos("Predicciones"), leer_datos("Usuarios"), leer_datos("PuntosBase"), leer_datos("Logs")
+    df_r_all = leer_datos("Resultados")
+    df_p_all = leer_datos("Predicciones")
+    df_u_all = leer_datos("Usuarios")
+    df_historial = leer_datos("Historial_Consolidado") # <-- NUEVO
+    df_logs_all = leer_datos("Logs")
     # --- 🛡️ MURO DE SEGURIDAD (Añade esto aquí) ---
     if df_r_all.empty or df_p_all.empty or df_u_all.empty:
         st.info("⌛ El VAR está conectando con los satélites... (Cargando datos)")
@@ -553,16 +336,23 @@ else:
             st.session_state.autenticado = False; st.rerun()
 
     # --- CÁLCULO DE DASHBOARD HERO ---
+    # --- CÁLCULO DE DASHBOARD HERO Y CLASIFICACIÓN V2 ---
     stats_hero = []
     for u in u_jugadores:
-        pb_row = df_base[df_base['Usuario'] == u]
-        p_base = safe_float(pb_row['Puntos'].values[0]) if not pb_row.empty else 0.0
-        u_p_hist = df_p_all[df_p_all['Usuario'] == u]
-        p_acum = p_base
-        for r in u_p_hist.itertuples():
-            m = df_r_all[(df_r_all['Jornada'] == r.Jornada) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
-            if not m.empty:
-                p_acum += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+        # 1. Cogemos la base consolidada
+        fila_hist = df_historial[df_historial['Usuario'] == u]
+        p_acum = safe_float(fila_hist['Total_Acumulado'].values[0]) if not fila_hist.empty else 0.0
+        ultima_j_consolidada = str(fila_hist['Ultima_Jornada'].values[0]) if not fila_hist.empty else ""
+    
+        # 2. Sumamos SOLO los puntos en vivo (los de la jornada global si NO está consolidada aún)
+        # Si la jornada global es distinta a la última consolidada, calculamos esos puntos
+        if j_global != ultima_j_consolidada:
+            u_p_vivo = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
+            for r in u_p_vivo.itertuples():
+                m = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r.Partido) & (df_r_all['Finalizado'] == "SI")]
+                if not m.empty:
+                    p_acum += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+        
         stats_hero.append({"Usuario": u, "Puntos": p_acum})
     
     df_hero = pd.DataFrame(stats_hero).sort_values("Puntos", ascending=False).reset_index(drop=True)
@@ -1683,32 +1473,24 @@ else:
                     submit_ajuste = st.form_submit_button("⚖️ Aplicar Ajuste y Notificar al VAR", use_container_width=True)
 
                 if submit_ajuste:
-                    if concepto.strip() == "":
-                        st.error("❌ Debes indicar un concepto para el ajuste.")
-                    elif pts_ajuste == 0:
-                        st.warning("⚠️ El ajuste es 0, no se han realizado cambios.")
-                    else:
-                        # 1. Copiamos y ASEGURAMOS que la columna sea numérica
-                        df_base_copy = df_base.copy()
-                        
-                        # Limpiamos la columna de puntos: pasamos a string, cambiamos coma por punto y convertimos a número
-                        df_base_copy['Puntos'] = pd.to_numeric(
-                            df_base_copy['Puntos'].astype(str).str.replace(',', '.'), 
-                            errors='coerce'
-                        ).fillna(0.0)
-
-                        # 2. Aplicamos el ajuste
-                        if u_target in df_base_copy['Usuario'].values:
-                            # Filtramos la fila y sumamos
-                            idx = df_base_copy[df_base_copy['Usuario'] == u_target].index
-                            df_base_copy.loc[idx, 'Puntos'] += float(pts_ajuste)
-                        else:
-                            # Si el usuario no estaba en PuntosBase, lo creamos
-                            nueva_fila = pd.DataFrame([{"Usuario": u_target, "Puntos": float(pts_ajuste)}])
-                            df_base_copy = pd.concat([df_base_copy, nueva_fila], ignore_index=True)
-                        
-                        # 3. Subimos a GSheets
-                        conn.update(worksheet="PuntosBase", data=df_base_copy)
+                  if concepto.strip() == "":
+                      st.error("❌ Debes indicar un concepto para el ajuste.")
+                  elif pts_ajuste == 0:
+                      st.warning("⚠️ El ajuste es 0, no se han realizado cambios.")
+                  else:
+                      df_hist_copy = df_historial.copy()
+                      
+                      # Si el usuario existe, le sumamos los puntos al Acumulado y al historial de Ajustes
+                      if u_target in df_hist_copy['Usuario'].values:
+                          idx = df_hist_copy[df_hist_copy['Usuario'] == u_target].index
+                          df_hist_copy.loc[idx, 'Total_Acumulado'] = safe_float(df_hist_copy.loc[idx, 'Total_Acumulado'].values[0]) + float(pts_ajuste)
+                          df_hist_copy.loc[idx, 'Puntos_Base'] = safe_float(df_hist_copy.loc[idx, 'Puntos_Base'].values[0]) + float(pts_ajuste)
+                      else:
+                          # Si es nuevo, lo creamos
+                          nueva_fila = pd.DataFrame([{"Usuario": u_target, "Puntos_Base": float(pts_ajuste), "Total_Acumulado": float(pts_ajuste), "Ultima_Jornada": ""}])
+                          df_hist_copy = pd.concat([df_hist_copy, nueva_fila], ignore_index=True)
+                      
+                      conn.update(worksheet="Historial_Consolidado", data=df_hist_copy)
 
                         # 4. Registrar en el VAR (Logs)
                         ahora_madrid = get_now_madrid()
@@ -1726,7 +1508,7 @@ else:
                         conn.update(worksheet="Logs", data=pd.concat([df_logs_actual, nuevo_log], ignore_index=True))
 
                         st.cache_data.clear()
-                        st.success(f"✅ Ajuste aplicado con éxito: {txt_log}")
+                        st.success(f"✅ Ajuste aplicado con éxito.")
                         time.sleep(1.5)
                         st.rerun()
 
@@ -1823,6 +1605,41 @@ else:
                     st.cache_data.clear()
                     st.success(f"✅ Datos guardados.")
                     st.rerun()
+               st.divider()
+               st.subheader(f"🔒 Sellar y Consolidar {j_global}")
+               st.warning("⚠️ Pulsa esto SOLO cuando la jornada haya terminado por completo. La app calculará los puntos de todos y los guardará en el historial definitivo.")
+               
+               if st.button(f"Consolidar Puntos de la {j_global}", type="primary"):
+                   df_hist_upd = df_historial.copy()
+                   
+                   # 1. Nos aseguramos de que exista la columna de la jornada (ej. "J25")
+                   if j_global not in df_hist_upd.columns:
+                       df_hist_upd[j_global] = 0.0
+               
+                   # 2. Calculamos los puntos de la jornada para cada usuario
+                   for u in u_jugadores:
+                       pts_jornada = 0.0
+                       u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
+                       res_j = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
+                       
+                       for r in u_p.itertuples():
+                           m = res_j[res_j['Partido'] == r.Partido]
+                           if not m.empty:
+                               pts_jornada += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                       
+                       # 3. Guardamos los datos en la fila del usuario
+                       idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
+                       if not idx.empty:
+                           df_hist_upd.loc[idx, j_global] = pts_jornada
+                           df_hist_upd.loc[idx, 'Total_Acumulado'] = safe_float(df_hist_upd.loc[idx, 'Total_Acumulado'].values[0]) + pts_jornada
+                           df_hist_upd.loc[idx, 'Ultima_Jornada'] = j_global
+               
+                   # 4. Actualizamos el Excel
+                   conn.update(worksheet="Historial_Consolidado", data=df_hist_upd)
+                   st.cache_data.clear()
+                   st.success(f"✅ ¡{j_global} consolidada con éxito! La app ahora es un cohete.")
+                   time.sleep(2)
+                   st.rerun()
         else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
