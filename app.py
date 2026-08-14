@@ -63,7 +63,6 @@ LOGOS = {
 SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0, 1.5, 3.0)}
 
 # --- 2. FUNCIONES DE APOYO ---
-@st.cache_data(ttl=10) # TTL bajo para que los cambios del admin se vean rápido
 @st.cache_data(ttl=10)
 def leer_datos(pestaña):
     try:
@@ -1114,31 +1113,10 @@ else:
 
     with tabs[4]: # --- 🏅 PALMARÉS (GLORIA, PODER Y HUMILLACIÓN) ---
         st.header("🏅 El Palmarés de la Porra")
-        
-        # --- 1. DATOS HISTÓRICOS J1-J24 (Líderes extraídos de tu imagen) ---
-        hist_ganadores = [
-            ("J1", ["Alex"]), ("J2", ["Alec206301"]), ("J3", ["EstafadorJudío"]), ("J4", ["Alec206301"]), ("J5", ["Rodri"]), ("J6", ["Rodri"]), 
-            ("J7", ["EstafadorJudío"]), ("J8", ["Pachuco67"]), ("J9", ["Alex"]), ("J10", ["Lagartoputero"]), ("J11", ["Pachuco67"]), ("J12", ["Pablo Riera"]),
-            ("J13", ["Alex", "Alec206301"]), ("J14", ["Davo"]), ("J15", ["EstafadorJudío", "Pablo Riera"]), ("J16", ["EstafadorJudío"]),
-            ("J17", ["Pablo Riera"]), ("J18", ["EstafadorJudío"]), ("J19", ["Pablo Riera"]), ("J20", ["Alec206301"]), ("J21", ["Cidon"]), 
-            ("J22", ["EstafadorJudío"]), ("J23", ["Alec206301"]), ("J24", ["Alex"])
-        ]
-        
-        hist_perdedores = [
-            ("J1", ["Cidon"]), ("J2", ["Cidon"]), ("J3", ["Alec206301"]), ("J4", ["Lagartoputero"]), ("J5", ["Davo"]), ("J6", ["Javi"]),
-            ("J7", ["Lagartoputero", "Alec206301"]), ("J8", ["Davo"]), ("J9", ["Rodri"]), ("J10", ["Davo"]), ("J11", ["Davo"]), ("J12", ["Javi"]),
-            ("J13", ["Lagartoputero"]), ("J14", ["Lagartoputero"]), ("J15", ["Javi"]), ("J16", ["Davo"]), ("J17", ["Lagartoputero"]), ("J18", ["Alex"]),
-            ("J19", ["Davo", "Javi"]), ("J20", ["Lagartoputero", "Cidon"]), ("J21", ["Lagartoputero"]), ("J22", ["Lagartoputero"]), 
-            ("J23", ["Alex", "Pachuco67", "Pablo Riera"]), ("J24", ["Pablo Riera"])
-        ]
-
-        hist_lideres = [
-            ("J1", ["Alex"]), ("J2", ["Alec206301"]), ("J3", ["Alec206301"]), ("J4", ["Alec206301"]), ("J5", ["Alex"]),
-            ("J6", ["Alex"]), ("J7", ["Alex"]), ("J8", ["Alex"]), ("J9", ["Alex"]), ("J10", ["EstafadorJudío"]),
-            ("J11", ["EstafadorJudío"]), ("J12", ["EstafadorJudío"]), ("J13", ["Alex"]), ("J14", ["Alex"]), ("J15", ["Alex"]),
-            ("J16", ["EstafadorJudío"]), ("J17", ["EstafadorJudío"]), ("J18", ["EstafadorJudío"]), ("J19", ["EstafadorJudío"]), ("J20", ["EstafadorJudío"]),
-            ("J21", ["EstafadorJudío"]), ("J22", ["EstafadorJudío"]), ("J23", ["EstafadorJudío"]), ("J24", ["EstafadorJudío"])
-        ]
+        # --- 1. DATOS HISTÓRICOS (Vacío para la nueva temporada) ---
+        hist_ganadores = []
+        hist_perdedores = []
+        hist_lideres = []
 
         # --- 2. CÁLCULO AUTOMÁTICO J25+ (Incluyendo Líder Acumulado) ---
         gan_act, perd_act, lider_act = [], [], []
@@ -1315,17 +1293,7 @@ else:
             jor_seleccionadas = todas_con_datos[-num_x:]
             
             st.caption(f"Calculando puntos de: {', '.join(jor_seleccionadas)}")
-
-            # 3. DATOS HISTÓRICOS (DICCIONARIO MANUAL)
-            stats_imagen = {
-                "Alex": {"J22": 2.0, "J23": 3.5, "J24": 3.5},
-                "Pachuco67": {"J22": 2.25, "J23": 3.5, "J24": 2.5},
-                "EstafadorJudío": {"J22": 5.5, "J23": 4.25, "J24": 1.75},
-                "Lagartoputero": {"J22": 1.5, "J23": 5.5, "J24": 2.25},
-                "Cidon": {"J22": 3.75, "J23": 4.0, "J24": 2.0},
-                "Alec206301": {"J22": 4.75, "J23": 5.25, "J24": 3.25},
-                "Pablo Riera": {"J22": 4.0, "J23": 3.5, "J24": 1.5}
-            }
+            
 
             # 4. BUCLE DE CÁLCULO
             ranking_pwr = []
@@ -1816,7 +1784,7 @@ else:
                     prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                     
                     rl, rv, fin, t = 0, 0, False, "Normal"
-                    fecha_v = datetime.datetime(2026, 2, 23).date()
+                    fecha_v = get_now_madrid().date()
                     hora_v = "21:00"
 
                     if not prev.empty: 
