@@ -276,6 +276,7 @@ else:
     df_p_all = leer_datos("Predicciones")
     df_u_all = leer_datos("Usuarios")
     df_historial = leer_datos("Historial_Consolidado") # <-- NUEVO
+    df_pred_temp = leer_datos("Predicciones_Temporada") # <-- NUEVA SÚPER PORRA
     df_logs_all = leer_datos("Logs")
     # --- 🛡️ MURO DE SEGURIDAD (Añade esto aquí) ---
     # --- 🛡️ MURO DE SEGURIDAD (MODO INICIO DE TEMPORADA) ---
@@ -287,8 +288,8 @@ else:
     # Blindaje extra: Si las tablas están vacías (sin datos), nos aseguramos de que no den error al buscar columnas
     if df_p_all.empty and 'Usuario' not in df_p_all.columns:
         df_p_all = pd.DataFrame(columns=["Usuario", "Jornada", "Partido", "P_L", "P_V", "Publica"])
-    if df_r_all.empty and 'Jornada' not in df_r_all.columns:
-        df_r_all = pd.DataFrame(columns=["Jornada", "Partido", "Tipo", "R_L", "R_V", "Hora_Inicio", "Finalizado"])
+    if df_pred_temp.empty and 'Usuario' not in df_pred_temp.columns:
+        df_pred_temp = pd.DataFrame(columns=["Usuario"] + [f"Pos_{i}" for i in range(1, 21)])
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
@@ -484,7 +485,7 @@ else:
 
     usa_oraculo = 1 <= len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")]) <= 3
     # Busca esta línea y añade "📜 VAR" al final
-    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "📊 Clasificación", "🏅 Palmarés", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
+    tabs = st.tabs(["✍️ Apuestas", "👀 Otros", "🔮 Súper Porra", "📊 Clasificación", "🏅 Palmarés", "📈 Stats PRO", "🏆 Detalles", "🔮 Simulador", "🎲 Oráculo", "⚙️ Admin", "📜 VAR"])
 
     with tabs[0]: # --- ✍️ PESTAÑA APUESTAS (REDISEÑO TOTAL) ---
         # 1. CSS EXCLUSIVO PARA LAS TARJETAS DE APUESTAS
@@ -771,8 +772,108 @@ else:
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
 
+ 
+    with tabs[2]: # --- 🔮 SÚPER PORRA (PREDICCIONES DE TEMPORADA) ---
+        st.header("🔮 La Súper Porra de la Temporada")
+        st.caption("Predice las 20 posiciones exactas de LaLiga. Se bloquea con el primer pitido inicial.")
+
+        FECHA_INICIO_LIGA = datetime.datetime(2026, 8, 15, 19, 30)
+        mercado_abierto = get_now_madrid() < FECHA_INICIO_LIGA
+        
+        equipos_liga = sorted(list(NIVEL_EQUIPOS.keys()))
+        
+        # Rescatar apuesta del usuario si existe
+        mi_pred = df_pred_temp[df_pred_temp['Usuario'] == st.session_state.user]
+        
+        if mercado_abierto or es_admin:
+            if es_admin:
+                st.warning("👑 Eres Admin. Puedes editar pero no deberías participar en la porra.")
+            else:
+                st.success("🔓 Mercado Abierto hasta el 15/08/2026 a las 19:30.")
+            
+            st.markdown("### ✍️ Rellena tu Tabla")
+            with st.form("form_super_porra"):
+                cols = st.columns(2)
+                selecciones = []
+                
+                for i in range(1, 21):
+                    # Valor por defecto si ya había votado
+                    def_val = str(mi_pred.iloc[0][f"Pos_{i}"]) if not mi_pred.empty and f"Pos_{i}" in mi_pred.columns else equipos_liga[0]
+                    if def_val not in equipos_liga: def_val = equipos_liga[0]
+                    
+                    with cols[0 if i <= 10 else 1]:
+                        # Estilos visuales para Champions, Europa, Descenso
+                        if i <= 4: icono = "🔵"
+                        elif i <= 6: icono = "🟠"
+                        elif i >= 18: icono = "🔴"
+                        else: icono = "⚪"
+                        
+                        sel = st.selectbox(f"{icono} {i}º Clasificado", equipos_liga, index=equipos_liga.index(def_val), key=f"sp_pos_{i}")
+                        selecciones.append(sel)
+                
+                enviado = st.form_submit_button("💾 Guardar Súper Porra", type="primary", use_container_width=True)
+                
+                if enviado:
+                    # VALIDACIÓN ANTI-TRAMPAS
+                    if len(set(selecciones)) != 20:
+                        st.error("🚨 ¡Pechofrío! Has repetido equipos o te faltan algunos. Tienes que poner a los 20 equipos únicos.")
+                    else:
+                        df_temp_copy = df_pred_temp.copy()
+                        
+                        nueva_fila = {"Usuario": st.session_state.user}
+                        for i in range(1, 21):
+                            nueva_fila[f"Pos_{i}"] = selecciones[i-1]
+                            
+                        # Actualizar si existe, o crear nuevo
+                        if st.session_state.user in df_temp_copy['Usuario'].values:
+                            idx = df_temp_copy[df_temp_copy['Usuario'] == st.session_state.user].index
+                            for key, val in nueva_fila.items():
+                                df_temp_copy.loc[idx, key] = val
+                        else:
+                            df_temp_copy = pd.concat([df_temp_copy, pd.DataFrame([nueva_fila])], ignore_index=True)
+                            
+                        conn.update(worksheet="Predicciones_Temporada", data=df_temp_copy)
+                        
+                        # Registrar en VAR
+                        df_logs_actual = leer_datos("Logs")
+                        log_entry = pd.DataFrame([{
+                            "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
+                            "Usuario": st.session_state.user,
+                            "Accion": "🔮 SÚPER PORRA: Ha guardado su clasificación final de LaLiga."
+                        }])
+                        conn.update(worksheet="Logs", data=pd.concat([df_logs_actual, log_entry], ignore_index=True))
+                        
+                        st.cache_data.clear()
+                        st.success("✅ ¡Súper Porra guardada! Que Dios reparta suerte.")
+                        time.sleep(1.5)
+                        st.rerun()
+        else:
+            st.error("🔒 El mercado de la Súper Porra está CERRADO. LaLiga ya ha empezado.")
+            
+        # --- EL MURO DE LA VERGÜENZA (Muestra las apuestas de todos) ---
+        st.divider()
+        st.markdown("### 🧱 El Muro de la Vergüenza")
+        st.caption("Las predicciones de todos los jugadores cruzadas. Aquí están las pruebas para mayo.")
+        
+        if not df_pred_temp.empty and len(df_pred_temp) > 0:
+            df_muro = pd.DataFrame()
+            df_muro['Posición'] = [f"{i}º" for i in range(1, 21)]
+            
+            for _, row in df_pred_temp.iterrows():
+                usuario = row['Usuario']
+                equipos_usr = [row.get(f"Pos_{i}", "-") for i in range(1, 21)]
+                df_muro[usuario] = equipos_usr
+                
+            # Aplicamos un poco de estilo para que se vean los colores de la clasificación real
+            def pintar_zonas(col):
+                if col.name == 'Posición': return [''] * 20
+                return ['background-color: #eff6ff' if i < 4 else ('background-color: #fff7ed' if i < 6 else ('background-color: #fef2f2' if i >= 17 else '')) for i in range(20)]
+                
+            st.dataframe(df_muro.style.apply(pintar_zonas, axis=0), use_container_width=True, hide_index=True)
+        else:
+            st.info("Aún nadie ha echado sus cartas sobre la mesa.")
     
-    with tabs[2]: # --- 📊 CLASIFICACIÓN PREMIUM ---
+    with tabs[3]: # --- 📊 CLASIFICACIÓN PREMIUM ---
         tipo_r = st.radio("Ranking:", ["General", "Jornada"], horizontal=True, key="tipo_ranking_radio")
         
         if tipo_r == "General":
@@ -856,7 +957,7 @@ else:
 
             st.markdown('</div>', unsafe_allow_html=True)
 
-    with tabs[3]: # --- 🏅 PALMARÉS (GLORIA, PODER Y HUMILLACIÓN) ---
+    with tabs[4]: # --- 🏅 PALMARÉS (GLORIA, PODER Y HUMILLACIÓN) ---
         st.header("🏅 El Palmarés de la Porra")
         
         # --- 1. DATOS HISTÓRICOS J1-J24 (Líderes extraídos de tu imagen) ---
@@ -1004,7 +1105,7 @@ else:
         
         st.table(pd.DataFrame(cronologia))
     
-    with tabs[4]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
+    with tabs[5]: # --- 📈 STATS PRO (CON SUB-PESTAÑAS) ---
         # Creamos las sub-pestañas dentro de Stats PRO
         sub_tabs = st.tabs(["👤 Análisis Individual", "🔥 Power Ranking (L3J)", "📉 Evolución de Puesto"])
 
@@ -1209,7 +1310,7 @@ else:
                 st.info("Esperando a que termine la Jornada 25 para mostrar la carnicería...")
 
     
-    with tabs[5]: # DETALLES
+    with tabs[6]: # DETALLES
         df_rf = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
         if not df_rf.empty:
             m_p = pd.DataFrame(index=df_rf['Partido'].unique(), columns=u_jugadores)
@@ -1221,7 +1322,7 @@ else:
             st.dataframe(m_p.astype(float), use_container_width=True)
         else: st.info("Sin partidos finalizados.")
 
-    with tabs[6]: # SIMULADOR
+    with tabs[7]: # SIMULADOR
         sub_tabs = st.tabs(["📉 Supercomputadora: Destino Final", "🏟️ LaLiga según mis Porros"])
         
         with sub_tabs[0]:
@@ -1329,7 +1430,7 @@ else:
                 df_laliga = pd.DataFrame.from_dict(sim, orient='index').sort_values(["Pts", "GF"], ascending=False)
                 st.table(df_laliga) # O st.dataframe si prefieres
 
-    with tabs[7]: # --- 🎲 ORÁCULO ---
+    with tabs[8]: # --- 🎲 ORÁCULO ---
         if usa_oraculo:
             with st.spinner("🔮 El Oráculo está analizando el futuro..."):
                 st.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmNrNjVlaW0xZzM0MWxubDQyZGhla3V4eXVnMHU5eHcwN3NxamRtMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Jap1tdjahS0rm/giphy.gif", width=300)
@@ -1432,7 +1533,7 @@ else:
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
     
     
-    with tabs[8]: # --- PESTAÑA ADMIN ACTUALIZADA ---
+    with tabs[9]: # --- PESTAÑA ADMIN ACTUALIZADA ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
             
@@ -1658,7 +1759,7 @@ else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
     
-    with tabs[9]: # --- PESTAÑA VAR MEJORADA ---
+    with tabs[10]: # --- PESTAÑA VAR MEJORADA ---
         st.header("🏁 El VAR de la Porra")
         st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczF4bGVvbmQ3eTVuam44dzExbXl4MDU5cmVsY24zMGdyb2dvNnpjdiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/U4DdzRe7wJP0aPI1Pa/giphy.gif", width=300)
         st.caption("Transparencia total: aquí se registra cada movimiento clave de la liga.")
