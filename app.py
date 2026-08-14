@@ -772,6 +772,117 @@ else:
                 with st.expander(f"👤 Apuestas de {u}"):
                     st.table(p_futuras[p_futuras['Usuario'] == u][['Partido', 'P_L', 'P_V']])
 
+        # =====================================================================
+        # 🔮 NUEVA SECCIÓN: MATRIZ DE SIMILITUD Y ALMAS GEMELAS 
+        # =====================================================================
+        st.divider()
+        st.markdown("### 🧬 Grado de Afinidad entre Porristas")
+        st.caption("¿Quién copia a quién? Medimos la similitud exacta analizando la distancia de goles y el signo de vuestros pronósticos.")
+
+        # 1. Selectores para elegir la vista (General o por Jornada)
+        tipo_similitud = st.radio("Ámbito del análisis:", ["Esta Jornada", "Toda la Temporada"], horizontal=True, key="rad_sim_tipo")
+
+        # Función matemática para calcular el % de similitud en un partido
+        def calcular_similitud_partido(l1, v1, l2, v2):
+            # Si el marcador es exactamente idéntico -> 100%
+            if l1 == l2 and v1 == v2:
+                return 100.0
+            
+            # Error absoluto de goles (efecto escala)
+            error_goles = abs(l1 - l2) + abs(v1 - v2)
+            
+            # Verificar si coinciden en el signo (1, X, 2)
+            signo1 = (l1 > v1) - (l1 < v1)
+            signo2 = (l2 > v2) - (l2 < v2)
+            coincide_signo = (signo1 == signo2)
+            
+            # Base de afinidad por cercanía de goles (Cada gol de dif resta 15%)
+            afinidad = max(0.0, 100.0 - (error_goles * 15.0))
+            
+            # Si ni siquiera coinciden en el signo (1X2), penalizamos fuertemente un 50% extra
+            if not coincide_signo:
+                afinidad = max(0.0, afinidad - 50.0)
+                
+            return afinidad
+
+        # Definir qué jornadas analizar según el radio button
+        jornadas_validas = [j_global] if tipo_similitud == "Esta Jornada" else df_p_all['Jornada'].unique().tolist()
+
+        parejas_data = []
+
+        # Generar todas las combinaciones únicas de parejas de jugadores
+        if len(u_jugadores) >= 2:
+            todas_parejas = list(itertools.combinations(u_jugadores, 2))
+            
+            for u1, u2 in todas_parejas:
+                similitudes_fases = []
+                total_partidos_compartidos = 0
+                
+                for j_fase in jornadas_validas:
+                    # Filtrar las apuestas de ambos usuarios
+                    p_u1 = df_p_all[(df_p_all['Usuario'] == u1) & (df_p_all['Jornada'] == j_fase)]
+                    p_u2 = df_p_all[(df_p_all['Usuario'] == u2) & (df_p_all['Jornada'] == j_fase)]
+                    
+                    # Cruzar partidos en los que AMBOS hayan apostado
+                    df_cruce = pd.merge(p_u1, p_u2, on='Partido', suffixes=('_1', '_2'))
+                    
+                    if not df_cruce.empty:
+                        for row in df_cruce.itertuples():
+                            val = calcular_similitud_partido(int(row.P_L_1), int(row.P_V_1), int(row.P_L_2), int(row.P_V_2))
+                            similitudes_fases.append(val)
+                        
+                        total_partidos_compartidos += len(df_cruce)
+
+                # Si comparten datos, calculamos su nota final
+                if similitudes_fases:
+                    parejas_data.append({
+                        "Pareja": f"👥 **{u1}** & **{u2}**",
+                        "Similitud": np.mean(similitudes_fases),
+                        "Partidos": total_partidos_compartidos
+                    })
+
+            # 2. Renderizar los Rankings (Top 5 Almas Gemelas y Top 5 Polos Opuestos)
+            if parejas_data:
+                df_parejas = pd.DataFrame(parejas_data)
+                
+                col_clones, col_enemigos = st.columns(2, gap="medium")
+                
+                with col_clones:
+                    st.markdown("##### 🐑 Almas Gemelas (Más parecidos)")
+                    top_clones = df_parejas.sort_values("Similitud", ascending=False).head(5)
+                    
+                    for idx, row in enumerate(top_clones.itertuples(), 1):
+                        medalla = "🥇" if idx == 1 else ("🥈" if idx == 2 else ("🥉" if idx == 3 else f"#{idx}"))
+                        st.markdown(f"""
+                            <div style="background:#f0fff4; padding:10px; border-radius:8px; border-left:4px solid #2baf2b; margin-bottom:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:0.9em;">{medalla} {row.Pareja}</span>
+                                    <span style="font-weight:900; color:#2baf2b; font-size:1.1em;">{row.Similitud:.1f}%</span>
+                                </div>
+                                <div style="text-align:right;"><small style="color:#666; font-size:0.75em;">{row.Partidos} partidos analizados</small></div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                with col_enemigos:
+                    st.markdown("##### ⚔️ Polos Opuestos (Menos parecidos)")
+                    top_enemigos = df_parejas.sort_values("Similitud", ascending=True).head(5)
+                    
+                    for idx, row in enumerate(top_enemigos.itertuples(), 1):
+                        icon_demonio = "👹" if idx == 1 else "⚡"
+                        st.markdown(f"""
+                            <div style="background:#fff5f5; padding:10px; border-radius:8px; border-left:4px solid #ff4b4b; margin-bottom:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:0.9em;">{icon_demonio} {row.Pareja}</span>
+                                    <span style="font-weight:900; color:#ff4b4b; font-size:1.1em;">{row.Similitud:.1f}%</span>
+                                </div>
+                                <div style="text-align:right;"><small style="color:#666; font-size:0.75em;">{row.Partidos} partidos analizados</small></div>
+                            </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("Aún no hay suficientes porras guardadas para cruzar las afinidades del grupo.")
+        else:
+            st.warning("Se necesitan al menos 2 jugadores registrados para activar el buscador de almas gemelas.")
+
  
     with tabs[2]: # --- 🔮 SÚPER PORRA (PREDICCIONES DE TEMPORADA) ---
         st.header("🔮 La Súper Porra de la Temporada")
