@@ -898,7 +898,7 @@ else:
  
     with tabs[2]: # --- 🔮 SÚPER PORRA (PREDICCIONES DE TEMPORADA) ---
         st.header("🔮 La Súper Porra de la Temporada")
-        st.caption("Predice las 20 posiciones exactas de LaLiga. Se bloquea con el primer pitido inicial.")
+        st.caption("Predice las 20 posiciones exactas de LaLiga. ¡Solo por el honor y las risas! Se bloquea con el primer pitido inicial.")
 
         FECHA_INICIO_LIGA = datetime.datetime(2026, 8, 15, 19, 30)
         mercado_abierto = get_now_madrid() < FECHA_INICIO_LIGA
@@ -915,61 +915,89 @@ else:
                 st.success("🔓 Mercado Abierto hasta el 15/08/2026 a las 19:30.")
             
             st.markdown("### ✍️ Rellena tu Tabla")
-            with st.form("form_super_porra"):
-                cols = st.columns(2)
-                selecciones = []
-                
+            
+            # --- INICIALIZAR ESTADO (Para vaciar por defecto o cargar lo de la BBDD) ---
+            init_key = f"sp_loaded_{st.session_state.user}"
+            if init_key not in st.session_state:
                 for i in range(1, 21):
-                    # Valor por defecto si ya había votado
-                    def_val = str(mi_pred.iloc[0][f"Pos_{i}"]) if not mi_pred.empty and f"Pos_{i}" in mi_pred.columns else equipos_liga[0]
-                    if def_val not in equipos_liga: def_val = equipos_liga[0]
-                    
-                    with cols[0 if i <= 10 else 1]:
-                        # Estilos visuales para Champions, Europa, Descenso
-                        if i <= 4: icono = "🔵"
-                        elif i <= 6: icono = "🟠"
-                        elif i >= 18: icono = "🔴"
-                        else: icono = "⚪"
-                        
-                        sel = st.selectbox(f"{icono} {i}º Clasificado", equipos_liga, index=equipos_liga.index(def_val), key=f"sp_pos_{i}")
-                        selecciones.append(sel)
-                
-                enviado = st.form_submit_button("💾 Guardar Súper Porra", type="primary", use_container_width=True)
-                
-                if enviado:
-                    # VALIDACIÓN ANTI-TRAMPAS
-                    if len(set(selecciones)) != 20:
-                        st.error("🚨 ¡Pechofrío! Has repetido equipos o te faltan algunos. Tienes que poner a los 20 equipos únicos.")
-                    else:
-                        df_temp_copy = df_pred_temp.copy()
-                        
-                        nueva_fila = {"Usuario": st.session_state.user}
-                        for i in range(1, 21):
-                            nueva_fila[f"Pos_{i}"] = selecciones[i-1]
-                            
-                        # Actualizar si existe, o crear nuevo
-                        if st.session_state.user in df_temp_copy['Usuario'].values:
-                            idx = df_temp_copy[df_temp_copy['Usuario'] == st.session_state.user].index
-                            for key, val in nueva_fila.items():
-                                df_temp_copy.loc[idx, key] = val
+                    if not mi_pred.empty and f"Pos_{i}" in mi_pred.columns:
+                        val = str(mi_pred.iloc[0][f"Pos_{i}"])
+                        if val.lower() != "nan" and val in equipos_liga:
+                            st.session_state[f"sp_pos_{i}"] = val
                         else:
-                            df_temp_copy = pd.concat([df_temp_copy, pd.DataFrame([nueva_fila])], ignore_index=True)
-                            
-                        conn.update(worksheet="Predicciones_Temporada", data=df_temp_copy)
+                            st.session_state[f"sp_pos_{i}"] = None
+                    else:
+                        st.session_state[f"sp_pos_{i}"] = None
+                st.session_state[init_key] = True
+
+            # Sacamos los equipos que YA están asignados en alguna casilla
+            equipos_seleccionados = [st.session_state[f"sp_pos_{i}"] for i in range(1, 21) if st.session_state.get(f"sp_pos_{i}") is not None]
+
+            # --- QUITAMOS EL ST.FORM PARA QUE EL FILTRO SEA EN TIEMPO REAL ---
+            cols = st.columns(2)
+            selecciones = []
+            
+            for i in range(1, 21):
+                key = f"sp_pos_{i}"
+                val_actual = st.session_state.get(key)
+                
+                # Las opciones disponibles = Equipos no elegidos + el equipo que ya está en esta casilla
+                opciones_disp = [eq for eq in equipos_liga if eq not in equipos_seleccionados or eq == val_actual]
+                
+                with cols[0 if i <= 10 else 1]:
+                    # Estilos visuales
+                    if i <= 4: icono = "🔵"
+                    elif i <= 6: icono = "🟠"
+                    elif i >= 18: icono = "🔴"
+                    else: icono = "⚪"
+                    
+                    sel = st.selectbox(
+                        f"{icono} {i}º Clasificado", 
+                        options=opciones_disp, 
+                        index=opciones_disp.index(val_actual) if val_actual in opciones_disp else None,
+                        key=key,
+                        placeholder="Selecciona equipo..."
+                    )
+                    selecciones.append(sel)
+            
+            st.markdown("---")
+            enviado = st.button("💾 Guardar Súper Porra", type="primary", use_container_width=True)
+            
+            if enviado:
+                if None in selecciones:
+                    st.error("🚨 ¡Faltan equipos! Tienes que rellenar las 20 posiciones antes de guardar.")
+                elif len(set(selecciones)) != 20:
+                    st.error("🚨 ¡Pechofrío! Has repetido equipos o te faltan algunos. Revisa la tabla.")
+                else:
+                    df_temp_copy = df_pred_temp.copy()
+                    
+                    nueva_fila = {"Usuario": st.session_state.user}
+                    for i in range(1, 21):
+                        nueva_fila[f"Pos_{i}"] = selecciones[i-1]
                         
-                        # Registrar en VAR
-                        df_logs_actual = leer_datos("Logs")
-                        log_entry = pd.DataFrame([{
-                            "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
-                            "Usuario": st.session_state.user,
-                            "Accion": "🔮 SÚPER PORRA: Ha guardado su clasificación final de LaLiga."
-                        }])
-                        conn.update(worksheet="Logs", data=pd.concat([df_logs_actual, log_entry], ignore_index=True))
+                    # Actualizar si existe, o crear nuevo
+                    if st.session_state.user in df_temp_copy['Usuario'].values:
+                        idx = df_temp_copy[df_temp_copy['Usuario'] == st.session_state.user].index
+                        for key, val in nueva_fila.items():
+                            df_temp_copy.loc[idx, key] = val
+                    else:
+                        df_temp_copy = pd.concat([df_temp_copy, pd.DataFrame([nueva_fila])], ignore_index=True)
                         
-                        st.cache_data.clear()
-                        st.success("✅ ¡Súper Porra guardada! Que Dios reparta suerte.")
-                        time.sleep(1.5)
-                        st.rerun()
+                    conn.update(worksheet="Predicciones_Temporada", data=df_temp_copy)
+                    
+                    # Registrar en VAR
+                    df_logs_actual = leer_datos("Logs")
+                    log_entry = pd.DataFrame([{
+                        "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Usuario": st.session_state.user,
+                        "Accion": "🔮 SÚPER PORRA: Ha guardado su clasificación final de LaLiga."
+                    }])
+                    conn.update(worksheet="Logs", data=pd.concat([df_logs_actual, log_entry], ignore_index=True))
+                    
+                    st.cache_data.clear()
+                    st.success("✅ ¡Súper Porra guardada! Que Dios reparta suerte.")
+                    time.sleep(1.5)
+                    st.rerun()
         else:
             st.error("🔒 El mercado de la Súper Porra está CERRADO. LaLiga ya ha empezado.")
             
@@ -984,7 +1012,11 @@ else:
             
             for _, row in df_pred_temp.iterrows():
                 usuario = row['Usuario']
-                equipos_usr = [row.get(f"Pos_{i}", "-") for i in range(1, 21)]
+                equipos_usr = []
+                for i in range(1, 21):
+                    val = str(row.get(f"Pos_{i}", "-"))
+                    if val.lower() == "nan" or val == "": val = "-"
+                    equipos_usr.append(val)
                 df_muro[usuario] = equipos_usr
                 
             # Aplicamos un poco de estilo para que se vean los colores de la clasificación real
