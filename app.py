@@ -561,16 +561,28 @@ else:
                         dl, dv, dp = int(match_data.iloc[0]['P_L']), int(match_data.iloc[0]['P_V']), match_data.iloc[0]['Publica']
                 
                 # Lógica de Bloqueo por tiempo
+                # Lógica de Bloqueo por tiempo y rescate de Tipo de Partido
                 res_info = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
                 lock = False
                 hora_partido = ""
+                tipo_partido = "Normal" # Por defecto
+                
                 if not res_info.empty:
                     hora_partido = res_info.iloc[0]['Hora_Inicio']
+                    tipo_partido = res_info.iloc[0]['Tipo']
                     lock = get_now_madrid() > datetime.datetime.strptime(str(hora_partido), "%Y-%m-%d %H:%M:%S")
 
                 # --- RENDER DE LA TARJETA ---
                 card_class = "bet-card-locked" if lock else "bet-card"
                 st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
+                
+                # --- SEÑALIZACIÓN DINÁMICA DE PARTIDO ESQUIZO/DOBLE ---
+                if tipo_partido == "Esquizo":
+                    st.markdown('<span style="background:#fef3c7; color:#d97706; border: 1px solid #f59e0b; font-size: 0.7em; padding: 3px 10px; border-radius: 10px; font-weight: bold; margin-bottom: 12px; display: inline-block;">🔥 PARTIDO ESQUIZO (PUNTUACIÓN TRIPLE)</span>', unsafe_allow_html=True)
+                elif tipo_partido == "Doble":
+                    st.markdown('<span style="background:#e0f2fe; color:#0369a1; border: 1px solid #0ea5e9; font-size: 0.7em; padding: 3px 10px; border-radius: 10px; font-weight: bold; margin-bottom: 12px; display: inline-block;">🔄 PARTIDO DOBLE</span>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<span style="background:#f0fdf4; color:#16a34a; border: 1px solid #22c55e; font-size: 0.7em; padding: 3px 10px; border-radius: 10px; font-weight: bold; margin-bottom: 12px; display: inline-block;">⚽ Partido Normal</span>', unsafe_allow_html=True)
                 
                 c1, c2, c3, c4, c5, c6 = st.columns([1, 2, 1, 2, 1, 1.5])
                 
