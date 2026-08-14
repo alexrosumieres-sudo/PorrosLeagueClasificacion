@@ -1204,17 +1204,7 @@ else:
                 st.markdown(f"""<div style="text-align:center; padding:10px; border-radius:10px; background:#f0fff0; border:2px solid {st_color}; margin-bottom:10px;">
                     <b style="color:#333; font-size:0.85em;">{emoji} {r['U']}</b><br><span style="font-size:1.6em; font-weight:900; color:{st_color};">{int(r['V'])}</span><br><small style="color:{st_color}; font-weight:bold;">LAGARTOS</small></div>""", unsafe_allow_html=True)
 
-        # --- 🏳️ CEMENTERIO DE DESERTORES ---
-        st.error("### 🏳️ EL RINCÓN DE LOS COBARDES 🏳️")
-        col_rip1, col_rip2 = st.columns([1, 2])
-        with col_rip1:
-            st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdm1ubDM0bmxmMWo3NWtsODlvajlhZWU2M2g3Y2xta2lhOXhxb3UwZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/y8nAwsdR5zTKE/giphy.gif", use_container_width=True)
-        with col_rip2:
-            st.markdown("""
-            **Aquí yacen los que no dieron la talla:**
-            * **Davo** y **Javi**: No aguantaron la presión de ser colistas. Desaparecidos en combate. 💀
-            * **Rodri**: Saboreó el Olimpo, pero huyó cuando la liga se puso seria. 🏳️
-            """)
+        
 
         # --- 📅 ACTA HISTÓRICA (TABLA CON COLUMNA LÍDER) ---
         st.divider()
