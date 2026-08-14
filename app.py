@@ -63,7 +63,7 @@ SCORING = {"Normal": (0.5, 0.75, 1.0), "Doble": (1.0, 1.5, 2.0), "Esquizo": (1.0
 @st.cache_data(ttl=10)
 def leer_datos(pestaña):
     try:
-        sheet_id = "1vFgccrCqmGrs9QfP8kxY_cESbRaJ_VxpsoAz-ZyL14E"
+        sheet_id = "1TL2MTxCixfAKs_3EuhVc0ENZSWub3lF7LBey3BT62-A"
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={pestaña}"
         df = pd.read_csv(url)
         
