@@ -896,7 +896,7 @@ else:
         st.header("🔮 La Súper Porra Hypermotion")
         st.caption("Predice las 22 posiciones exactas de Segunda. ¡Solo por el honor y las risas! Se bloquea con el primer pitido inicial.")
 
-        FECHA_INICIO_LIGA = datetime.datetime(2026, 8, 14, 20, 30)
+        FECHA_INICIO_LIGA = datetime.datetime(2026, 8, 16, 20, 30)
         mercado_abierto = get_now_madrid() < FECHA_INICIO_LIGA
         
         equipos_liga = sorted(list(NIVEL_EQUIPOS.keys()))
