@@ -15,44 +15,38 @@ PERFILES_DIR = "perfiles/"
 LOGOS_DIR = "logos/"
 
 NIVEL_EQUIPOS = {
-    # NIVEL 1: Recién descendidos y cocos (Favoritos al ascenso directo)
-    "Cádiz": 1, "Granada": 1, "Almería": 1, "Mallorca": 1, "Girona": 1, "Las Palmas": 1, "Valladolid": 1,
+    # NIVEL 1: La Élite (Champions y los que mandan)
+    "Barcelona": 1, "Real Madrid": 1, "Villarreal": 1, "Atlético": 1,
 
-    # NIVEL 2: Históricos y aspirantes al Playoff
-    "Eibar": 2, "Tenerife": 2, "Sporting": 2, "Oviedo": 2, "Leganés": 2,
+    # NIVEL 2: Clase Media-Alta (Peleando Europa League / Conference)
+    "Betis": 2, "Celta": 2, "R. Sociedad": 2, "Getafe": 2,
 
-    # NIVEL 3: Clase media y equipos rocosos
-    "Burgos": 3, "Albacete": 3, "FC Andorra": 3, "Córdoba": 3, "Castellón": 3, "Eldense": 3,
+    # NIVEL 3: Clase Media-Baja (Zona tranquila pero sin alardes)
+    "Osasuna": 3, "Espanyol": 3, "Athletic": 3, "Rayo": 3, 
+    "Valencia": 3, "Alavés": 3,
 
-    # NIVEL 4: Filiales y recién ascendidos (Luchando por la permanencia)
-    "Real Sociedad B": 4, "Celta de Vigo B": 4, "Ceuta": 4, "Sabadell": 4
+    # NIVEL 4: El Barrizal (Peleando el descenso y colistas)
+    "Sevilla": 4, "Elche": 4, "Levante": 4, "Racing": 4, "Málaga": 4, "Deportivo": 4
 }
 
 JORNADAS = {
     "Jornada 1": [
-        ("Real Sociedad B", "Castellón"), 
-        ("FC Andorra", "Ceuta"), 
-        ("Cádiz", "Celta de Vigo B"), 
-        ("Oviedo", "Granada"), 
-        ("Mallorca", "Valladolid"), 
-        ("Eibar", "Tenerife"), 
-        ("Burgos", "Córdoba"), 
-        ("Girona", "Leganés"), 
-        ("Las Palmas", "Albacete"), 
-        ("Sporting", "Sabadell"), 
-        ("Almería", "Eldense")
+        ("Alavés", "Getafe"), ("Sevilla", "Rayo"), ("Racing", "Villarreal"), 
+        ("Espanyol", "Levante"), ("Deportivo", "Elche"), ("Atlético", "Málaga"), 
+        ("Valencia", "Betis"), ("Real Madrid", "R. Sociedad"), 
+        ("Celta", "Osasuna"), ("Barcelona", "Athletic")
     ]
 }
 
 LOGOS = {
-    "Cádiz": f"{LOGOS_DIR}cadiz.jpg", "Granada": f"{LOGOS_DIR}granada.jpg", "Almería": f"{LOGOS_DIR}almeria.jpg",
-    "Mallorca": f"{LOGOS_DIR}mallorca.jpg", "Girona": f"{LOGOS_DIR}girona.jpg", "Las Palmas": f"{LOGOS_DIR}laspalmas.jpg",
-    "Valladolid": f"{LOGOS_DIR}valladolid.jpg", "Eibar": f"{LOGOS_DIR}eibar.jpg", "Tenerife": f"{LOGOS_DIR}tenerife.jpg",
-    "Sporting": f"{LOGOS_DIR}sporting.jpg", "Oviedo": f"{LOGOS_DIR}oviedo.jpg", "Leganés": f"{LOGOS_DIR}leganes.jpg",
-    "Burgos": f"{LOGOS_DIR}burgos.jpg", "Albacete": f"{LOGOS_DIR}albacete.jpg", "FC Andorra": f"{LOGOS_DIR}andorra.jpg",
-    "Córdoba": f"{LOGOS_DIR}cordoba.jpg", "Castellón": f"{LOGOS_DIR}castellon.jpg", "Eldense": f"{LOGOS_DIR}eldense.jpg",
-    "Real Sociedad B": f"{LOGOS_DIR}realsociedadb.jpg", "Celta de Vigo B": f"{LOGOS_DIR}celtab.jpg",
-    "Ceuta": f"{LOGOS_DIR}ceuta.jpg", "Sabadell": f"{LOGOS_DIR}sabadell.jpg"
+    "Athletic": f"{LOGOS_DIR}athletic.jpeg", "Elche": f"{LOGOS_DIR}elche.jpeg", "R. Sociedad": f"{LOGOS_DIR}sociedad.jpeg",
+    "Real Madrid": f"{LOGOS_DIR}madrid.jpeg", "Barcelona": f"{LOGOS_DIR}barca.jpeg", "Atlético": f"{LOGOS_DIR}atletico.jpeg",
+    "Rayo": f"{LOGOS_DIR}rayo.jpeg", "Sevilla": f"{LOGOS_DIR}sevilla.jpeg", "Valencia": f"{LOGOS_DIR}valencia.jpeg",
+    "Osasuna": f"{LOGOS_DIR}osasuna.jpeg", "Getafe": f"{LOGOS_DIR}getafe.jpeg",
+    "Celta": f"{LOGOS_DIR}celta.jpeg", "Villarreal": f"{LOGOS_DIR}villarreal.jpeg",
+    "Alavés": f"{LOGOS_DIR}alaves.jpeg", "Espanyol": f"{LOGOS_DIR}espanyol.jpeg", "Betis": f"{LOGOS_DIR}betis.jpeg",
+    "Levante": f"{LOGOS_DIR}levante.jpeg", "Racing": f"{LOGOS_DIR}racing.jpg", 
+    "Málaga": f"{LOGOS_DIR}malaga.jpg", "Deportivo": f"{LOGOS_DIR}deportivo.jpg"
 }
 
 STATS_LALIGA_BASE = {eq: {"PJ": 0, "V": 0, "E": 0, "D": 0, "GF": 0, "GC": 0, "Pts": 0} for eq in NIVEL_EQUIPOS.keys()}
@@ -240,7 +234,7 @@ def get_now_madrid():
     return datetime.datetime.now(tz).replace(tzinfo=None)
 
 # --- 3. APP ---
-st.set_page_config(page_title="Hyperporros League 2026-2027", page_icon="⚽", layout="wide")
+st.set_page_config(page_title="Porros League 2026-2027", page_icon="⚽", layout="wide")
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 if 'autenticado' not in st.session_state: st.session_state.autenticado = False
@@ -285,7 +279,7 @@ else:
     if df_p_all.empty and 'Usuario' not in df_p_all.columns:
         df_p_all = pd.DataFrame(columns=["Usuario", "Jornada", "Partido", "P_L", "P_V", "Publica"])
     if df_pred_temp.empty and 'Usuario' not in df_pred_temp.columns:
-        df_pred_temp = pd.DataFrame(columns=["Usuario"] + [f"Pos_{i}" for i in range(1, 23)])
+        df_pred_temp = pd.DataFrame(columns=["Usuario"] + [f"Pos_{i}" for i in range(1, 21)])
     foto_dict = df_perf.set_index('Usuario')['ImagenPath'].to_dict() if not df_perf.empty else {}
     u_jugadores = [u for u in df_u_all['Usuario'].unique() if u not in df_u_all[df_u_all['Rol']=='admin']['Usuario'].tolist()]
 
@@ -893,29 +887,27 @@ else:
 
  
     with tabs[2]: # --- 🔮 SÚPER PORRA (PREDICCIONES DE TEMPORADA) ---
-        st.header("🔮 La Súper Porra Hypermotion")
-        st.caption("Predice las 22 posiciones exactas de Segunda. ¡Solo por el honor y las risas! Se bloquea con el primer pitido inicial.")
+        st.header("🔮 La Súper Porra de la Temporada")
+        st.caption("Predice las 20 posiciones exactas de LaLiga. ¡Solo por el honor y las risas! Se bloquea con el primer pitido inicial.")
 
-        FECHA_INICIO_LIGA = datetime.datetime(2026, 8, 14, 20, 30)
+        # Vuelve a poner aquí la fecha del primer partido de Primera
+        FECHA_INICIO_LIGA = datetime.datetime(2026, 8, 15, 19, 30)
         mercado_abierto = get_now_madrid() < FECHA_INICIO_LIGA
         
         equipos_liga = sorted(list(NIVEL_EQUIPOS.keys()))
-        
-        # Rescatar apuesta del usuario si existe
         mi_pred = df_pred_temp[df_pred_temp['Usuario'] == st.session_state.user]
         
         if mercado_abierto or es_admin:
             if es_admin:
                 st.warning("👑 Eres Admin. Puedes editar pero no deberías participar en la porra.")
             else:
-                st.success("🔓 Mercado Abierto hasta el 14/08/2026 a las 20:30.")
+                st.success("🔓 Mercado Abierto hasta el 15/08/2026 a las 19:30.")
             
             st.markdown("### ✍️ Rellena tu Tabla")
             
-            # --- INICIALIZAR ESTADO ---
             init_key = f"sp_loaded_{st.session_state.user}"
             if init_key not in st.session_state:
-                for i in range(1, 23):
+                for i in range(1, 21):
                     if not mi_pred.empty and f"Pos_{i}" in mi_pred.columns:
                         val = str(mi_pred.iloc[0][f"Pos_{i}"])
                         if val.lower() != "nan" and val in equipos_liga:
@@ -926,22 +918,21 @@ else:
                         st.session_state[f"sp_pos_{i}"] = None
                 st.session_state[init_key] = True
 
-            equipos_seleccionados = [st.session_state[f"sp_pos_{i}"] for i in range(1, 23) if st.session_state.get(f"sp_pos_{i}") is not None]
+            equipos_seleccionados = [st.session_state[f"sp_pos_{i}"] for i in range(1, 21) if st.session_state.get(f"sp_pos_{i}") is not None]
 
             cols = st.columns(2)
             selecciones = []
             
-            for i in range(1, 23):
+            for i in range(1, 21):
                 key = f"sp_pos_{i}"
                 val_actual = st.session_state.get(key)
-                
                 opciones_disp = [eq for eq in equipos_liga if eq not in equipos_seleccionados or eq == val_actual]
                 
-                with cols[0 if i <= 11 else 1]:
-                    # Estilos visuales adaptados a Segunda División
-                    if i <= 2: icono = "🔵"     # Ascenso Directo
-                    elif i <= 6: icono = "🟠"   # Playoff
-                    elif i >= 19: icono = "🔴"  # Descenso (4 equipos)
+                with cols[0 if i <= 10 else 1]:
+                    # Estilos visuales PRIMERA DIVISIÓN
+                    if i <= 4: icono = "🔵"     # Champions
+                    elif i <= 6: icono = "🟠"   # Europa
+                    elif i >= 18: icono = "🔴"  # Descenso (3 equipos)
                     else: icono = "⚪"          # Media tabla
                     
                     sel = st.selectbox(
@@ -958,14 +949,13 @@ else:
             
             if enviado:
                 if None in selecciones:
-                    st.error("🚨 ¡Faltan equipos! Tienes que rellenar las 22 posiciones antes de guardar.")
-                elif len(set(selecciones)) != 22:
+                    st.error("🚨 ¡Faltan equipos! Tienes que rellenar las 20 posiciones antes de guardar.")
+                elif len(set(selecciones)) != 20:
                     st.error("🚨 ¡Pechofrío! Has repetido equipos o te faltan algunos. Revisa la tabla.")
                 else:
                     df_temp_copy = df_pred_temp.copy()
-                    
                     nueva_fila = {"Usuario": st.session_state.user}
-                    for i in range(1, 23):
+                    for i in range(1, 21):
                         nueva_fila[f"Pos_{i}"] = selecciones[i-1]
                         
                     if st.session_state.user in df_temp_copy['Usuario'].values:
@@ -981,39 +971,38 @@ else:
                     log_entry = pd.DataFrame([{
                         "Fecha": get_now_madrid().strftime("%Y-%m-%d %H:%M:%S"),
                         "Usuario": st.session_state.user,
-                        "Accion": "🔮 SÚPER PORRA: Ha guardado su clasificación final de la Hypermotion."
+                        "Accion": "🔮 SÚPER PORRA: Ha guardado su clasificación final de LaLiga."
                     }])
                     conn.update(worksheet="Logs", data=pd.concat([df_logs_actual, log_entry], ignore_index=True))
                     
                     st.cache_data.clear()
-                    st.success("✅ ¡Súper Porra guardada! Nos vemos en el playoff.")
+                    st.success("✅ ¡Súper Porra guardada! Que Dios reparta suerte.")
                     time.sleep(1.5)
                     st.rerun()
         else:
-            st.error("🔒 El mercado de la Súper Porra está CERRADO. LaLiga Hypermotion ya ha empezado.")
+            st.error("🔒 El mercado de la Súper Porra está CERRADO. LaLiga ya ha empezado.")
             
         # --- EL MURO DE LA VERGÜENZA ---
         st.divider()
         st.markdown("### 🧱 El Muro de la Vergüenza")
-        st.caption("Las predicciones de todos los jugadores cruzadas. Aquí están las pruebas para junio.")
+        st.caption("Las predicciones de todos los jugadores cruzadas. Aquí están las pruebas para mayo.")
         
         if not df_pred_temp.empty and len(df_pred_temp) > 0:
             df_muro = pd.DataFrame()
-            df_muro['Posición'] = [f"{i}º" for i in range(1, 23)]
+            df_muro['Posición'] = [f"{i}º" for i in range(1, 21)]
             
             for _, row in df_pred_temp.iterrows():
                 usuario = row['Usuario']
                 equipos_usr = []
-                for i in range(1, 23):
+                for i in range(1, 21):
                     val = str(row.get(f"Pos_{i}", "-"))
                     if val.lower() == "nan" or val == "": val = "-"
                     equipos_usr.append(val)
                 df_muro[usuario] = equipos_usr
                 
-            # Colores de la clasificación de Segunda
             def pintar_zonas(col):
-                if col.name == 'Posición': return [''] * 22
-                return ['background-color: #eff6ff' if i < 2 else ('background-color: #fff7ed' if i < 6 else ('background-color: #fef2f2' if i >= 18 else '')) for i in range(22)]
+                if col.name == 'Posición': return [''] * 20
+                return ['background-color: #eff6ff' if i < 4 else ('background-color: #fff7ed' if i < 6 else ('background-color: #fef2f2' if i >= 17 else '')) for i in range(20)]
                 
             st.dataframe(df_muro.style.apply(pintar_zonas, axis=0), use_container_width=True, hide_index=True)
         else:
