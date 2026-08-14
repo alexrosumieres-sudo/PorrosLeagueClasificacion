@@ -1273,49 +1273,42 @@ else:
             st.subheader("🔥 Power Ranking: Estado de Forma")
             
             # 1. IDENTIFICACIÓN DE JORNADAS
-            jor_manuales = ["J22", "J23", "J24"]
-            jor_excel = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique().tolist()
-            todas_con_datos = jor_manuales + [j for j in jor_excel if j not in jor_manuales]
+            todas_con_datos = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique().tolist()
             
             # 2. SELECTOR DE RANGO
             opcion_rango = st.radio("Ver rendimiento de:", ["Últimas 3 jornadas", "Últimas 5 jornadas"], horizontal=True)
             num_x = 3 if "3" in opcion_rango else 5
             jor_seleccionadas = todas_con_datos[-num_x:]
             
-            st.caption(f"Calculando puntos de: {', '.join(jor_seleccionadas)}")
-            
+            st.caption(f"Calculando puntos de: {', '.join(jor_seleccionadas) if jor_seleccionadas else 'Ninguna jornada todavía'}")
 
-            # 4. BUCLE DE CÁLCULO
+            # 3. BUCLE DE CÁLCULO
             ranking_pwr = []
             for u in u_jugadores:
                 pts_periodo = 0.0
                 for j in jor_seleccionadas:
-                    # Si es una de las jornadas antiguas de la imagen
-                    if u in stats_imagen and j in stats_imagen[u]:
-                        pts_periodo += stats_imagen[u][j]
-                    # Si es una jornada nueva del Excel
-                    else:
-                        u_p_j = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j)]
-                        res_j = df_r_all[(df_r_all['Jornada'] == j) & (df_r_all['Finalizado'] == "SI")]
-                        
-                        for r in u_p_j.itertuples():
-                            m = res_j[res_j['Partido'] == r.Partido]
-                            if not m.empty:
-                                # Usamos solo la función normal de puntos por goles
-                                pts_periodo += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                    u_p_j = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j)]
+                    res_j = df_r_all[(df_r_all['Jornada'] == j) & (df_r_all['Finalizado'] == "SI")]
+                    
+                    for r in u_p_j.itertuples():
+                        m = res_j[res_j['Partido'] == r.Partido]
+                        if not m.empty:
+                            # Usamos la función normal de puntos
+                            pts_periodo += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
                 
                 ranking_pwr.append({"Usuario": u, "Puntos": pts_periodo})
 
             df_pwr = pd.DataFrame(ranking_pwr).sort_values("Puntos", ascending=False).reset_index(drop=True)
 
-            # 5. VISUALIZACIÓN
+            # 4. VISUALIZACIÓN
             c_tab, c_top = st.columns([1.2, 1])
             with c_tab:
+                max_pts = max(float(df_pwr["Puntos"].max()), 1.0) if not df_pwr.empty and not pd.isna(df_pwr["Puntos"].max()) else 1.0
                 st.dataframe(df_pwr, use_container_width=True, hide_index=True,
-                            column_config={"Puntos": st.column_config.ProgressColumn("Pts", format="%.2f", min_value=0, max_value=max(float(df_pwr["Puntos"].max()), 1.0))})
+                            column_config={"Puntos": st.column_config.ProgressColumn("Pts", format="%.2f", min_value=0, max_value=max_pts)})
             
             with c_top:
-                if not df_pwr.empty:
+                if not df_pwr.empty and df_pwr.iloc[0]['Puntos'] > 0:
                     st.markdown(f"""
                     <div style="background: #1e3a8a; color: white; padding: 15px; border-radius: 12px; text-align: center;">
                         <small>EL MÁS PELIGROSO 🔥</small><br><b style="font-size: 1.4em;">{df_pwr.iloc[0]['Usuario']}</b><br>
@@ -1324,8 +1317,11 @@ else:
                     <div style="background: #fff1f2; color: #be123c; padding: 10px; border-radius: 12px; text-align: center; margin-top: 10px; border: 1px solid #fda4af;">
                         <small>🧊 PECHOFRÍO: {df_pwr.iloc[-1]['Usuario']} ({df_pwr.iloc[-1]['Puntos']:.2f})</small>
                     </div>""", unsafe_allow_html=True)
+                else:
+                    st.info("Aún no hay puntos registrados para calcular el Power Ranking. ¡Que ruede el balón!")
 
-            st.plotly_chart(px.bar(df_pwr, x='Usuario', y='Puntos', color='Puntos', color_continuous_scale='Blues', height=300), use_container_width=True)
+            if not df_pwr.empty:
+                st.plotly_chart(px.bar(df_pwr, x='Usuario', y='Puntos', color='Puntos', color_continuous_scale='Blues', height=300), use_container_width=True)
     
         with sub_tabs[2]: # --- 📉 EVOLUCIÓN (PUNTOS Y PUESTO) ---
             st.subheader("📉 El Gráfico de la Verdad")
