@@ -1388,24 +1388,35 @@ else:
                     col_a, col_b = st.columns(2)
                     
                     # El que más ha subido esta jornada
+                    # El que más ha subido esta jornada
                     ultima_j = j_finalizadas[-1]
-                    penultima_j = j_finalizadas[-2] if len(j_finalizadas) > 1 else "J24"
+                    # Cambiamos "J24" por "Inicio" para la temporada nueva
+                    penultima_j = j_finalizadas[-2] if len(j_finalizadas) > 1 else "Inicio"
                     
                     df_ult = df_evol[df_evol['Jornada'] == ultima_j].set_index('Usuario')
                     df_pen = df_evol[df_evol['Jornada'] == penultima_j].set_index('Usuario')
                     
-                    subidón = (df_pen['Puesto'] - df_ult['Puesto']).idxmax()
-                    puestos_subidos = int(df_pen.loc[subidón, 'Puesto'] - df_ult.loc[subidón, 'Puesto'])
+                    # Filtramos los NA por si hay discrepancia de usuarios
+                    diff_puestos = (df_pen['Puesto'] - df_ult['Puesto']).dropna()
                     
-                    if puestos_subidos > 0:
-                        col_a.success(f"🚀 **Cohete de la jornada:** {subidón} (+{puestos_subidos} puestos)")
-                    else:
-                        col_a.info("ℹ️ No ha habido cambios de posición esta jornada.")
+                    if not diff_puestos.empty:
+                        subidón = diff_puestos.idxmax()
+                        puestos_subidos = int(diff_puestos.loc[subidón])
                         
-                    # El que más puntos ha sumado hoy
-                    puntos_hoy = {u: (df_ult.loc[u, 'Puntos'] - df_pen.loc[u, 'Puntos']) for u in u_jugadores}
-                    mejor_hoy = max(puntos_hoy, key=puntos_hoy.get)
-                    col_b.metric("🔥 On Fire", mejor_hoy, f"+{puntos_hoy[mejor_hoy]:.2f} pts")
+                        if puestos_subidos > 0:
+                            col_a.success(f"🚀 **Cohete de la jornada:** {subidón} (+{puestos_subidos} puestos)")
+                        else:
+                            col_a.info("ℹ️ No ha habido cambios de posición esta jornada.")
+                    else:
+                        col_a.info("ℹ️ No hay datos suficientes para calcular cambios de posición.")
+                        
+                    # El que más puntos ha sumado hoy (Asegurándonos de que existen en ambos df)
+                    puntos_hoy = {u: (df_ult.loc[u, 'Puntos'] - df_pen.loc[u, 'Puntos']) for u in u_jugadores if u in df_ult.index and u in df_pen.index}
+                    if puntos_hoy:
+                        mejor_hoy = max(puntos_hoy, key=puntos_hoy.get)
+                        col_b.metric("🔥 On Fire", mejor_hoy, f"+{puntos_hoy[mejor_hoy]:.2f} pts")
+                    else:
+                        col_b.metric("🔥 On Fire", "-", "+0.00 pts")
 
             else:
                 st.info("Esperando a que termine la Jornada 25 para mostrar la carnicería...")
