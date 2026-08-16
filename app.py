@@ -1377,19 +1377,27 @@ else:
                     col_a, col_b = st.columns(2)
                     
                     # El que más ha subido esta jornada
-                    ultima_j = j_finalizadas[-1]
-                    penultima_j = j_finalizadas[-2] if len(j_finalizadas) > 1 else "J24"
-                    
-                    df_ult = df_evol[df_evol['Jornada'] == ultima_j].set_index('Usuario')
-                    df_pen = df_evol[df_evol['Jornada'] == penultima_j].set_index('Usuario')
-                    
-                    subidón = (df_pen['Puesto'] - df_ult['Puesto']).idxmax()
-                    puestos_subidos = int(df_pen.loc[subidón, 'Puesto'] - df_ult.loc[subidón, 'Puesto'])
-                    
-                    if puestos_subidos > 0:
-                        col_a.success(f"🚀 **Cohete de la jornada:** {subidón} (+{puestos_subidos} puestos)")
-                    else:
-                        col_a.info("ℹ️ No ha habido cambios de posición esta jornada.")
+                    # El que más ha subido esta jornada
+ultima_j = j_finalizadas[-1]
+# FIX: Cambiamos "J24" por "Inicio" para que tenga con qué comparar en la Jornada 1
+penultima_j = j_finalizadas[-2] if len(j_finalizadas) > 1 else "Inicio"
+
+df_ult = df_evol[df_evol['Jornada'] == ultima_j].set_index('Usuario')
+df_pen = df_evol[df_evol['Jornada'] == penultima_j].set_index('Usuario')
+
+# FIX: Calculamos la diferencia, quitamos los NAs (nulos) para evitar que idxmax() explote
+diferencia_puestos = (df_pen['Puesto'] - df_ult['Puesto']).dropna()
+
+if not diferencia_puestos.empty:
+    subidón = diferencia_puestos.idxmax()
+    puestos_subidos = int(diferencia_puestos.loc[subidón])
+    
+    if puestos_subidos > 0:
+        col_a.success(f"🚀 **Cohete de la jornada:** {subidón} (+{puestos_subidos} puestos)")
+    else:
+        col_a.info("ℹ️ No ha habido cambios de posición esta jornada.")
+else:
+    col_a.info("ℹ️ Esperando datos para calcular la subida de puestos.")
                         
                     # El que más puntos ha sumado hoy
                     puntos_hoy = {u: (df_ult.loc[u, 'Puntos'] - df_pen.loc[u, 'Puntos']) for u in u_jugadores}
