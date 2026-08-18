@@ -1835,36 +1835,55 @@ else:
                 st.warning("⚠️ Pulsa esto SOLO cuando la jornada haya terminado por completo. La app calculará los puntos de todos y los guardará en el historial definitivo.")
                 
                 if st.button(f"Consolidar Puntos de la {j_global}", type="primary"):
-                    df_hist_upd = df_historial.copy()
-                    
-                    # 1. Nos aseguramos de que exista la columna de la jornada (ej. "J25")
-                    if j_global not in df_hist_upd.columns:
-                        df_hist_upd[j_global] = 0.0
-                
-                    # 2. Calculamos los puntos de la jornada para cada usuario
-                    for u in u_jugadores:
-                        pts_jornada = 0.0
-                        u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
-                        res_j = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
-                        
-                        for r in u_p.itertuples():
-                            m = res_j[res_j['Partido'] == r.Partido]
-                            if not m.empty:
-                                pts_jornada += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-                        
-                        # 3. Guardamos los datos en la fila del usuario
-                        idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
-                        if not idx.empty:
-                            df_hist_upd.loc[idx, j_global] = pts_jornada
-                            df_hist_upd.loc[idx, 'Total_Acumulado'] = safe_float(df_hist_upd.loc[idx, 'Total_Acumulado'].values[0]) + pts_jornada
-                            df_hist_upd.loc[idx, 'Ultima_Jornada'] = j_global
-                
-                    # 4. Actualizamos el Excel
-                    conn.update(worksheet="Historial_Consolidado", data=df_hist_upd)
-                    st.cache_data.clear()
-                    st.success(f"✅ ¡{j_global} consolidada con éxito! La app ahora es un cohete.")
-                    time.sleep(2)
-                    st.rerun()
+                  df_hist_upd = df_historial.copy()
+                  
+                  # 1. Nos aseguramos de que exista la columna de la jornada (ej. "Jornada 1")
+                  if j_global not in df_hist_upd.columns:
+                      df_hist_upd[j_global] = 0.0
+              
+                  # 2. Calculamos y guardamos los puntos de la jornada para cada usuario
+                  for u in u_jugadores:
+                      pts_jornada = 0.0
+                      u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
+                      res_j = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
+                      
+                      for r in u_p.itertuples():
+                          m = res_j[res_j['Partido'] == r.Partido]
+                          if not m.empty:
+                              pts_jornada += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                      
+                      # 3. Buscar o crear la fila del usuario de forma segura
+                      idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
+                      if idx.empty:
+                          # Si el usuario es nuevo y no tiene historial, lo creamos
+                          nueva_fila = pd.DataFrame([{"Usuario": u, "Puntos_Base": 0.0, "Total_Acumulado": 0.0, "Ultima_Jornada": ""}])
+                          df_hist_upd = pd.concat([df_hist_upd, nueva_fila], ignore_index=True)
+                          idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
+              
+                      # Guardamos EXCLUSIVAMENTE los puntos de esta jornada y actualizamos la etiqueta
+                      df_hist_upd.loc[idx, j_global] = pts_jornada
+                      df_hist_upd.loc[idx, 'Ultima_Jornada'] = j_global
+              
+                  # 4. EL BLINDAJE: Recalcular el Total Acumulado desde cero
+                  # Identificamos todas las columnas de jornada (las que empiezan por "Jornada")
+                  cols_jornadas = [col for col in df_hist_upd.columns if str(col).startswith('Jornada ')]
+                  
+                  for u in u_jugadores:
+                      idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
+                      p_base = safe_float(df_hist_upd.loc[idx, 'Puntos_Base'].values[0])
+                      
+                      # Sumamos los valores de todas las jornadas, tratando los vacíos como 0
+                      p_jornadas = df_hist_upd.loc[idx, cols_jornadas].fillna(0.0).sum(axis=1).values[0]
+                      
+                      # El total es la suma inmutable: Puntos Base + (J1 + J2 + J3...)
+                      df_hist_upd.loc[idx, 'Total_Acumulado'] = p_base + p_jornadas
+              
+                  # 5. Actualizamos el Excel
+                  conn.update(worksheet="Historial_Consolidado", data=df_hist_upd)
+                  st.cache_data.clear()
+                  st.success(f"✅ ¡{j_global} consolidada con éxito! Total recalculado de forma segura.")
+                  time.sleep(2)
+                  st.rerun()
         else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
