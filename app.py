@@ -30,17 +30,15 @@ NIVEL_EQUIPOS = {
 
 JORNADAS = {
     "Jornada 1": [
-        ("Real Sociedad B", "Castellón"), 
-        ("FC Andorra", "Ceuta"), 
-        ("Cádiz", "Celta de Vigo B"), 
-        ("Oviedo", "Granada"), 
-        ("Mallorca", "Valladolid"), 
-        ("Eibar", "Tenerife"), 
-        ("Burgos", "Córdoba"), 
-        ("Girona", "Leganés"), 
-        ("Las Palmas", "Albacete"), 
-        ("Sporting", "Sabadell"), 
-        ("Almería", "Eldense")
+        ("Real Sociedad B", "Castellón"), ("FC Andorra", "Ceuta"), ("Cádiz", "Celta de Vigo B"), 
+        ("Oviedo", "Granada"), ("Mallorca", "Valladolid"), ("Eibar", "Tenerife"), ("Burgos", "Córdoba"), 
+        ("Girona", "Leganés"), ("Las Palmas", "Albacete"), ("Sporting", "Sabadell"), ("Almería", "Eldense")
+    ],
+    "Jornada 2": [
+        ("Córdoba", "Girona"), ("Oviedo", "Leganés"), ("Albacete", "Real Sociedad B"),
+        ("Ceuta", "Las Palmas"), ("Eldense", "Cádiz"), ("Eibar", "Valladolid"),
+        ("Castellón", "Sabadell"), ("Sporting", "Burgos"), ("Tenerife", "Almería"),
+        ("Celta de Vigo B", "FC Andorra"), ("Granada", "Mallorca")
     ]
 }
 
