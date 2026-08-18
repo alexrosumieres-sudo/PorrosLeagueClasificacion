@@ -35,6 +35,12 @@ JORNADAS = {
         ("Espanyol", "Levante"), ("Deportivo", "Elche"), ("Atlético", "Málaga"), 
         ("Valencia", "Betis"), ("Real Madrid", "R. Sociedad"), 
         ("Celta", "Osasuna"), ("Barcelona", "Athletic")
+    ],
+    "Jornada 2": [
+        ("Rayo", "Alavés"), ("Betis", "R. Sociedad"), ("Athletic", "Sevilla"),
+        ("Valencia", "Celta"), ("Espanyol", "Real Madrid"), ("Atlético", "Villarreal"),
+        ("Getafe", "Racing"), ("Elche", "Barcelona"), ("Osasuna", "Levante"),
+        ("Málaga", "Deportivo")
     ]
 }
 
