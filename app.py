@@ -1771,36 +1771,56 @@ else:
                 r_env = []
                 h_ops = [datetime.time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
                 
-                for i, (loc, vis) in enumerate(JORNADAS[j_global]):
+                # Partidos configurados para la jornada seleccionada
+                partidos_jornada = JORNADAS.get(j_global, [])
+                
+                if not partidos_jornada:
+                    st.info(f"No hay partidos configurados para {j_global}.")
+                
+                for i, (loc, vis) in enumerate(partidos_jornada):
                     m_id = f"{loc}-{vis}"
-                    prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
+                    prev = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == m_id)]
                     
+                    # Valores por defecto
                     rl, rv, fin, t = 0, 0, False, "Normal"
                     fecha_v = get_now_madrid().date()
                     hora_v = "21:00"
 
-                    if not prev.empty: 
-                        rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
-                        t = prev.iloc[0]['Tipo']
+                    # Si ya existen datos guardados en la BD para este partido y jornada, los cargamos
+                    if not prev.empty:
+                        fila_prev = prev.iloc[0]
+                        rl = int(safe_float(fila_prev.get('R_L', 0)))
+                        rv = int(safe_float(fila_prev.get('R_V', 0)))
+                        fin = str(fila_prev.get('Finalizado', 'NO')).upper() == "SI"
+                        t_bd = str(fila_prev.get('Tipo', 'Normal'))
+                        if t_bd in ["Normal", "Doble", "Esquizo"]:
+                            t = t_bd
+                        
                         try:
-                            dt_obj = datetime.datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                            dt_obj = datetime.datetime.strptime(str(fila_prev.get('Hora_Inicio')), "%Y-%m-%d %H:%M:%S")
                             fecha_v = dt_obj.date()
                             hora_v = dt_obj.strftime("%H:%M")
-                        except: pass
+                        except:
+                            pass
 
                     st.markdown(f"**⚽ {m_id}**")
                     c1, c2, c3, c4, c5, c6 = st.columns([1.2, 1.2, 1, 0.7, 0.7, 0.6])
                     
-                    nt = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}")
-                    nf = c2.date_input("Día", value=fecha_v, key=f"adate_{i}")
-                    nh = c3.selectbox("Hora", h_ops, index=h_ops.index(hora_v) if hora_v in h_ops else 0, key=f"aho_{i}")
-                    nrl = c4.number_input("L", 0, 9, rl, key=f"arl_{i}")
-                    nrv = c5.number_input("V", 0, 9, rv, key=f"arv_{i}")
-                    nfi = c6.checkbox("Fin", fin, key=f"afi_{i}")
+                    # Keys dinámicas que incluyen j_global y m_id para forzar refresco
+                    nt = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"adm_t_{j_global}_{m_id}")
+                    nf = c2.date_input("Día", value=fecha_v, key=f"adm_date_{j_global}_{m_id}")
+                    nh = c3.selectbox("Hora", h_ops, index=h_ops.index(hora_v) if hora_v in h_ops else 0, key=f"adm_ho_{j_global}_{m_id}")
+                    nrl = c4.number_input("L", 0, 9, rl, key=f"adm_rl_{j_global}_{m_id}")
+                    nrv = c5.number_input("V", 0, 9, rv, key=f"adm_rv_{j_global}_{m_id}")
+                    nfi = c6.checkbox("Fin", fin, key=f"adm_fi_{j_global}_{m_id}")
                     
                     r_env.append({
-                        "Jornada": j_global, "Partido": m_id, "Tipo": nt, 
-                        "R_L": nrl, "R_V": nrv, "Hora_Inicio": f"{nf} {nh}:00", 
+                        "Jornada": j_global,
+                        "Partido": m_id,
+                        "Tipo": nt, 
+                        "R_L": nrl,
+                        "R_V": nrv,
+                        "Hora_Inicio": f"{nf} {nh}:00", 
                         "Finalizado": "SI" if nfi else "NO"
                     })
                 
@@ -1813,8 +1833,11 @@ else:
                         match_previo = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r['Partido'])]
                         registrar = False
                         if not match_previo.empty:
-                            was_fin = match_previo.iloc[0]['Finalizado'] == "SI"
-                            if r['Finalizado'] == "SI" and not was_fin: registrar = True
+                            was_fin = str(match_previo.iloc[0].get('Finalizado', 'NO')).upper() == "SI"
+                            if r['Finalizado'] == "SI" and not was_fin:
+                                registrar = True
+                        elif r['Finalizado'] == "SI":
+                            registrar = True
                         
                         if registrar:
                             logs_adm.append({
@@ -1827,12 +1850,14 @@ else:
                         df_l_existente = leer_datos("Logs")
                         conn.update(worksheet="Logs", data=pd.concat([df_l_existente, pd.DataFrame(logs_adm)], ignore_index=True))
 
+                    # Reemplazamos los datos de la jornada seleccionada manteniendo el resto
                     otros = df_r_all[df_r_all['Jornada'] != j_global]
                     df_resultados_new = pd.concat([otros, pd.DataFrame(r_env)], ignore_index=True)
                     conn.update(worksheet="Resultados", data=df_resultados_new)
                     
                     st.cache_data.clear()
-                    st.success(f"✅ Datos guardados.")
+                    st.success(f"✅ Resultados de {j_global} guardados correctamente.")
+                    time.sleep(1)
                     st.rerun()
                 
                 st.divider()
