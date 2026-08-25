@@ -41,12 +41,7 @@ JORNADAS = {
         ("Valencia", "Celta"), ("Espanyol", "Real Madrid"), ("Atlético", "Villarreal"),
         ("Getafe", "Racing"), ("Elche", "Barcelona"), ("Osasuna", "Levante"),
         ("Málaga", "Deportivo")
-    ],
-    "Jornada 3": [("Tenerife", "Sporting"), ("Sabadell", "Almería"), ("Albacete", "Oviedo"),
-        ("Leganés", "Eldense"), ("Girona", "Las Palmas"), ("FC Andorra", "Eibar"),
-        ("Cádiz", "Valladolid"), ("Mallorca", "Ceuta"), ("Córdoba", "Granada"),
-        ("Burgos", "Real Sociedad B"), ("Celta de Vigo B", "Castellón")
-    ]
+    ]    
 }
 
 LOGOS = {
