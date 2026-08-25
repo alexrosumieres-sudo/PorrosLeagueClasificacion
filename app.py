@@ -39,6 +39,11 @@ JORNADAS = {
         ("Ceuta", "Las Palmas"), ("Eldense", "Cádiz"), ("Eibar", "Valladolid"),
         ("Castellón", "Sabadell"), ("Sporting", "Burgos"), ("Tenerife", "Almería"),
         ("Celta de Vigo B", "FC Andorra"), ("Granada", "Mallorca")
+    ],
+     "Jornada 3": [("Tenerife", "Sporting"), ("Sabadell", "Almería"), ("Albacete", "Oviedo"),
+        ("Leganés", "Eldense"), ("Girona", "Las Palmas"), ("FC Andorra", "Eibar"),
+        ("Cádiz", "Valladolid"), ("Mallorca", "Ceuta"), ("Córdoba", "Granada"),
+        ("Burgos", "Real Sociedad B"), ("Celta de Vigo B", "Castellón")
     ]
 }
 
