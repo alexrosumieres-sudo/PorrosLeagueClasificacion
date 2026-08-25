@@ -1867,11 +1867,46 @@ else:
                 if st.button(f"Consolidar Puntos de la {j_global}", type="primary"):
                     df_hist_upd = df_historial.copy()
                     
-                    # 1. Nos aseguramos de que exista la columna de la jornada
+                    # 1. Asegurar que los usuarios base existan en la tabla
+                    if 'Usuario' not in df_hist_upd.columns:
+                        df_hist_upd = pd.DataFrame(columns=["Usuario", "Puntos_Base", "Total_Acumulado", "Ultima_Jornada"])
+
+                    for u in u_jugadores:
+                        if u not in df_hist_upd['Usuario'].values:
+                            nueva_fila = pd.DataFrame([{"Usuario": u, "Puntos_Base": 0.0, "Total_Acumulado": 0.0, "Ultima_Jornada": ""}])
+                            df_hist_upd = pd.concat([df_hist_upd, nueva_fila], ignore_index=True)
+
                     if j_global not in df_hist_upd.columns:
                         df_hist_upd[j_global] = 0.0
-                
-                    # 2. Calculamos y guardamos los puntos de la jornada para cada usuario
+
+                    # 2. Convertir columnas base a tipo float estándar (evita error PyArrow/String)
+                    df_hist_upd['Puntos_Base'] = (
+                        df_hist_upd['Puntos_Base']
+                        .astype(str)
+                        .str.replace(',', '.')
+                        .pipe(pd.to_numeric, errors='coerce')
+                        .fillna(0.0)
+                        .astype(float)
+                    )
+                    df_hist_upd['Total_Acumulado'] = (
+                        df_hist_upd['Total_Acumulado']
+                        .astype(str)
+                        .str.replace(',', '.')
+                        .pipe(pd.to_numeric, errors='coerce')
+                        .fillna(0.0)
+                        .astype(float)
+                    )
+                    df_hist_upd['Ultima_Jornada'] = df_hist_upd['Ultima_Jornada'].astype(str)
+                    df_hist_upd[j_global] = (
+                        df_hist_upd[j_global]
+                        .astype(str)
+                        .str.replace(',', '.')
+                        .pipe(pd.to_numeric, errors='coerce')
+                        .fillna(0.0)
+                        .astype(float)
+                    )
+
+                    # 3. Calcular los puntos de la jornada para cada usuario
                     for u in u_jugadores:
                         pts_jornada = 0.0
                         u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
@@ -1882,20 +1917,12 @@ else:
                             if not m.empty:
                                 pts_jornada += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
                         
-                        # 3. Buscar o crear la fila del usuario de forma segura
                         idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
-                        if idx.empty:
-                            nueva_fila = pd.DataFrame([{"Usuario": u, "Puntos_Base": 0.0, "Total_Acumulado": 0.0, "Ultima_Jornada": ""}])
-                            df_hist_upd = pd.concat([df_hist_upd, nueva_fila], ignore_index=True)
-                            idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
-                
-                        # Guardamos los puntos de esta jornada
-                        df_hist_upd.loc[idx, j_global] = pts_jornada
-                        df_hist_upd.loc[idx, 'Ultima_Jornada'] = j_global
-                
-                    # 4. BLINDAJE NUMÉRICO: Forzar conversión a float antes de sumar
+                        df_hist_upd.loc[idx, j_global] = float(pts_jornada)
+                        df_hist_upd.loc[idx, 'Ultima_Jornada'] = str(j_global)
+
+                    # 4. Limpiar todas las columnas de jornadas y recalcular Total_Acumulado
                     cols_jornadas = [col for col in df_hist_upd.columns if str(col).startswith('Jornada ')]
-                    
                     for col in cols_jornadas:
                         df_hist_upd[col] = (
                             df_hist_upd[col]
@@ -1903,24 +1930,21 @@ else:
                             .str.replace(',', '.')
                             .pipe(pd.to_numeric, errors='coerce')
                             .fillna(0.0)
+                            .astype(float)
                         )
-                    
+
                     for u in u_jugadores:
                         idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
-                        p_base = safe_float(df_hist_upd.loc[idx, 'Puntos_Base'].values[0]) if not idx.empty else 0.0
-                        
-                        if cols_jornadas and not idx.empty:
-                            p_jornadas = float(df_hist_upd.loc[idx, cols_jornadas].sum(axis=1).values[0])
-                        else:
-                            p_jornadas = 0.0
-                        
-                        df_hist_upd.loc[idx, 'Total_Acumulado'] = p_base + p_jornadas
-                
-                    # 5. Guardar en Google Sheets
+                        if not idx.empty:
+                            p_base = float(df_hist_upd.loc[idx, 'Puntos_Base'].values[0])
+                            p_jornadas = float(df_hist_upd.loc[idx, cols_jornadas].sum(axis=1).values[0]) if cols_jornadas else 0.0
+                            df_hist_upd.loc[idx, 'Total_Acumulado'] = float(p_base + p_jornadas)
+
+                    # 5. Guardar en Google Sheets y refrescar
                     conn.update(worksheet="Historial_Consolidado", data=df_hist_upd)
                     st.cache_data.clear()
-                    st.success(f"✅ ¡{j_global} consolidada con éxito! Total recalculado de forma segura.")
-                    time.sleep(2)
+                    st.success(f"✅ ¡{j_global} consolidada con éxito! Total recalculado.")
+                    time.sleep(1.5)
                     st.rerun()
         else:
             st.warning("⛔ Acceso restringido.")
