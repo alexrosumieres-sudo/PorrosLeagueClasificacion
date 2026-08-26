@@ -41,7 +41,115 @@ JORNADAS = {
         ("Valencia", "Celta"), ("Espanyol", "Real Madrid"), ("Atlético", "Villarreal"),
         ("Getafe", "Racing"), ("Elche", "Barcelona"), ("Osasuna", "Levante"),
         ("Málaga", "Deportivo")
-    ]    
+    ],"Jornada 3": [
+        ("Racing", "Elche"), ("Alavés", "Villarreal"), ("Levante", "Betis"),
+        ("R. Sociedad", "Espanyol"), ("Sevilla", "Atlético"), ("Real Madrid", "Málaga"),
+        ("Deportivo", "Valencia"), ("Celta", "Athletic"), ("Osasuna", "Getafe"),
+        ("Barcelona", "Rayo")
+    ],
+    "Jornada 4": [
+        ("Betis", "Real Madrid"), ("Athletic", "Atlético"), ("Rayo", "Racing"),
+        ("Villarreal", "Deportivo"), ("Valencia", "Barcelona"), ("Alavés", "Osasuna"),
+        ("Málaga", "Levante"), ("Espanyol", "Sevilla"), ("Getafe", "Celta"),
+        ("Elche", "R. Sociedad")
+    ],
+    "Jornada 5": [
+        ("Athletic", "Elche"), ("Celta", "Málaga"), ("Getafe", "Deportivo"),
+        ("Levante", "Barcelona"), ("Osasuna", "Espanyol"), ("Racing", "Alavés"),
+        ("Real Madrid", "Rayo"), ("R. Sociedad", "Atlético"), ("Sevilla", "Valencia"),
+        ("Villarreal", "Betis")
+    ],
+    "Jornada 6": [
+        ("R. Sociedad", "Celta"), ("Alavés", "Valencia"), ("Atlético", "Osasuna"),
+        ("Barcelona", "Racing"), ("Deportivo", "Sevilla"), ("Elche", "Real Madrid"),
+        ("Levante", "Athletic"), ("Málaga", "Villarreal"), ("Rayo", "Espanyol"),
+        ("Betis", "Getafe")
+    ],
+    "Jornada 7": [
+        ("Athletic", "Alavés"), ("Atlético", "Real Madrid"), ("Celta", "Racing"),
+        ("Deportivo", "Betis"), ("Espanyol", "Elche"), ("Getafe", "Málaga"),
+        ("Osasuna", "Rayo"), ("Sevilla", "Barcelona"), ("Valencia", "R. Sociedad"),
+        ("Villarreal", "Levante")
+    ],
+    "Jornada 8": [
+        ("Alavés", "Atlético"), ("Barcelona", "Getafe"), ("Elche", "Celta"),
+        ("Levante", "Sevilla"), ("Málaga", "Espanyol"), ("Racing", "Valencia"),
+        ("Rayo", "Athletic"), ("Betis", "Osasuna"), ("Real Madrid", "Villarreal"),
+        ("R. Sociedad", "Deportivo")
+    ],
+    "Jornada 9": [
+        ("Celta", "Alavés"), ("Deportivo", "Levante"), ("Espanyol", "Atlético"),
+        ("Getafe", "Rayo"), ("Málaga", "R. Sociedad"), ("Osasuna", "Racing"),
+        ("Betis", "Barcelona"), ("Real Madrid", "Sevilla"), ("Valencia", "Athletic"),
+        ("Villarreal", "Elche")
+    ],
+    "Jornada 10": [
+        ("Alavés", "Málaga"), ("Athletic", "Getafe"), ("Atlético", "Deportivo"),
+        ("Barcelona", "Real Madrid"), ("Celta", "Betis"), ("Racing", "Espanyol"),
+        ("Rayo", "Elche"), ("R. Sociedad", "Levante"), ("Sevilla", "Osasuna"),
+        ("Valencia", "Villarreal")
+    ],
+    "Jornada 11": [
+        ("Athletic", "R. Sociedad"), ("Barcelona", "Alavés"), ("Deportivo", "Osasuna"),
+        ("Elche", "Valencia"), ("Getafe", "Sevilla"), ("Levante", "Atlético"),
+        ("Racing", "Real Madrid"), ("Rayo", "Celta"), ("Betis", "Málaga"),
+        ("Villarreal", "Espanyol")
+    ],
+    "Jornada 12": [
+        ("Atlético", "Barcelona"), ("Celta", "Levante"), ("Elche", "Betis"),
+        ("Espanyol", "Deportivo"), ("Málaga", "Racing"), ("Osasuna", "Athletic"),
+        ("R. Sociedad", "Rayo"), ("Sevilla", "Alavés"), ("Valencia", "Real Madrid"),
+        ("Villarreal", "Getafe")
+    ],
+    "Jornada 13": [
+        ("Alavés", "Deportivo"), ("Athletic", "Espanyol"), ("Barcelona", "Villarreal"),
+        ("Getafe", "Atlético"), ("Levante", "Elche"), ("Osasuna", "Málaga"),
+        ("Racing", "R. Sociedad"), ("Rayo", "Valencia"), ("Real Madrid", "Celta"),
+        ("Sevilla", "Betis")
+    ],
+    "Jornada 14": [
+        ("Celta", "Villarreal"), ("Deportivo", "Barcelona"), ("Elche", "Atlético"),
+        ("Espanyol", "Getafe"), ("Levante", "Racing"), ("Málaga", "Athletic"),
+        ("Betis", "Rayo"), ("Real Madrid", "Alavés"), ("R. Sociedad", "Sevilla"),
+        ("Valencia", "Osasuna")
+    ],
+    "Jornada 15": [
+        ("Alavés", "Espanyol"), ("Athletic", "Real Madrid"), ("Atlético", "Betis"),
+        ("Barcelona", "Celta"), ("Getafe", "Valencia"), ("Osasuna", "Elche"),
+        ("Racing", "Deportivo"), ("Rayo", "Levante"), ("Sevilla", "Málaga"),
+        ("Villarreal", "R. Sociedad")
+    ],
+    "Jornada 16": [
+        ("Atlético", "Valencia"), ("Deportivo", "Athletic"), ("Elche", "Sevilla"),
+        ("Espanyol", "Celta"), ("Levante", "Alavés"), ("Málaga", "Barcelona"),
+        ("Betis", "Racing"), ("Real Madrid", "Osasuna"), ("R. Sociedad", "Getafe"),
+        ("Villarreal", "Rayo")
+    ],
+    "Jornada 17": [
+        ("Alavés", "Elche"), ("Athletic", "Betis"), ("Barcelona", "R. Sociedad"),
+        ("Celta", "Atlético"), ("Deportivo", "Real Madrid"), ("Getafe", "Levante"),
+        ("Osasuna", "Villarreal"), ("Rayo", "Málaga"), ("Sevilla", "Racing"),
+        ("Valencia", "Espanyol")
+    ],
+    "Jornada 18": [
+        ("Celta", "Deportivo"), ("Espanyol", "Barcelona"), ("Levante", "Valencia"),
+        ("Málaga", "Elche"), ("Racing", "Athletic"), ("Rayo", "Atlético"),
+        ("Betis", "Alavés"), ("Real Madrid", "Getafe"), ("R. Sociedad", "Osasuna"),
+        ("Villarreal", "Sevilla")
+    ],
+    "Jornada 19": [
+        ("Alavés", "R. Sociedad"), ("Athletic", "Villarreal"), ("Atlético", "Racing"),
+        ("Deportivo", "Rayo"), ("Elche", "Getafe"), ("Espanyol", "Betis"),
+        ("Osasuna", "Barcelona"), ("Real Madrid", "Levante"), ("Sevilla", "Celta"),
+        ("Valencia", "Málaga")
+    ],
+    "Jornada 20": [
+        ("Atlético", "R. Sociedad"), ("Barcelona", "Elche"), ("Celta", "Valencia"),
+        ("Getafe", "Athletic"), ("Levante", "Espanyol"), ("Málaga", "Real Madrid"),
+        ("Racing", "Osasuna"), ("Rayo", "Sevilla"), ("Betis", "Deportivo"),
+        ("Villarreal", "Alavés")
+    ]
+    
 }
 
 LOGOS = {
