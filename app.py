@@ -1759,36 +1759,56 @@ else:
                 r_env = []
                 h_ops = [datetime.time(h, m).strftime("%H:%M") for h in range(12, 23) for m in [0, 15, 30, 45]]
                 
-                for i, (loc, vis) in enumerate(JORNADAS[j_global]):
+                # Partidos configurados para la jornada seleccionada
+                partidos_jornada = JORNADAS.get(j_global, [])
+                
+                if not partidos_jornada:
+                    st.info(f"No hay partidos configurados para {j_global}.")
+                
+                for i, (loc, vis) in enumerate(partidos_jornada):
                     m_id = f"{loc}-{vis}"
-                    prev = df_r_all[(df_r_all['Jornada']==j_global) & (df_r_all['Partido']==m_id)]
+                    prev = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == m_id)]
                     
+                    # Valores por defecto
                     rl, rv, fin, t = 0, 0, False, "Normal"
                     fecha_v = get_now_madrid().date()
                     hora_v = "21:00"
 
-                    if not prev.empty: 
-                        rl, rv, fin = int(prev.iloc[0]['R_L']), int(prev.iloc[0]['R_V']), prev.iloc[0]['Finalizado']=="SI"
-                        t = prev.iloc[0]['Tipo']
+                    # Cargar datos guardados si existen
+                    if not prev.empty:
+                        fila_prev = prev.iloc[0]
+                        rl = int(safe_float(fila_prev.get('R_L', 0)))
+                        rv = int(safe_float(fila_prev.get('R_V', 0)))
+                        fin = str(fila_prev.get('Finalizado', 'NO')).upper() == "SI"
+                        t_bd = str(fila_prev.get('Tipo', 'Normal'))
+                        if t_bd in ["Normal", "Doble", "Esquizo"]:
+                            t = t_bd
+                        
                         try:
-                            dt_obj = datetime.datetime.strptime(str(prev.iloc[0]['Hora_Inicio']), "%Y-%m-%d %H:%M:%S")
+                            dt_obj = datetime.datetime.strptime(str(fila_prev.get('Hora_Inicio')), "%Y-%m-%d %H:%M:%S")
                             fecha_v = dt_obj.date()
                             hora_v = dt_obj.strftime("%H:%M")
-                        except: pass
+                        except:
+                            pass
 
                     st.markdown(f"**⚽ {m_id}**")
                     c1, c2, c3, c4, c5, c6 = st.columns([1.2, 1.2, 1, 0.7, 0.7, 0.6])
                     
-                    nt = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"at_{i}")
-                    nf = c2.date_input("Día", value=fecha_v, key=f"adate_{i}")
-                    nh = c3.selectbox("Hora", h_ops, index=h_ops.index(hora_v) if hora_v in h_ops else 0, key=f"aho_{i}")
-                    nrl = c4.number_input("L", 0, 9, rl, key=f"arl_{i}")
-                    nrv = c5.number_input("V", 0, 9, rv, key=f"arv_{i}")
-                    nfi = c6.checkbox("Fin", fin, key=f"afi_{i}")
+                    # Keys dinámicas con j_global y m_id para sincronizar con la BD
+                    nt = c1.selectbox("Tipo", ["Normal", "Doble", "Esquizo"], index=["Normal", "Doble", "Esquizo"].index(t), key=f"adm_t_{j_global}_{m_id}")
+                    nf = c2.date_input("Día", value=fecha_v, key=f"adm_date_{j_global}_{m_id}")
+                    nh = c3.selectbox("Hora", h_ops, index=h_ops.index(hora_v) if hora_v in h_ops else 0, key=f"adm_ho_{j_global}_{m_id}")
+                    nrl = c4.number_input("L", 0, 9, rl, key=f"adm_rl_{j_global}_{m_id}")
+                    nrv = c5.number_input("V", 0, 9, rv, key=f"adm_rv_{j_global}_{m_id}")
+                    nfi = c6.checkbox("Fin", fin, key=f"adm_fi_{j_global}_{m_id}")
                     
                     r_env.append({
-                        "Jornada": j_global, "Partido": m_id, "Tipo": nt, 
-                        "R_L": nrl, "R_V": nrv, "Hora_Inicio": f"{nf} {nh}:00", 
+                        "Jornada": j_global,
+                        "Partido": m_id,
+                        "Tipo": nt, 
+                        "R_L": nrl,
+                        "R_V": nrv,
+                        "Hora_Inicio": f"{nf} {nh}:00", 
                         "Finalizado": "SI" if nfi else "NO"
                     })
                 
@@ -1801,8 +1821,11 @@ else:
                         match_previo = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Partido'] == r['Partido'])]
                         registrar = False
                         if not match_previo.empty:
-                            was_fin = match_previo.iloc[0]['Finalizado'] == "SI"
-                            if r['Finalizado'] == "SI" and not was_fin: registrar = True
+                            was_fin = str(match_previo.iloc[0].get('Finalizado', 'NO')).upper() == "SI"
+                            if r['Finalizado'] == "SI" and not was_fin:
+                                registrar = True
+                        elif r['Finalizado'] == "SI":
+                            registrar = True
                         
                         if registrar:
                             logs_adm.append({
@@ -1820,63 +1843,96 @@ else:
                     conn.update(worksheet="Resultados", data=df_resultados_new)
                     
                     st.cache_data.clear()
-                    st.success(f"✅ Datos guardados.")
+                    st.success(f"✅ Resultados de {j_global} guardados correctamente.")
+                    time.sleep(1)
                     st.rerun()
-                
+
                 st.divider()
                 st.subheader(f"🔒 Sellar y Consolidar {j_global}")
                 st.warning("⚠️ Pulsa esto SOLO cuando la jornada haya terminado por completo. La app calculará los puntos de todos y los guardará en el historial definitivo.")
                 
                 if st.button(f"Consolidar Puntos de la {j_global}", type="primary"):
-                   df_hist_upd = df_historial.copy()
-                   
-                   # 1. Nos aseguramos de que exista la columna de la jornada (ej. "Jornada 1")
-                   if j_global not in df_hist_upd.columns:
-                       df_hist_upd[j_global] = 0.0
-               
-                   # 2. Calculamos y guardamos los puntos de la jornada para cada usuario
-                   for u in u_jugadores:
-                       pts_jornada = 0.0
-                       u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
-                       res_j = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
-                       
-                       for r in u_p.itertuples():
-                           m = res_j[res_j['Partido'] == r.Partido]
-                           if not m.empty:
-                               pts_jornada += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
-                       
-                       # 3. Buscar o crear la fila del usuario de forma segura
-                       idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
-                       if idx.empty:
-                           # Si el usuario es nuevo y no tiene historial, lo creamos
-                           nueva_fila = pd.DataFrame([{"Usuario": u, "Puntos_Base": 0.0, "Total_Acumulado": 0.0, "Ultima_Jornada": ""}])
-                           df_hist_upd = pd.concat([df_hist_upd, nueva_fila], ignore_index=True)
-                           idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
-               
-                       # Guardamos EXCLUSIVAMENTE los puntos de esta jornada y actualizamos la etiqueta
-                       df_hist_upd.loc[idx, j_global] = pts_jornada
-                       df_hist_upd.loc[idx, 'Ultima_Jornada'] = j_global
-               
-                   # 4. EL BLINDAJE: Recalcular el Total Acumulado desde cero
-                   # Identificamos todas las columnas de jornada (las que empiezan por "Jornada")
-                   cols_jornadas = [col for col in df_hist_upd.columns if str(col).startswith('Jornada ')]
-                   
-                   for u in u_jugadores:
-                       idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
-                       p_base = safe_float(df_hist_upd.loc[idx, 'Puntos_Base'].values[0])
-                       
-                       # Sumamos los valores de todas las jornadas, tratando los vacíos como 0
-                       p_jornadas = df_hist_upd.loc[idx, cols_jornadas].fillna(0.0).sum(axis=1).values[0]
-                       
-                       # El total es la suma inmutable: Puntos Base + (J1 + J2 + J3...)
-                       df_hist_upd.loc[idx, 'Total_Acumulado'] = p_base + p_jornadas
-               
-                   # 5. Actualizamos el Excel
-                   conn.update(worksheet="Historial_Consolidado", data=df_hist_upd)
-                   st.cache_data.clear()
-                   st.success(f"✅ ¡{j_global} consolidada con éxito! Total recalculado de forma segura.")
-                   time.sleep(2)
-                   st.rerun()
+                    df_hist_upd = df_historial.copy()
+                    
+                    # 1. Asegurar columnas base y usuarios
+                    if 'Usuario' not in df_hist_upd.columns:
+                        df_hist_upd = pd.DataFrame(columns=["Usuario", "Puntos_Base", "Total_Acumulado", "Ultima_Jornada"])
+
+                    for u in u_jugadores:
+                        if u not in df_hist_upd['Usuario'].values:
+                            nueva_fila = pd.DataFrame([{"Usuario": u, "Puntos_Base": 0.0, "Total_Acumulado": 0.0, "Ultima_Jornada": ""}])
+                            df_hist_upd = pd.concat([df_hist_upd, nueva_fila], ignore_index=True)
+
+                    if j_global not in df_hist_upd.columns:
+                        df_hist_upd[j_global] = 0.0
+
+                    # 2. Conversión a float nativo para evitar bloqueos de tipo Arrow/String
+                    df_hist_upd['Puntos_Base'] = (
+                        df_hist_upd['Puntos_Base']
+                        .astype(str)
+                        .str.replace(',', '.')
+                        .pipe(pd.to_numeric, errors='coerce')
+                        .fillna(0.0)
+                        .astype(float)
+                    )
+                    df_hist_upd['Total_Acumulado'] = (
+                        df_hist_upd['Total_Acumulado']
+                        .astype(str)
+                        .str.replace(',', '.')
+                        .pipe(pd.to_numeric, errors='coerce')
+                        .fillna(0.0)
+                        .astype(float)
+                    )
+                    df_hist_upd['Ultima_Jornada'] = df_hist_upd['Ultima_Jornada'].astype(str)
+                    df_hist_upd[j_global] = (
+                        df_hist_upd[j_global]
+                        .astype(str)
+                        .str.replace(',', '.')
+                        .pipe(pd.to_numeric, errors='coerce')
+                        .fillna(0.0)
+                        .astype(float)
+                    )
+
+                    # 3. Calcular puntos de la jornada para cada usuario
+                    for u in u_jugadores:
+                        pts_jornada = 0.0
+                        u_p = df_p_all[(df_p_all['Usuario'] == u) & (df_p_all['Jornada'] == j_global)]
+                        res_j = df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "SI")]
+                        
+                        for r in u_p.itertuples():
+                            m = res_j[res_j['Partido'] == r.Partido]
+                            if not m.empty:
+                                pts_jornada += calcular_puntos(r.P_L, r.P_V, m.iloc[0]['R_L'], m.iloc[0]['R_V'], m.iloc[0]['Tipo'])
+                        
+                        idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
+                        df_hist_upd.loc[idx, j_global] = float(pts_jornada)
+                        df_hist_upd.loc[idx, 'Ultima_Jornada'] = str(j_global)
+
+                    # 4. Limpiar todas las columnas de jornadas y recalcular Total_Acumulado
+                    cols_jornadas = [col for col in df_hist_upd.columns if str(col).startswith('Jornada ')]
+                    for col in cols_jornadas:
+                        df_hist_upd[col] = (
+                            df_hist_upd[col]
+                            .astype(str)
+                            .str.replace(',', '.')
+                            .pipe(pd.to_numeric, errors='coerce')
+                            .fillna(0.0)
+                            .astype(float)
+                        )
+
+                    for u in u_jugadores:
+                        idx = df_hist_upd[df_hist_upd['Usuario'] == u].index
+                        if not idx.empty:
+                            p_base = float(df_hist_upd.loc[idx, 'Puntos_Base'].values[0])
+                            p_jornadas = float(df_hist_upd.loc[idx, cols_jornadas].sum(axis=1).values[0]) if cols_jornadas else 0.0
+                            df_hist_upd.loc[idx, 'Total_Acumulado'] = float(p_base + p_jornadas)
+
+                    # 5. Guardar en Google Sheets y refrescar
+                    conn.update(worksheet="Historial_Consolidado", data=df_hist_upd)
+                    st.cache_data.clear()
+                    st.success(f"✅ ¡{j_global} consolidada con éxito! Total recalculado de forma segura.")
+                    time.sleep(1.5)
+                    st.rerun()
         else:
             st.warning("⛔ Acceso restringido.")
             st.error(f"Tu usuario (**{st.session_state.user}**) no tiene permisos de administrador.")
