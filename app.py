@@ -1641,27 +1641,46 @@ else:
                 df_laliga = pd.DataFrame.from_dict(sim, orient='index').sort_values(["Pts", "GF"], ascending=False)
                 st.table(df_laliga) # O st.dataframe si prefieres
 
-    with tabs[8]: # --- 🎲 ORÁCULO ---
-        if usa_oraculo:
-            with st.spinner("🔮 El Oráculo está analizando el futuro..."):
-                st.image("https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbmNrNjVlaW0xZzM0MWxubDQyZGhla3V4eXVnMHU5eHcwN3NxamRtMiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Jap1tdjahS0rm/giphy.gif", width=300)
-                prob = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
-            
-            if prob:
-                st.subheader("🔮 Estado Actual del Oráculo")
+    with tabs[8]: # --- 🎲 ORÁCULO (ON-DEMAND & JORNADAS RESTANTES) ---
+        # 1. Contar cuántas jornadas quedan pendientes en toda la liga
+        todas_jornadas = list(JORNADAS.keys())
+        j_finalizadas_todas = df_r_all[df_r_all['Finalizado'] == "SI"]['Jornada'].unique()
+        jornadas_restantes = [j for j in todas_jornadas if j not in j_finalizadas_todas]
+        total_j_restantes = len(jornadas_restantes)
+
+        # 2. Comprobar partidos pendientes en la jornada seleccionada en el sidebar
+        partidos_pendientes_jornada = len(df_r_all[(df_r_all['Jornada'] == j_global) & (df_r_all['Finalizado'] == "NO")])
+
+        # Condición: Quedan 3 o menos jornadas en total Y entre 1 y 3 partidos en la jornada actual
+        activar_condicion = total_j_restantes <= 3 and (1 <= partidos_pendientes_jornada <= 3)
+
+        if activar_condicion:
+            st.header("🔮 El Oráculo de la Jornada")
+            st.caption(f"Fase decisiva: Quedan **{total_j_restantes}** jornadas para acabar la liga y **{partidos_pendientes_jornada}** partidos por disputar en {j_global}.")
+
+            # Botón de ejecución manual
+            btn_oraculo = st.button("⚡ CONSULTAR AL ORÁCULO", use_container_width=True, type="primary")
+
+            if btn_oraculo:
+                with st.spinner("🔮 Consultando futuros posibles con el VAR cósmico..."):
+                    st.session_state.prob_oraculo = simular_oraculo(u_jugadores, df_p_all, df_r_all, j_global)
+
+            # Mostrar resultados si ya se ha pulsado el botón
+            if 'prob_oraculo' in st.session_state and st.session_state.prob_oraculo:
+                prob = st.session_state.prob_oraculo
                 
-                # --- PREPARACIÓN DE COLUMNAS (Gráfico Izquierda | Texto Derecha) ---
+                st.markdown("---")
+                st.subheader("📊 Probabilidades de Victoria")
+
                 col_izq, col_der = st.columns([1.5, 1], gap="large")
 
                 with col_izq:
-                    # --- GRÁFICO DE EVOLUCIÓN (Eje X Compacto) ---
                     df_hist = leer_datos("HistoricoOraculo")
                     
                     if not df_hist.empty and 'Jornada' in df_hist.columns:
                         df_hist_j = df_hist[df_hist['Jornada'] == j_global].copy()
                         
                         if not df_hist_j.empty:
-                            # Limpieza de decimales y fechas
                             df_hist_j['Probabilidad'] = df_hist_j['Probabilidad'].astype(str).str.replace(',', '.')
                             df_hist_j['Probabilidad'] = pd.to_numeric(df_hist_j['Probabilidad'], errors='coerce').fillna(0)
                             df_hist_j['Fecha_DT'] = pd.to_datetime(df_hist_j['Fecha'], format='%H:%M:%S', errors='coerce')
@@ -1685,21 +1704,17 @@ else:
                             )
                             st.plotly_chart(fig_evo, use_container_width=True)
                         else:
-                            st.info("Sin historial aún.")
+                            st.info("Sin historial cronológico para esta jornada.")
 
                 with col_der:
-                    # --- LISTADO DE PROBABILIDADES A LA DERECHA ---
-                    st.markdown("#### 🎯 Probabilidades")
+                    st.markdown("#### 🎯 Porcentajes")
                     
-                    # Ordenamos por probabilidad (de mayor a menor)
                     for u, v in sorted(prob.items(), key=lambda x: x[1], reverse=True):
-                        # Lógica de visualización para supervivientes y eliminados
                         esta_vivo = v > 0
                         card_bg = "#f8f9fa" if esta_vivo else "#fff5f5"
                         card_border = "#2baf2b" if esta_vivo else "#ff4b4b"
                         txt_color = "#31333F" if esta_vivo else "#999999"
                         
-                        # Cálculo del Delta
                         delta = 0.0
                         if not df_hist.empty:
                             u_h = df_hist[(df_hist['Usuario'] == u) & (df_hist['Jornada'] == j_global)]
@@ -1708,14 +1723,12 @@ else:
                                     v_act = float(v)
                                     v_pre = float(str(u_h.iloc[-2]['Probabilidad']).replace(',', '.'))
                                     delta = v_act - v_pre
-                                except: pass
+                                	except: pass
                         
-                        # Iconos y colores según tendencia
                         color_d = "green" if delta > 0 else ("red" if delta < 0 else "gray")
                         delta_icon = "▲" if delta > 0 else ("▼" if delta < 0 else "•")
                         status_icon = "🟢" if esta_vivo else "💀"
                         
-                        # Tarjeta de Usuario
                         st.markdown(f"""
                             <div style="background:{card_bg}; padding:10px; border-radius:10px; border-left:4px solid {card_border}; margin-bottom:8px; opacity: {1.0 if esta_vivo else 0.6};">
                                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -1728,21 +1741,26 @@ else:
                             </div>
                         """, unsafe_allow_html=True)
                         
-                        # Barra de progreso (solo para los que tienen opciones)
                         if esta_vivo:
                             st.progress(min(v/100, 1.0))
                         else:
                             st.divider()
 
-                # --- CONFETI SI HAY GANADOR ---
                 if any(v >= 90 for v in prob.values()):
                     ganador_v = max(prob, key=prob.get)
                     st.balloons()
                     st.success(f"🏆 **{ganador_v}** acaricia la victoria con un {prob[ganador_v]:.1f}%")
+            else:
+                st.markdown("""
+                <div style="text-align:center; padding:40px; border:2px dashed #cbd5e1; border-radius:15px; margin-top:15px;">
+                    <h3 style="color:#64748b;">⏳ Oráculo en espera</h3>
+                    <p style="color:#94a3b8;">Pulsa el botón superior para calcular las probabilidades de victoria.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
         else:
-            st.info("El Oráculo se activa cuando quedan de 1 a 3 partidos.")
+            st.info("🔒 El Oráculo permanece sellado. Se desbloqueará cuando queden **3 o menos jornadas** de campeonato y la jornada en curso tenga entre **1 y 3 partidos** por finalizar.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
-    
     
     with tabs[9]: # --- PESTAÑA ADMIN ACTUALIZADA ---
         if st.session_state.rol == "admin":
