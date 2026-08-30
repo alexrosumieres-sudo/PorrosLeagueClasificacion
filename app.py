@@ -1723,7 +1723,8 @@ else:
                                     v_act = float(v)
                                     v_pre = float(str(u_h.iloc[-2]['Probabilidad']).replace(',', '.'))
                                     delta = v_act - v_pre
-                                	except: pass
+                                except:
+                                    pass
                         
                         color_d = "green" if delta > 0 else ("red" if delta < 0 else "gray")
                         delta_icon = "▲" if delta > 0 else ("▼" if delta < 0 else "•")
@@ -1761,7 +1762,6 @@ else:
         else:
             st.info("🔒 El Oráculo permanece sellado. Se desbloqueará cuando queden **3 o menos jornadas** de campeonato y la jornada en curso tenga entre **1 y 3 partidos** por finalizar.")
             st.image("https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ2IycHoyZ2pxeG9pdGU0OHYxODdsdzRldzFyd25lZDVwaTkzd3ZoMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/WPtzThAErhBG5oXLeS/giphy.gif", width=300)
-    
     with tabs[9]: # --- PESTAÑA ADMIN ACTUALIZADA ---
         if st.session_state.rol == "admin":
             st.header("⚙️ Panel de Control de Administrador")
