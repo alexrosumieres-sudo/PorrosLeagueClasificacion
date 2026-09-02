@@ -44,7 +44,25 @@ JORNADAS = {
         ("Leganés", "Eldense"), ("Girona", "Las Palmas"), ("FC Andorra", "Eibar"),
         ("Cádiz", "Valladolid"), ("Mallorca", "Ceuta"), ("Córdoba", "Granada"),
         ("Burgos", "Real Sociedad B"), ("Celta de Vigo B", "Castellón")
-    ]
+    ],
+     "Jornada 4": [
+         ("Las Palmas", "Leganés"), ("Real Sociedad B", "Tenerife"), ("Sporting", "Girona"),
+         ("Ceuta", "Celta de Vigo B"), ("Valladolid", "FC Andorra"), ("Eldense", "Mallorca"),
+         ("Eibar", "Granada"), ("Oviedo", "Burgos"), ("Castellón", "Albacete"),
+         ("Almería", "Cádiz"), ("Sabadell", "Córdoba")
+     ],
+     "Jornada 5": [
+         ("Burgos", "Ceuta"), ("FC Andorra", "Real Sociedad B"), ("Cádiz", "Las Palmas"),
+         ("Girona", "Castellón"), ("Granada", "Albacete"), ("Córdoba", "Almería"),
+         ("Sporting", "Eldense"), ("Valladolid", "Oviedo"), ("Mallorca", "Sabadell"),
+         ("Tenerife", "Leganés"), ("Celta de Vigo B", "Eibar")
+     ],
+     "Jornada 6": [
+         ("Albacete", "Córdoba"), ("Real Sociedad B", "Mallorca"), ("FC Andorra", "Sporting"),
+         ("Castellón", "Tenerife"), ("Eldense", "Eibar"), ("Cádiz", "Girona"),
+         ("Sabadell", "Oviedo"), ("Ceuta", "Valladolid"), ("Almería", "Celta de Vigo B"),
+         ("Las Palmas", "Burgos"), ("Leganés", "Granada")
+     ]
 }
 
 LOGOS = {
