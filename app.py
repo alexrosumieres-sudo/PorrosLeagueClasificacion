@@ -62,7 +62,12 @@ JORNADAS = {
          ("Castellón", "Tenerife"), ("Eldense", "Eibar"), ("Cádiz", "Girona"),
          ("Sabadell", "Oviedo"), ("Ceuta", "Valladolid"), ("Almería", "Celta de Vigo B"),
          ("Las Palmas", "Burgos"), ("Leganés", "Granada")
-     ]
+     ],
+      "Jornada 7": [("Girona", "Albacete"), ("Ceuta", "Real Sociedad B"), ("Granada", "FC Andorra"), ("Celta de Vigo B", "Sabadell"),
+        ("Tenerife", "Cádiz"), ("Valladolid", "Córdoba"), ("Mallorca", "Almería"), 
+        ("Burgos", "Eldense"), ("Eibar", "Las Palmas"), ("Oviedo", "Sporting"),
+        ("Leganés", "Castellón")
+    ]
 }
 
 LOGOS = {
