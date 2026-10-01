@@ -67,6 +67,11 @@ JORNADAS = {
         ("Tenerife", "Cádiz"), ("Valladolid", "Córdoba"), ("Mallorca", "Almería"), 
         ("Burgos", "Eldense"), ("Eibar", "Las Palmas"), ("Oviedo", "Sporting"),
         ("Leganés", "Castellón")
+    ],
+       "Jornada 8": [("Eldense", "Oviedo"), ("Albacete", "Eibar"), ("Almería", "Burgos"), 
+        ("Cádiz", "Leganés"), ("Sabadell", "Andorra"), ("Real Sociedad B", "Granada"), 
+        ("Sporting", "Celta de Vigo B"), ("Castellón", "Ceuta"), ("Las Palmas", "Valladolid"), 
+        ("Girona", "Mallorca"), ("Córdoba", "Tenerife")        
     ]
 }
 
