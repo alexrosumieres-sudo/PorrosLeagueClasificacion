@@ -72,6 +72,12 @@ JORNADAS = {
         ("Cádiz", "Leganés"), ("Sabadell", "Andorra"), ("Real Sociedad B", "Granada"), 
         ("Sporting", "Celta de Vigo B"), ("Castellón", "Ceuta"), ("Las Palmas", "Valladolid"), 
         ("Girona", "Mallorca"), ("Córdoba", "Tenerife")        
+    ],
+        "Jornada 9": [
+               ("Ceuta", "Sabadell"), ("Eldense", "Córdoba"), ("Celta de Vigo B", "Real Sociedad B"),
+               ("FC Andorra", "Castellón"), ("Almería", "Leganés"), ("Mallorca", "Las Palmas"),
+               ("Cádiz", "Sporting"), ("Valladolid", "Albacete"), ("Burgos", "Granada"),
+               ("Oviedo", "Eibar"), ("Tenerife", "Girona")
     ]
 }
 
