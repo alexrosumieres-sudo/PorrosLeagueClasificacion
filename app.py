@@ -90,6 +90,12 @@ JORNADAS = {
         ("Girona", "Celta de Vigo B"), ("Las Palmas", "Real Sociedad B"), ("Almería", "Oviedo"),
         ("Sabadell", "Tenerife"), ("Albacete", "Eldense"), ("Cádiz", "Ceuta"),
         ("Castellón", "Sporting"), ("FC Andorra", "Burgos")
+    ],
+        "Jornada 12": [
+        ("Real Sociedad B", "Girona"), ("Eibar", "Almería"), ("Celta de Vigo B", "Córdoba"),
+        ("Albacete", "Sabadell"), ("Eldense", "Granada"), ("Ceuta", "Sporting"),
+        ("Burgos", "Castellón"), ("Tenerife", "FC Andorra"), ("Oviedo", "Las Palmas"),
+        ("Valladolid", "Leganés"), ("Mallorca", "Cádiz")
     ]
 }
 
