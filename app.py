@@ -102,6 +102,18 @@ JORNADAS = {
         ("Córdoba", "Ceuta"), ("Leganés", "Albacete"), ("Granada", "Tenerife"),
         ("FC Andorra", "Mallorca"), ("Girona", "Almería"), ("Las Palmas", "Eldense"),
         ("Sporting", "Valladolid"), ("Sabadell", "Real Sociedad B")
+    ],
+        "Jornada 14": [
+        ("Leganés", "Burgos"), ("Valladolid", "Castellón"), ("Real Sociedad B", "Sporting"),
+        ("Almería", "FC Andorra"), ("Mallorca", "Córdoba"), ("Oviedo", "Girona"),
+        ("Tenerife", "Ceuta"), ("Granada", "Las Palmas"), ("Eibar", "Cádiz"),
+        ("Eldense", "Sabadell"), ("Albacete", "Celta de Vigo B")
+    ],
+        "Jornada 15": [
+        ("FC Andorra", "Leganés"), ("Sabadell", "Granada"), ("Real Sociedad B", "Cádiz"),
+        ("Castellón", "Eldense"), ("Tenerife", "Mallorca"), ("Córdoba", "Oviedo"),
+        ("Sporting", "Las Palmas"), ("Celta de Vigo B", "Valladolid"), ("Girona", "Eibar"),
+        ("Burgos", "Albacete"), ("Ceuta", "Almería")
     ]
 }
 
